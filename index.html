@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스페인어 첫걸음 | 스터디 홈페이지</title>
+<style>
+  :root {
+    --red: #c0392b; --yellow: #f39c12; --gold: #e67e22;
+    --dark: #1a1a2e; --card: #ffffff; --bg: #f5f0eb;
+    --text: #2c2c2c; --muted: #7f8c8d; --border: #e0d6cc;
+    --green: #27ae60; --blue: #2980b9;
+    --radius: 12px; --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI','Apple SD Gothic Neo',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header { background: linear-gradient(135deg,var(--red) 0%,#922b21 100%); color: white; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 16px rgba(0,0,0,0.18); }
+  .header-top { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px 10px; border-bottom: 1px solid rgba(255,255,255,0.15); flex-wrap: wrap; gap: 8px; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-flag { font-size: 26px; }
+  .logo-text h1 { font-size: 16px; font-weight: 700; }
+  .logo-text p { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .nexus-link { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 13px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: 600; transition: .2s; }
+  .nexus-link:hover { background: rgba(255,255,255,0.28); }
+  .today-badge { background: var(--yellow); color: #1a1a1a; padding: 5px 11px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  nav { display: flex; padding: 0 16px; overflow-x: auto; }
+  nav button { background: none; border: none; color: rgba(255,255,255,0.7); padding: 10px 16px; cursor: pointer; font-size: 13px; font-weight: 600; border-bottom: 3px solid transparent; transition: .2s; white-space: nowrap; }
+  nav button.active { color: white; border-bottom-color: var(--yellow); }
+  nav button:hover:not(.active) { color: rgba(255,255,255,0.9); }
+
+  main { max-width: 960px; margin: 24px auto; padding: 0 18px; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px; margin-bottom: 18px; border: 1px solid var(--border); }
+  .card-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; color: var(--dark); }
+
+  /* HOME */
+  .hero { background: linear-gradient(135deg,#922b21,var(--red) 60%,var(--gold) 100%); color: white; border-radius: var(--radius); padding: 28px 24px; margin-bottom: 18px; position: relative; overflow: hidden; }
+  .hero::after { content: '🇪🇸'; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 64px; opacity: 0.2; }
+  .hero h2 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .hero p { opacity: .85; font-size: 13px; margin-bottom: 18px; }
+  .hero-stats { display: flex; gap: 14px; flex-wrap: wrap; }
+  .hero-stat { background: rgba(255,255,255,0.15); border-radius: 10px; padding: 9px 14px; text-align: center; }
+  .hero-stat .val { font-size: 22px; font-weight: 800; display: block; }
+  .hero-stat .lbl { font-size: 10px; opacity: .75; margin-top: 2px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  @media(max-width:600px){ .grid-2 { grid-template-columns: 1fr; } }
+
+  .phrase-of-day { background: linear-gradient(135deg,#1a1a2e,#16213e); color: white; border-radius: var(--radius); padding: 20px 22px; }
+  .phrase-of-day .label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; opacity: .6; margin-bottom: 10px; }
+  .phrase-of-day .es { font-size: 20px; font-weight: 700; color: var(--yellow); margin-bottom: 4px; }
+  .phrase-of-day .ko { font-size: 14px; opacity: .8; margin-bottom: 5px; }
+  .phrase-of-day .pron { font-size: 12px; font-style: italic; opacity: .5; }
+
+  .quick-nav { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 18px; }
+  @media(max-width:500px){ .quick-nav { grid-template-columns: repeat(2,1fr); } }
+  .quick-btn { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 8px; text-align: center; cursor: pointer; transition: .2s; box-shadow: var(--shadow); }
+  .quick-btn:hover { border-color: var(--red); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(192,57,43,0.12); }
+  .quick-btn .icon { font-size: 22px; margin-bottom: 5px; }
+  .quick-btn .name { font-size: 12px; font-weight: 600; }
+
+  /* PLAN — Día cards */
+  .week-header { background: var(--dark); color: white; padding: 11px 16px; border-radius: 8px; margin: 18px 0 10px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .week-badge { background: var(--yellow); color: #1a1a1a; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+
+  .dia-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; box-shadow: var(--shadow); transition: .2s; }
+  .dia-card.completed { border-color: var(--green); background: #f0fdf4; }
+  .dia-card-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; cursor: pointer; }
+  .dia-num { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg,var(--red),var(--gold)); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+  .dia-num .d-label { font-size: 8px; opacity: .8; }
+  .dia-num .d-num { font-size: 16px; font-weight: 800; line-height: 1; }
+  .dia-card.completed .dia-num { background: linear-gradient(135deg,var(--green),#2ecc71); }
+  .dia-info { flex: 1; }
+  .dia-info h3 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .dia-info .sub { font-size: 12px; color: var(--muted); }
+  .dia-status { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; white-space: nowrap; }
+  .dia-status.done { background: #eafaf1; color: var(--green); }
+  .dia-status.todo { background: #fdf2f2; color: var(--red); }
+  .dia-status.locked { background: #f5f5f5; color: var(--muted); }
+  .dia-toggle { font-size: 12px; color: var(--muted); padding: 0 4px; transition: .2s; }
+
+  .dia-body { padding: 0 18px 16px; border-top: 1px solid var(--border); display: none; }
+  .dia-body.open { display: block; }
+
+  .task-section { margin-top: 14px; }
+  .task-section-title { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+
+  .task-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 1px solid #f0ebe5; }
+  .task-row:last-child { border-bottom: none; }
+  .task-row input[type=checkbox] { width: 17px; height: 17px; margin-top: 1px; flex-shrink: 0; cursor: pointer; accent-color: var(--red); }
+  .task-row label { font-size: 13px; cursor: pointer; line-height: 1.5; }
+  .task-row input:checked + label { text-decoration: line-through; color: var(--muted); }
+
+  .nexus-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #f8f4f0; border-radius: 8px; margin-top: 10px; }
+  .nexus-row a { font-size: 12px; font-weight: 600; color: var(--red); text-decoration: none; }
+  .nexus-row a:hover { text-decoration: underline; }
+
+  .progress-mini { margin-top: 12px; }
+  .progress-mini .label { font-size: 11px; color: var(--muted); margin-bottom: 5px; display: flex; justify-content: space-between; }
+  .bar-wrap { background: #eee; border-radius: 8px; height: 7px; overflow: hidden; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg,var(--red),var(--gold)); border-radius: 8px; transition: width .4s; }
+
+  /* VOCAB */
+  .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: white; font-size: 12px; cursor: pointer; transition: .2s; font-weight: 600; }
+  .filter-btn.active, .filter-btn:hover { background: var(--red); color: white; border-color: var(--red); }
+  .search-input { flex: 1; min-width: 160px; padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border); font-size: 13px; outline: none; }
+  .search-input:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(192,57,43,0.1); }
+
+  .flashcard-area { perspective: 1000px; margin-bottom: 14px; }
+  .flashcard { width: 100%; height: 170px; position: relative; cursor: pointer; transform-style: preserve-3d; transition: transform .5s; }
+  .flashcard.flipped { transform: rotateY(180deg); }
+  .flashcard-front, .flashcard-back { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .flashcard-front { background: linear-gradient(135deg,var(--dark),#16213e); color: white; }
+  .flashcard-back { background: white; transform: rotateY(180deg); }
+  .flashcard-front .es-word { font-size: 28px; font-weight: 800; color: var(--yellow); margin-bottom: 7px; }
+  .flashcard-front .es-pron { font-size: 13px; opacity: .55; font-style: italic; }
+  .flashcard-back .ko-word { font-size: 22px; font-weight: 700; color: var(--dark); margin-bottom: 7px; }
+  .flashcard-back .example { font-size: 12px; color: var(--muted); text-align: center; font-style: italic; }
+  .card-nav { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 14px; }
+  .card-nav button { background: var(--red); color: white; border: none; padding: 9px 22px; border-radius: 22px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .card-nav button:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .card-count { font-size: 14px; font-weight: 700; color: var(--muted); min-width: 56px; text-align: center; }
+
+  .vocab-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .vocab-table th { text-align: left; padding: 9px 11px; background: #faf5f0; border-bottom: 2px solid var(--border); font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
+  .vocab-table td { padding: 9px 11px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .vocab-table tr:last-child td { border-bottom: none; }
+  .vocab-table tr:hover td { background: #fdf8f5; }
+  .es-cell { font-weight: 700; color: var(--dark); font-size: 14px; }
+  .pron-cell { color: var(--muted); font-style: italic; }
+  .dia-badge { display: inline-block; padding: 2px 7px; background: #fdf2f2; border: 1px solid #f5c6c2; border-radius: 4px; font-size: 10px; font-weight: 700; color: var(--red); }
+  .memo-check { cursor: pointer; accent-color: var(--green); width: 16px; height: 16px; }
+
+  /* GRAMMAR */
+  .rule-box { background: #fdf2f2; border: 1px solid #f5c6c2; border-left: 4px solid var(--red); border-radius: 8px; padding: 13px 15px; margin-bottom: 12px; font-size: 13px; }
+  .rule-box .rule-title { font-weight: 700; margin-bottom: 5px; color: var(--red); }
+  .conjugation-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; }
+  .conjugation-table th { background: var(--dark); color: white; padding: 7px 11px; font-size: 11px; font-weight: 700; text-align: left; text-transform: uppercase; }
+  .conjugation-table td { padding: 7px 11px; border-bottom: 1px solid var(--border); }
+  .conjugation-table tr:nth-child(even) td { background: #fafafa; }
+  .es-form { font-weight: 700; color: var(--dark); }
+  .pronoun { color: var(--muted); font-size: 12px; }
+  .tip-box { background: #fef9e7; border: 1px solid #f9e79f; border-radius: 8px; padding: 11px 13px; font-size: 12px; color: #7d6608; margin-top: 10px; display: flex; gap: 8px; align-items: flex-start; }
+  .grammar-section { margin-bottom: 22px; }
+  .grammar-section h3 { font-size: 15px; font-weight: 800; color: var(--dark); margin-bottom: 11px; }
+
+  /* ALPHABET */
+  .alpha-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(78px,1fr)); gap: 7px; }
+  .alpha-card { background: #fdf2f2; border: 1px solid #f5c6c2; border-radius: 8px; padding: 9px 7px; text-align: center; cursor: pointer; transition: .2s; }
+  .alpha-card:hover { background: var(--red); color: white; border-color: var(--red); }
+  .alpha-card:hover .alpha-pron { color: rgba(255,255,255,0.7); }
+  .alpha-letter { font-size: 19px; font-weight: 800; color: var(--red); }
+  .alpha-card:hover .alpha-letter { color: white; }
+  .alpha-name { font-size: 11px; font-weight: 600; }
+  .alpha-pron { font-size: 10px; color: var(--muted); }
+
+  /* PROGRESS */
+  .progress-overview { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 18px; }
+  @media(max-width:550px){ .progress-overview { grid-template-columns: repeat(2,1fr); } }
+  .progress-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 14px; text-align: center; box-shadow: var(--shadow); }
+  .progress-stat .p-val { font-size: 26px; font-weight: 800; display: block; color: var(--red); }
+  .progress-stat .p-lbl { font-size: 11px; color: var(--muted); margin-top: 3px; font-weight: 600; }
+
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; text-align: center; }
+  .cal-day-header { font-size: 10px; font-weight: 700; color: var(--muted); padding: 5px 0; }
+  .cal-day { height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 1px solid transparent; }
+  .cal-day.studied { background: var(--red); color: white; font-weight: 700; }
+  .cal-day.today { border: 2px solid var(--red); font-weight: 700; }
+  .cal-day.empty { pointer-events: none; }
+
+  .dia-progress-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .dia-progress-item:last-child { border-bottom: none; }
+  .dp-num { width: 34px; height: 34px; border-radius: 50%; background: #fdf2f2; border: 2px solid #f5c6c2; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: var(--red); flex-shrink: 0; }
+  .dp-num.done { background: var(--green); border-color: var(--green); color: white; }
+  .dp-num.current { background: var(--red); border-color: var(--red); color: white; }
+  .dp-info { flex: 1; }
+  .dp-info .title { font-size: 13px; font-weight: 700; }
+  .dp-info .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .dp-bar-wrap { width: 90px; background: #eee; border-radius: 6px; height: 6px; overflow: hidden; flex-shrink: 0; }
+  .dp-bar { height: 100%; background: linear-gradient(90deg,var(--red),var(--gold)); border-radius: 6px; transition: width .4s; }
+
+  .log-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .log-item:last-child { border-bottom: none; }
+  .log-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); margin-top: 4px; flex-shrink: 0; }
+  .log-content .log-date { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .log-content .log-desc { font-size: 13px; font-weight: 600; }
+
+  /* NEXUS */
+  .nexus-banner { background: linear-gradient(135deg,#2c3e50,#34495e); color: white; border-radius: var(--radius); padding: 20px 22px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .nexus-banner h3 { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+  .nexus-banner p { font-size: 12px; opacity: .7; }
+  .nexus-open-btn { background: var(--yellow); color: #1a1a1a; border: none; padding: 9px 18px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .nexus-iframe-container { display: none; border-radius: var(--radius); overflow: hidden; border: 2px solid var(--border); margin-top: 10px; }
+  .nexus-iframe-container.open { display: block; }
+  .nexus-iframe-container iframe { width: 100%; height: 480px; border: none; display: block; }
+  .iframe-header { background: #2c3e50; color: white; padding: 9px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; }
+  .iframe-close { background: none; border: none; color: white; cursor: pointer; font-size: 16px; }
+
+  .section-title { font-size: 18px; font-weight: 800; color: var(--dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .empty-state { text-align: center; padding: 36px; color: var(--muted); font-size: 14px; }
+  .empty-state .icon { font-size: 38px; margin-bottom: 8px; }
+
+  /* HOW TO notice box */
+  .notice { background: linear-gradient(135deg,#eaf2fb,#d6eaf8); border: 1px solid #aed6f1; border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #1a6fa8; margin-bottom: 18px; display: flex; gap: 10px; align-items: flex-start; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-top">
+    <div class="logo">
+      <span class="logo-flag">🇪🇸</span>
+      <div class="logo-text">
+        <h1>나혼자 끝내는 독학 스페인어 첫걸음</h1>
+        <p>넥서스 Día 01~16 기반 · 주 3일 맞춤 학습</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <a href="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" target="_blank" class="nexus-link">📚 넥서스 부록</a>
+      <span class="today-badge" id="todayBadge"></span>
+    </div>
+  </div>
+  <nav>
+    <button class="active" onclick="showTab('home')">🏠 홈</button>
+    <button onclick="showTab('plan')">📅 학습 계획</button>
+    <button onclick="showTab('vocab')">📖 단어장</button>
+    <button onclick="showTab('grammar')">✏️ 문법</button>
+    <button onclick="showTab('alphabet')">🔤 발음</button>
+    <button onclick="showTab('progress')">📊 진도 체크</button>
+    <button onclick="showTab('nexus')">🔗 넥서스 연동</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ══ HOME ══ -->
+<div id="tab-home" class="tab-content active">
+  <div class="hero">
+    <h2>¡Hola! 스페인어 공부 시작해요 👋</h2>
+    <p>넥서스 교재 Día 01~16 · 주 3일 · 하루 1~2시간</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><span class="val" id="stat-days">0</span><div class="lbl">공부한 날</div></div>
+      <div class="hero-stat"><span class="val" id="stat-words">0</span><div class="lbl">암기 단어</div></div>
+      <div class="hero-stat"><span class="val" id="stat-dias">0</span><div class="lbl">완료한 Día</div></div>
+      <div class="hero-stat"><span class="val" id="stat-streak">0</span><div class="lbl">연속 🔥</div></div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <span>ℹ️</span>
+    <div>
+      <strong>진도 체크 방법:</strong> <a href="#" onclick="showTab('plan');return false;" style="color:var(--blue);font-weight:700;">학습 계획 탭</a>에서 각 Día를 열고 학습 항목에 체크하세요. 체크할수록 자동으로 진도·달력·통계가 업데이트됩니다. 별도로 완료 버튼을 누를 필요가 없어요.
+    </div>
+  </div>
+
+  <div class="quick-nav">
+    <div class="quick-btn" onclick="showTab('plan')"><div class="icon">📅</div><div class="name">학습 계획</div></div>
+    <div class="quick-btn" onclick="showTab('vocab')"><div class="icon">🃏</div><div class="name">플래시카드</div></div>
+    <div class="quick-btn" onclick="showTab('grammar')"><div class="icon">📝</div><div class="name">문법 정리</div></div>
+    <div class="quick-btn" onclick="showTab('nexus')"><div class="icon">🔊</div><div class="name">음원·부록</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">📋 오늘의 학습</div>
+      <div id="home-today"></div>
+    </div>
+    <div class="phrase-of-day">
+      <div class="label">⭐ 오늘의 표현</div>
+      <div class="es" id="pod-es"></div>
+      <div class="ko" id="pod-ko"></div>
+      <div class="pron" id="pod-pron"></div>
+      <button onclick="nextPhrase()" style="margin-top:13px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:6px 14px;border-radius:14px;cursor:pointer;font-size:12px;font-weight:700;">다음 표현 →</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💡 스페인어 학습 팁</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">
+      <div class="tip-box" style="margin:0;"><span>🔊</span><div><strong>음원을 반드시 활용</strong><br>넥서스 부록 페이지에서 각 Día의 MP3 + 동영상 강의를 무료로 들을 수 있어요. 소리 없이 눈으로만 공부하면 발음이 굳어집니다.</div></div>
+      <div class="tip-box" style="margin:0;"><span>🔄</span><div><strong>복습용 동영상 활용</strong><br>각 Día에는 복습용 동영상이 따로 있어요. 다음 Día로 넘어가기 전에 꼭 복습 영상으로 확인하세요.</div></div>
+      <div class="tip-box" style="margin:0;"><span>🃏</span><div><strong>단어 암기 동영상</strong><br>Día 02~16에는 단어 암기 동영상이 제공돼요. 플래시카드와 함께 활용하면 효과가 2배예요.</div></div>
+      <div class="tip-box" style="margin:0;"><span>📅</span><div><strong>주 3일 리듬 유지</strong><br>매일보다 규칙적인 주 3회가 더 중요해요. 학습 계획 탭에서 체크하며 리듬을 만들어가세요.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PLAN ══ -->
+<div id="tab-plan" class="tab-content">
+  <div class="section-title">📅 8주 학습 계획 <span style="font-size:13px;font-weight:400;color:var(--muted);">— 넥서스 Día 01~16 기반</span></div>
+
+  <div class="notice">
+    <span>✅</span>
+    <div><strong>이렇게 사용하세요:</strong> 각 Día 카드를 클릭해 펼친 후, 학습 항목에 체크하세요. 모든 항목을 체크하면 해당 Día가 완료로 표시되고 진도·달력이 자동 업데이트됩니다. 넥서스 부록 링크도 각 Día에 연결되어 있어요.</div>
+  </div>
+
+  <div id="plan-container"></div>
+</div>
+
+<!-- ══ VOCAB ══ -->
+<div id="tab-vocab" class="tab-content">
+  <div class="section-title">📖 단어장</div>
+  <div class="card">
+    <div class="card-title">🃏 플래시카드 모드</div>
+    <div class="flashcard-area">
+      <div class="flashcard" id="flashcard" onclick="flipCard()">
+        <div class="flashcard-front">
+          <div class="es-word" id="fc-es"></div>
+          <div class="es-pron" id="fc-pron"></div>
+          <div style="margin-top:10px;font-size:11px;opacity:.5;">클릭하여 뒤집기</div>
+        </div>
+        <div class="flashcard-back">
+          <div class="ko-word" id="fc-ko"></div>
+          <div class="example" id="fc-ex"></div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:12px;">카드를 클릭하면 뒤집혀요</div>
+    <div class="card-nav">
+      <button onclick="prevCard()" id="btn-prev">← 이전</button>
+      <span class="card-count" id="card-count">1 / 40</span>
+      <button onclick="nextCard()" id="btn-next">다음 →</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+      <button class="filter-btn active" onclick="setFlashMode('all',this)">전체</button>
+      <button class="filter-btn" onclick="setFlashMode('1',this)">Día 01~05</button>
+      <button class="filter-btn" onclick="setFlashMode('2',this)">Día 06~10</button>
+      <button class="filter-btn" onclick="setFlashMode('3',this)">Día 11~16</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📋 단어 목록</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      <input type="text" class="search-input" placeholder="🔍 단어 검색..." oninput="filterVocab(this.value)">
+      <button class="filter-btn active" onclick="filterByDia('all',this)">전체</button>
+      <button class="filter-btn" onclick="filterByDia('1',this)">Día 01~05</button>
+      <button class="filter-btn" onclick="filterByDia('2',this)">Día 06~10</button>
+      <button class="filter-btn" onclick="filterByDia('3',this)">Día 11~16</button>
+    </div>
+    <table class="vocab-table">
+      <thead><tr><th>스페인어</th><th>발음</th><th>뜻</th><th>Día</th><th>암기</th></tr></thead>
+      <tbody id="vocab-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ GRAMMAR ══ -->
+<div id="tab-grammar" class="tab-content">
+  <div class="section-title">✏️ 핵심 문법 정리</div>
+  <div class="card">
+    <div class="grammar-section">
+      <h3>📌 1. 명사의 성 — Día 02</h3>
+      <div class="rule-box">
+        <div class="rule-title">남성 vs 여성</div>
+        • <strong>-o</strong> 끝 → 남성: el libro(책), el niño(소년)<br>
+        • <strong>-a</strong> 끝 → 여성: la casa(집), la niña(소녀)<br>
+        • 예외: el día(남성), la mano(여성)
+      </div>
+      <div class="tip-box">💡 관사를 함께 외우세요 — 남성: <strong>el / un</strong>, 여성: <strong>la / una</strong></div>
+    </div>
+    <div class="grammar-section">
+      <h3>📌 2. SER 현재형 — Día 03</h3>
+      <table class="conjugation-table">
+        <thead><tr><th>주어</th><th>형태</th><th>쓰임</th></tr></thead>
+        <tbody>
+          <tr><td class="pronoun">yo</td><td class="es-form">soy</td><td>정체성·직업·국적</td></tr>
+          <tr><td class="pronoun">tú</td><td class="es-form">eres</td><td></td></tr>
+          <tr><td class="pronoun">él/ella/usted</td><td class="es-form">es</td><td></td></tr>
+          <tr><td class="pronoun">nosotros/as</td><td class="es-form">somos</td><td></td></tr>
+          <tr><td class="pronoun">vosotros/as</td><td class="es-form">sois</td><td></td></tr>
+          <tr><td class="pronoun">ellos/ustedes</td><td class="es-form">son</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grammar-section">
+      <h3>📌 3. ESTAR 현재형 — Día 05</h3>
+      <table class="conjugation-table">
+        <thead><tr><th>주어</th><th>형태</th><th>쓰임</th></tr></thead>
+        <tbody>
+          <tr><td class="pronoun">yo</td><td class="es-form">estoy</td><td>위치·일시 상태</td></tr>
+          <tr><td class="pronoun">tú</td><td class="es-form">estás</td><td></td></tr>
+          <tr><td class="pronoun">él/ella/usted</td><td class="es-form">está</td><td></td></tr>
+          <tr><td class="pronoun">nosotros/as</td><td class="es-form">estamos</td><td></td></tr>
+          <tr><td class="pronoun">vosotros/as</td><td class="es-form">estáis</td><td></td></tr>
+          <tr><td class="pronoun">ellos/ustedes</td><td class="es-form">están</td><td></td></tr>
+        </tbody>
+      </table>
+      <div class="rule-box" style="margin-top:12px;">
+        <div class="rule-title">SER vs ESTAR 핵심</div>
+        <strong>SER:</strong> Soy coreana. (나는 한국인이다 — 정체성)<br>
+        <strong>ESTAR:</strong> Estoy en casa. (집에 있다 — 위치) / Estoy cansado. (피곤하다 — 일시 상태)
+      </div>
+    </div>
+    <div class="grammar-section">
+      <h3>📌 4. AR 규칙동사 — Día 06</h3>
+      <table class="conjugation-table">
+        <thead><tr><th>주어</th><th>hablar (말하다)</th><th>estudiar (공부하다)</th></tr></thead>
+        <tbody>
+          <tr><td class="pronoun">yo</td><td class="es-form">hablo</td><td class="es-form">estudio</td></tr>
+          <tr><td class="pronoun">tú</td><td class="es-form">hablas</td><td class="es-form">estudias</td></tr>
+          <tr><td class="pronoun">él/ella</td><td class="es-form">habla</td><td class="es-form">estudia</td></tr>
+          <tr><td class="pronoun">nosotros</td><td class="es-form">hablamos</td><td class="es-form">estudiamos</td></tr>
+          <tr><td class="pronoun">vosotros</td><td class="es-form">habláis</td><td class="es-form">estudiáis</td></tr>
+          <tr><td class="pronoun">ellos</td><td class="es-form">hablan</td><td class="es-form">estudian</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grammar-section">
+      <h3>📌 5. ER/IR 규칙동사 — Día 07</h3>
+      <table class="conjugation-table">
+        <thead><tr><th>주어</th><th>comer (먹다)</th><th>vivir (살다)</th></tr></thead>
+        <tbody>
+          <tr><td class="pronoun">yo</td><td class="es-form">como</td><td class="es-form">vivo</td></tr>
+          <tr><td class="pronoun">tú</td><td class="es-form">comes</td><td class="es-form">vives</td></tr>
+          <tr><td class="pronoun">él/ella</td><td class="es-form">come</td><td class="es-form">vive</td></tr>
+          <tr><td class="pronoun">nosotros</td><td class="es-form">comemos</td><td class="es-form">vivimos</td></tr>
+          <tr><td class="pronoun">vosotros</td><td class="es-form">coméis</td><td class="es-form">vivís</td></tr>
+          <tr><td class="pronoun">ellos</td><td class="es-form">comen</td><td class="es-form">viven</td></tr>
+        </tbody>
+      </table>
+      <div class="tip-box">💡 ER과 IR은 nosotros/vosotros에서만 다르고 나머지는 같아요!</div>
+    </div>
+    <div class="grammar-section">
+      <h3>📌 6. 불규칙동사 TENER / IR — Día 08·12</h3>
+      <table class="conjugation-table">
+        <thead><tr><th>주어</th><th>tener (가지다)</th><th>ir (가다)</th></tr></thead>
+        <tbody>
+          <tr><td class="pronoun">yo</td><td class="es-form">tengo</td><td class="es-form">voy</td></tr>
+          <tr><td class="pronoun">tú</td><td class="es-form">tienes</td><td class="es-form">vas</td></tr>
+          <tr><td class="pronoun">él/ella</td><td class="es-form">tiene</td><td class="es-form">va</td></tr>
+          <tr><td class="pronoun">nosotros</td><td class="es-form">tenemos</td><td class="es-form">vamos</td></tr>
+          <tr><td class="pronoun">vosotros</td><td class="es-form">tenéis</td><td class="es-form">vais</td></tr>
+          <tr><td class="pronoun">ellos</td><td class="es-form">tienen</td><td class="es-form">van</td></tr>
+        </tbody>
+      </table>
+      <div class="rule-box" style="margin-top:12px;">
+        <div class="rule-title">ir a + 동사원형 = 근접 미래</div>
+        Voy a estudiar. → 공부할 것이다. / ¡Vamos! → 가자!
+      </div>
+    </div>
+    <div class="grammar-section">
+      <h3>📌 7. gustar 구문 — Día 10</h3>
+      <div class="rule-box">
+        <div class="rule-title">영어 like와 구조가 달라요!</div>
+        <strong>Me gusta</strong> el café. → 나는 커피가 좋다. (단수)<br>
+        <strong>Me gustan</strong> los libros. → 나는 책들이 좋다. (복수)<br>
+        간접목적격: me / te / le / nos / os / les
+      </div>
+    </div>
+    <div class="grammar-section">
+      <h3>📌 8. 단순과거 — Día 15</h3>
+      <table class="conjugation-table">
+        <thead><tr><th>주어</th><th>hablar (AR)</th><th>comer (ER)</th></tr></thead>
+        <tbody>
+          <tr><td class="pronoun">yo</td><td class="es-form">hablé</td><td class="es-form">comí</td></tr>
+          <tr><td class="pronoun">tú</td><td class="es-form">hablaste</td><td class="es-form">comiste</td></tr>
+          <tr><td class="pronoun">él/ella</td><td class="es-form">habló</td><td class="es-form">comió</td></tr>
+          <tr><td class="pronoun">nosotros</td><td class="es-form">hablamos</td><td class="es-form">comimos</td></tr>
+          <tr><td class="pronoun">vosotros</td><td class="es-form">hablasteis</td><td class="es-form">comisteis</td></tr>
+          <tr><td class="pronoun">ellos</td><td class="es-form">hablaron</td><td class="es-form">comieron</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ALPHABET ══ -->
+<div id="tab-alphabet" class="tab-content">
+  <div class="section-title">🔤 발음 & 알파벳</div>
+  <div class="card">
+    <div class="card-title">📢 Día 01 — 발음 핵심 규칙</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px;">
+      <div class="rule-box"><div class="rule-title">모음 (항상 일정)</div>A[아] E[에] I[이] O[오] U[우]<br>영어처럼 변하지 않아요!</div>
+      <div class="rule-box"><div class="rule-title">특수 문자</div><strong>Ñ</strong>[냐/뇨] mañana(내일)<br><strong>H</strong> 묵음 — hola[올라]<br><strong>LL</strong>[야/요] — llamar[야마르]</div>
+      <div class="rule-box"><div class="rule-title">C / G 변화</div>C+a/o/u → [k] (casa)<br>C+e/i → [s] (cine)<br>G+e/i → [h] (gente[헨테])</div>
+      <div class="rule-box"><div class="rule-title">강세 규칙</div>강세표시(´) 있으면 그 음절<br>없으면: 모음/n/s 끝 → 끝에서 둘째<br>그 외 자음 → 마지막 음절</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🔡 알파벳 27개</div>
+    <div class="alpha-grid" id="alpha-grid"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">💬 필수 기초 표현</div>
+    <table class="vocab-table">
+      <thead><tr><th>스페인어</th><th>발음</th><th>뜻</th></tr></thead>
+      <tbody>
+        <tr><td class="es-cell">¡Hola!</td><td class="pron-cell">올라</td><td>안녕!</td></tr>
+        <tr><td class="es-cell">Buenos días</td><td class="pron-cell">부에노스 디아스</td><td>좋은 아침이에요</td></tr>
+        <tr><td class="es-cell">Buenas tardes</td><td class="pron-cell">부에나스 따르데스</td><td>좋은 오후에요</td></tr>
+        <tr><td class="es-cell">Buenas noches</td><td class="pron-cell">부에나스 노체스</td><td>좋은 밤이에요</td></tr>
+        <tr><td class="es-cell">Gracias</td><td class="pron-cell">그라씨아스</td><td>감사합니다</td></tr>
+        <tr><td class="es-cell">De nada</td><td class="pron-cell">데 나다</td><td>천만에요</td></tr>
+        <tr><td class="es-cell">Por favor</td><td class="pron-cell">뽀르 파보르</td><td>부탁합니다</td></tr>
+        <tr><td class="es-cell">Lo siento</td><td class="pron-cell">로 씨엔또</td><td>미안합니다</td></tr>
+        <tr><td class="es-cell">Mucho gusto</td><td class="pron-cell">무초 구스또</td><td>만나서 반갑습니다</td></tr>
+        <tr><td class="es-cell">¿Cómo estás?</td><td class="pron-cell">꼬모 에스따스</td><td>어때요?</td></tr>
+        <tr><td class="es-cell">No entiendo</td><td class="pron-cell">노 엔띠엔도</td><td>이해 못 했어요</td></tr>
+        <tr><td class="es-cell">Más despacio</td><td class="pron-cell">마스 데스빠씨오</td><td>더 천천히</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ PROGRESS ══ -->
+<div id="tab-progress" class="tab-content">
+  <div class="section-title">📊 진도 체크</div>
+
+  <div class="notice">
+    <span>📌</span>
+    <div><strong>진도는 학습 계획 탭에서 자동 반영됩니다.</strong> 각 Día의 항목에 체크하면 이 페이지의 달력과 통계가 업데이트돼요. 여기서는 전체 진도를 한눈에 확인만 하세요.</div>
+  </div>
+
+  <div class="progress-overview">
+    <div class="progress-stat"><span class="p-val" id="prog-days">0</span><div class="p-lbl">학습일</div></div>
+    <div class="progress-stat"><span class="p-val" id="prog-words">0</span><div class="p-lbl">암기 단어</div></div>
+    <div class="progress-stat"><span class="p-val" id="prog-dias">0/16</span><div class="p-lbl">Día 완료</div></div>
+    <div class="progress-stat"><span class="p-val" id="prog-streak">0</span><div class="p-lbl">연속 🔥</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📆 출석 달력 <span style="font-size:12px;color:var(--muted);font-weight:400;" id="cal-month-label"></span></div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div style="display:flex;gap:14px;margin-top:10px;font-size:11px;color:var(--muted);justify-content:flex-end;">
+      <span><span style="display:inline-block;width:11px;height:11px;background:var(--red);border-radius:3px;margin-right:3px;vertical-align:middle;"></span>학습한 날</span>
+      <span><span style="display:inline-block;width:11px;height:11px;border:2px solid var(--red);border-radius:3px;margin-right:3px;vertical-align:middle;"></span>오늘</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📗 Día별 진도 현황</div>
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px;">
+        <span>전체 진도</span><span id="overall-pct-text">0 / 16 Día</span>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill" id="overall-bar" style="width:0%"></div></div>
+    </div>
+    <div id="dia-progress-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📝 학습 기록</div>
+    <div id="study-log"></div>
+  </div>
+</div>
+
+<!-- ══ NEXUS ══ -->
+<div id="tab-nexus" class="tab-content">
+  <div class="section-title">🔗 넥서스 공식 부록</div>
+  <div class="nexus-banner">
+    <div>
+      <h3>📚 나혼자 끝내는 독학 스페인어 첫걸음 — 공식 부록</h3>
+      <p>Día 01~16 동영상 강의 · MP3 · 복습 영상 · 단어 암기 영상</p>
+    </div>
+    <button class="nexus-open-btn" onclick="toggleNexus()">🔊 부록 바로가기</button>
+  </div>
+  <div class="nexus-iframe-container" id="nexus-iframe-container">
+    <div class="iframe-header">
+      <span>📖 넥서스 스페인어 첫걸음 공식 부록</span>
+      <button class="iframe-close" onclick="toggleNexus()">✕ 닫기</button>
+    </div>
+    <iframe src="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" title="넥서스 부록"></iframe>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">🎧 부록 구성</div>
+      <div style="font-size:13px;line-height:2;">
+        <div>📹 <strong>Día 01</strong> — 발음 특훈 동영상 + MP3</div>
+        <div>📹 <strong>Día 02~16</strong> — 동영상 강의</div>
+        <div>🔊 <strong>Día 02~16</strong> — MP3 한번에 듣기</div>
+        <div>🔄 <strong>Día 02~16</strong> — 복습용 동영상</div>
+        <div>🃏 <strong>Día 02~16</strong> — 단어 암기 동영상</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🌐 추천 무료 자료</div>
+      <div style="font-size:13px;line-height:2;">
+        <div>📱 <strong>Duolingo</strong> — 하루 5분 보조 앱</div>
+        <div>🎬 <strong>YouTube: ProfeDeELE</strong> — 무료 문법 강의</div>
+        <div>🃏 <strong>Anki</strong> — 고급 단어 암기 앱</div>
+        <div>🗣️ <strong>HelloTalk</strong> — 원어민 언어교환</div>
+        <div>📻 <strong>SpanishPod101</strong> — 팟캐스트 청취</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ══════════════════════════════════════
+// DATA — Día 01~16 (넥서스 책 구성)
+// ══════════════════════════════════════
+const DIAS = [
+  {
+    num:1, week:1, day:1,
+    title:'발음 특훈',
+    sub:'스페인어 알파벳 27개 · 모음·자음 발음 규칙',
+    grammar:'모음(A E I O U) · 이중모음 · 강세 규칙 · H묵음 · LL/RR/Ñ',
+    tasks:[
+      {id:'1-1', text:'알파벳 27개 소리 내어 읽기 (발음 특훈 동영상)'},
+      {id:'1-2', text:'모음 5개 발음 규칙 암기'},
+      {id:'1-3', text:'LL·RR·Ñ·H 특수 발음 연습'},
+      {id:'1-4', text:'MP3 한번에 듣기 완료'},
+    ]
+  },
+  {
+    num:2, week:1, day:2,
+    title:'명사의 성과 수 · 관사',
+    sub:'el/la/los/las · un/una · 명사 복수형',
+    grammar:'명사의 성(남성/여성) · 정관사 · 부정관사 · 복수형(-s/-es)',
+    tasks:[
+      {id:'2-1', text:'동영상 강의 시청'},
+      {id:'2-2', text:'MP3 한번에 듣기'},
+      {id:'2-3', text:'복습용 동영상 시청'},
+      {id:'2-4', text:'단어 암기 동영상 (명사·관사 어휘)'},
+      {id:'2-5', text:'남성·여성 명사 각 10개씩 외우기'},
+    ]
+  },
+  {
+    num:3, week:1, day:3,
+    title:'인사 · ser 동사',
+    sub:'¡Hola! · Buenos días · soy/eres/es · 자기소개',
+    grammar:'ser 동사 현재형 6인칭 · 국적·직업 표현',
+    tasks:[
+      {id:'3-1', text:'동영상 강의 시청'},
+      {id:'3-2', text:'MP3 한번에 듣기'},
+      {id:'3-3', text:'복습용 동영상 시청'},
+      {id:'3-4', text:'단어 암기 동영상'},
+      {id:'3-5', text:'ser 변화표 손으로 써보기'},
+      {id:'3-6', text:'자기소개 3문장 만들어보기'},
+    ]
+  },
+  {
+    num:4, week:2, day:1,
+    title:'지시형용사 · 소유형용사',
+    sub:'este/ese/aquel · mi/tu/su · 가족 표현',
+    grammar:'지시형용사 남·여 구분 · 소유형용사 · 가족 어휘',
+    tasks:[
+      {id:'4-1', text:'동영상 강의 시청'},
+      {id:'4-2', text:'MP3 한번에 듣기'},
+      {id:'4-3', text:'복습용 동영상 시청'},
+      {id:'4-4', text:'단어 암기 동영상 (가족 어휘)'},
+      {id:'4-5', text:'가족 단어 10개 암기'},
+    ]
+  },
+  {
+    num:5, week:2, day:2,
+    title:'estar 동사 · 형용사',
+    sub:'estoy/estás/está · ser vs estar · 위치·상태 표현',
+    grammar:'estar 현재형 · 형용사 성수일치 · ser/estar 구분',
+    tasks:[
+      {id:'5-1', text:'동영상 강의 시청'},
+      {id:'5-2', text:'MP3 한번에 듣기'},
+      {id:'5-3', text:'복습용 동영상 시청'},
+      {id:'5-4', text:'단어 암기 동영상'},
+      {id:'5-5', text:'ser vs estar 예문 5개씩 만들기'},
+    ]
+  },
+  {
+    num:6, week:2, day:3,
+    title:'AR 규칙동사',
+    sub:'hablar · trabajar · estudiar · llamar',
+    grammar:'AR동사 어미 변화 6인칭 · 1인칭 단수 -o 탈락',
+    tasks:[
+      {id:'6-1', text:'동영상 강의 시청'},
+      {id:'6-2', text:'MP3 한번에 듣기'},
+      {id:'6-3', text:'복습용 동영상 시청'},
+      {id:'6-4', text:'단어 암기 동영상'},
+      {id:'6-5', text:'hablar 변화표 암기'},
+      {id:'6-6', text:'AR동사 3개 추가 변화 연습'},
+    ]
+  },
+  {
+    num:7, week:3, day:1,
+    title:'ER / IR 규칙동사',
+    sub:'comer · beber · vivir · escribir',
+    grammar:'ER/IR 어미 변화 · ER vs IR 차이점(nosotros/vosotros)',
+    tasks:[
+      {id:'7-1', text:'동영상 강의 시청'},
+      {id:'7-2', text:'MP3 한번에 듣기'},
+      {id:'7-3', text:'복습용 동영상 시청'},
+      {id:'7-4', text:'단어 암기 동영상'},
+      {id:'7-5', text:'comer / vivir 변화표 암기'},
+    ]
+  },
+  {
+    num:8, week:3, day:2,
+    title:'불규칙동사 · 숫자',
+    sub:'tener · venir · 숫자 1~100 · 나이 표현',
+    grammar:'tener/venir yo형 불규칙(tengo/vengo) · 숫자 읽기',
+    tasks:[
+      {id:'8-1', text:'동영상 강의 시청'},
+      {id:'8-2', text:'MP3 한번에 듣기'},
+      {id:'8-3', text:'복습용 동영상 시청'},
+      {id:'8-4', text:'단어 암기 동영상 (숫자 어휘)'},
+      {id:'8-5', text:'숫자 1~100 읽기 연습'},
+      {id:'8-6', text:'나이 묻고 답하기 연습'},
+    ]
+  },
+  {
+    num:9, week:3, day:3,
+    title:'의문사 총정리',
+    sub:'qué · dónde · cuándo · cómo · por qué · cuánto',
+    grammar:'의문사별 쓰임 · 의문문 어순(¿동사+주어?)',
+    tasks:[
+      {id:'9-1', text:'동영상 강의 시청'},
+      {id:'9-2', text:'MP3 한번에 듣기'},
+      {id:'9-3', text:'복습용 동영상 시청'},
+      {id:'9-4', text:'단어 암기 동영상'},
+      {id:'9-5', text:'의문사별 예문 1개씩 만들기'},
+    ]
+  },
+  {
+    num:10, week:4, day:1,
+    title:'gustar · 관심 표현',
+    sub:'Me gusta / Me gustan · encantar · interesar',
+    grammar:'gustar 구문 구조 · 간접목적격 대명사 · 복수 주어 구분',
+    tasks:[
+      {id:'10-1', text:'동영상 강의 시청'},
+      {id:'10-2', text:'MP3 한번에 듣기'},
+      {id:'10-3', text:'복습용 동영상 시청'},
+      {id:'10-4', text:'단어 암기 동영상'},
+      {id:'10-5', text:'나의 관심사 5문장 만들기 (Me gusta...)'},
+    ]
+  },
+  {
+    num:11, week:4, day:2,
+    title:'시간 · 날짜 · 날씨',
+    sub:'¿Qué hora es? · días de la semana · ¿Qué tiempo hace?',
+    grammar:'시간 표현 · 요일·월 어휘 · hacer 날씨 표현',
+    tasks:[
+      {id:'11-1', text:'동영상 강의 시청'},
+      {id:'11-2', text:'MP3 한번에 듣기'},
+      {id:'11-3', text:'복습용 동영상 시청'},
+      {id:'11-4', text:'단어 암기 동영상 (요일·월 어휘)'},
+      {id:'11-5', text:'현재 시간·날짜·날씨 스페인어로 말하기'},
+    ]
+  },
+  {
+    num:12, week:4, day:3,
+    title:'불규칙동사 ir · poder · querer',
+    sub:'voy/vas/va · puedo/puedes · quiero/quieres',
+    grammar:'ir/poder/querer 변화 · ir a + 동사원형(근접미래)',
+    tasks:[
+      {id:'12-1', text:'동영상 강의 시청'},
+      {id:'12-2', text:'MP3 한번에 듣기'},
+      {id:'12-3', text:'복습용 동영상 시청'},
+      {id:'12-4', text:'단어 암기 동영상'},
+      {id:'12-5', text:'ir a + inf 문장 5개 만들기 (근접 미래)'},
+    ]
+  },
+  {
+    num:13, week:5, day:1,
+    title:'현재진행형',
+    sub:'estar + -ando/-iendo · 지금 하고 있는 일 표현',
+    grammar:'현재분사 형성 규칙 · 불규칙 현재분사(leer→leyendo)',
+    tasks:[
+      {id:'13-1', text:'동영상 강의 시청'},
+      {id:'13-2', text:'MP3 한번에 듣기'},
+      {id:'13-3', text:'복습용 동영상 시청'},
+      {id:'13-4', text:'단어 암기 동영상'},
+      {id:'13-5', text:'지금 하는 일 3문장 진행형으로 말하기'},
+    ]
+  },
+  {
+    num:14, week:5, day:2,
+    title:'위치·방향 표현',
+    sub:'¿Dónde está? · 전치사 · 장소 어휘',
+    grammar:'위치 전치사(en/a/de/cerca de...) · 방향 표현',
+    tasks:[
+      {id:'14-1', text:'동영상 강의 시청'},
+      {id:'14-2', text:'MP3 한번에 듣기'},
+      {id:'14-3', text:'복습용 동영상 시청'},
+      {id:'14-4', text:'단어 암기 동영상 (장소 어휘)'},
+      {id:'14-5', text:'학교/집/시장 위치 표현 연습'},
+    ]
+  },
+  {
+    num:15, week:5, day:3,
+    title:'단순과거 (pretérito indefinido)',
+    sub:'hablé/comí · 과거 이야기하기 · 불규칙 과거',
+    grammar:'AR/ER/IR 단순과거 규칙 변화 · ser/ir/tener 불규칙 과거',
+    tasks:[
+      {id:'15-1', text:'동영상 강의 시청'},
+      {id:'15-2', text:'MP3 한번에 듣기'},
+      {id:'15-3', text:'복습용 동영상 시청'},
+      {id:'15-4', text:'단어 암기 동영상'},
+      {id:'15-5', text:'과거 규칙 변화표 암기'},
+      {id:'15-6', text:'어제 한 일 5문장 과거시제로 쓰기'},
+    ]
+  },
+  {
+    num:16, week:6, day:1,
+    title:'미래 표현 · 명령형',
+    sub:'ir a + inf · 미래시제 · 명령법(tú/usted)',
+    grammar:'근접미래 vs 미래시제 · 명령형 규칙·불규칙 · 총정리',
+    tasks:[
+      {id:'16-1', text:'동영상 강의 시청'},
+      {id:'16-2', text:'MP3 한번에 듣기'},
+      {id:'16-3', text:'복습용 동영상 시청'},
+      {id:'16-4', text:'단어 암기 동영상'},
+      {id:'16-5', text:'명령형 10개 문장 연습'},
+      {id:'16-6', text:'Día 01~16 전체 복습 + 자기소개 스피킹 완성!'},
+    ]
+  },
+];
+
+const VOCAB = [
+  {es:'hablar',pron:'아블라르',ko:'말하다',ex:'Yo hablo español.',d:'1'},
+  {es:'ser',pron:'세르',ko:'~이다 (정체성)',ex:'Soy estudiante.',d:'1'},
+  {es:'estar',pron:'에스따르',ko:'있다/~한 상태',ex:'Estoy en casa.',d:'1'},
+  {es:'hola',pron:'올라',ko:'안녕',ex:'¡Hola! ¿Cómo estás?',d:'1'},
+  {es:'gracias',pron:'그라씨아스',ko:'감사합니다',ex:'Muchas gracias.',d:'1'},
+  {es:'el libro',pron:'엘 리브로',ko:'책 (남성)',ex:'Tengo el libro.',d:'1'},
+  {es:'la casa',pron:'라 까사',ko:'집 (여성)',ex:'Mi casa es grande.',d:'1'},
+  {es:'el niño',pron:'엘 니뇨',ko:'소년',ex:'El niño es simpático.',d:'1'},
+  {es:'la niña',pron:'라 니냐',ko:'소녀',ex:'La niña estudia.',d:'1'},
+  {es:'un amigo',pron:'운 아미고',ko:'(한) 친구 (남)',ex:'Tengo un amigo.',d:'1'},
+  {es:'soy',pron:'소이',ko:'나는 ~이다',ex:'Soy coreano.',d:'2'},
+  {es:'eres',pron:'에레스',ko:'너는 ~이다',ex:'¿Tú eres estudiante?',d:'2'},
+  {es:'estudiante',pron:'에스뚜디안떼',ko:'학생',ex:'Soy estudiante.',d:'2'},
+  {es:'profesor',pron:'프로페소르',ko:'선생님 (남)',ex:'Él es profesor.',d:'2'},
+  {es:'español',pron:'에스빠뇰',ko:'스페인어/스페인인',ex:'Hablo español.',d:'2'},
+  {es:'coreano',pron:'꼬레아노',ko:'한국어/한국인',ex:'Soy coreana.',d:'2'},
+  {es:'este/esta',pron:'에스떼/에스따',ko:'이것/이(지시)',ex:'Este libro es interesante.',d:'2'},
+  {es:'mi',pron:'미',ko:'나의',ex:'Mi familia es grande.',d:'2'},
+  {es:'familia',pron:'파밀리아',ko:'가족',ex:'Tengo una familia grande.',d:'2'},
+  {es:'padre',pron:'빠드레',ko:'아버지',ex:'Mi padre trabaja mucho.',d:'2'},
+  {es:'madre',pron:'마드레',ko:'어머니',ex:'Mi madre es profesora.',d:'2'},
+  {es:'hermano/a',pron:'에르마노/에르마나',ko:'형제/자매',ex:'Tengo un hermano.',d:'2'},
+  {es:'comer',pron:'꼬메르',ko:'먹다',ex:'Quiero comer pizza.',d:'2'},
+  {es:'beber',pron:'베베르',ko:'마시다',ex:'Bebo agua.',d:'2'},
+  {es:'vivir',pron:'비비르',ko:'살다',ex:'Vivo en Seúl.',d:'2'},
+  {es:'trabajar',pron:'뜨라바하르',ko:'일하다',ex:'Trabajo en una oficina.',d:'2'},
+  {es:'estudiar',pron:'에스뚜디아르',ko:'공부하다',ex:'Estudio español.',d:'2'},
+  {es:'ir',pron:'이르',ko:'가다',ex:'Voy al mercado.',d:'3'},
+  {es:'tener',pron:'떼네르',ko:'가지다',ex:'Tengo hambre.',d:'3'},
+  {es:'querer',pron:'께레르',ko:'원하다/사랑하다',ex:'Quiero aprender español.',d:'3'},
+  {es:'poder',pron:'뽀데르',ko:'할 수 있다',ex:'¿Puedes ayudarme?',d:'3'},
+  {es:'gustar',pron:'구스따르',ko:'좋아하다',ex:'Me gusta el café.',d:'3'},
+  {es:'¿Qué hora es?',pron:'께 오라 에스',ko:'몇 시예요?',ex:'¿Qué hora es? Son las tres.',d:'3'},
+  {es:'lunes',pron:'루네스',ko:'월요일',ex:'Hoy es lunes.',d:'3'},
+  {es:'mañana',pron:'마냐나',ko:'내일/아침',ex:'Hasta mañana.',d:'3'},
+  {es:'hoy',pron:'오이',ko:'오늘',ex:'Hoy tengo clase.',d:'3'},
+  {es:'ayer',pron:'아예르',ko:'어제',ex:'Ayer fui al cine.',d:'3'},
+  {es:'hace calor',pron:'아쎄 깔로르',ko:'덥다',ex:'Hoy hace mucho calor.',d:'3'},
+  {es:'hablé',pron:'아블레',ko:'말했다 (yo)',ex:'Ayer hablé con María.',d:'3'},
+  {es:'comí',pron:'꼬미',ko:'먹었다 (yo)',ex:'Comí pizza ayer.',d:'3'},
+];
+
+const PHRASES = [
+  {es:'Buenos días',ko:'좋은 아침이에요',pron:'[ 부에노스 디아스 ]'},
+  {es:'¿Cómo estás?',ko:'어때요?',pron:'[ 꼬모 에스따스 ]'},
+  {es:'Mucho gusto',ko:'만나서 반갑습니다',pron:'[ 무초 구스또 ]'},
+  {es:'¿Dónde está el baño?',ko:'화장실이 어디에 있나요?',pron:'[ 돈데 에스따 엘 바뇨 ]'},
+  {es:'Me gusta el café',ko:'나는 커피가 좋아요',pron:'[ 메 구스따 엘 까페 ]'},
+  {es:'¿Cuánto cuesta?',ko:'얼마예요?',pron:'[ 꾸안또 꾸에스따 ]'},
+  {es:'No entiendo',ko:'이해 못 했어요',pron:'[ 노 엔띠엔도 ]'},
+  {es:'¡Vamos!',ko:'가자!',pron:'[ 바모스 ]'},
+  {es:'Estoy aprendiendo español',ko:'스페인어를 배우고 있어요',pron:'[ 에스또이 아프렌디엔도 에스빠뇰 ]'},
+  {es:'¡Hasta luego!',ko:'나중에 봐요!',pron:'[ 아스따 루에고 ]'},
+];
+
+const ALPHABET = [
+  {l:'A a',n:'a',p:'아'},{l:'B b',n:'be',p:'베'},{l:'C c',n:'ce',p:'쎄'},
+  {l:'D d',n:'de',p:'데'},{l:'E e',n:'e',p:'에'},{l:'F f',n:'efe',p:'에페'},
+  {l:'G g',n:'ge',p:'헤'},{l:'H h',n:'hache',p:'아체(묵음)'},{l:'I i',n:'i',p:'이'},
+  {l:'J j',n:'jota',p:'호따'},{l:'K k',n:'ka',p:'까'},{l:'L l',n:'ele',p:'엘레'},
+  {l:'M m',n:'eme',p:'에메'},{l:'N n',n:'ene',p:'에네'},{l:'Ñ ñ',n:'eñe',p:'에녜'},
+  {l:'O o',n:'o',p:'오'},{l:'P p',n:'pe',p:'뻬'},{l:'Q q',n:'cu',p:'꾸'},
+  {l:'R r',n:'erre',p:'에레'},{l:'S s',n:'ese',p:'에세'},{l:'T t',n:'te',p:'떼'},
+  {l:'U u',n:'u',p:'우'},{l:'V v',n:'uve',p:'우베'},{l:'W w',n:'doble uve',p:'도블레 우베'},
+  {l:'X x',n:'equis',p:'에끼스'},{l:'Y y',n:'ye',p:'예'},{l:'Z z',n:'zeta',p:'쎄따'},
+];
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+function getState() {
+  const d = localStorage.getItem('sp_v2');
+  return d ? JSON.parse(d) : {tasks:{}, words:{}, studiedDates:[]};
+}
+function saveState(s) { localStorage.setItem('sp_v2', JSON.stringify(s)); }
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function calcStreak(dates) {
+  if (!dates.length) return 0;
+  const sorted = [...dates].sort().reverse();
+  let streak = 0, d = new Date();
+  for (const s of sorted) {
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (s === key) { streak++; d.setDate(d.getDate()-1); } else break;
+  }
+  return streak;
+}
+
+// Count completed tasks per Día
+function diaProgress(num, s) {
+  const dia = DIAS.find(d => d.num === num);
+  if (!dia) return {done:0, total:0};
+  const done = dia.tasks.filter(t => s.tasks[t.id]).length;
+  return {done, total: dia.tasks.length};
+}
+
+function isDiaComplete(num, s) {
+  const p = diaProgress(num, s);
+  return p.done === p.total;
+}
+
+function updateAllStats() {
+  const s = getState();
+  const diasDone = DIAS.filter(d => isDiaComplete(d.num, s)).length;
+  const wordsDone = Object.values(s.words).filter(Boolean).length;
+  const streak = calcStreak(s.studiedDates);
+
+  document.querySelectorAll('#stat-days,#prog-days').forEach(el => el && (el.textContent = s.studiedDates.length));
+  document.querySelectorAll('#stat-words,#prog-words').forEach(el => el && (el.textContent = wordsDone));
+  document.getElementById('stat-dias') && (document.getElementById('stat-dias').textContent = diasDone);
+  document.getElementById('stat-streak') && (document.getElementById('stat-streak').textContent = streak);
+  document.getElementById('prog-dias') && (document.getElementById('prog-dias').textContent = `${diasDone}/16`);
+  document.getElementById('prog-streak') && (document.getElementById('prog-streak').textContent = streak);
+  document.getElementById('overall-bar') && (document.getElementById('overall-bar').style.width = (diasDone/16*100)+'%');
+  document.getElementById('overall-pct-text') && (document.getElementById('overall-pct-text').textContent = `${diasDone} / 16 Día`);
+}
+
+// ══════════════════════════════════════
+// PLAN — render Día cards
+// ══════════════════════════════════════
+function renderPlan() {
+  const s = getState();
+  const container = document.getElementById('plan-container');
+  const WEEK_LABELS = {1:'1~2주차',2:'2~3주차',3:'3~4주차',4:'4~5주차',5:'5~6주차',6:'6~8주차'};
+  let html = '';
+  let lastWeek = 0;
+
+  DIAS.forEach(dia => {
+    if (dia.week !== lastWeek) {
+      lastWeek = dia.week;
+      html += `<div class="week-header">
+        <span>📅 ${WEEK_LABELS[dia.week] || dia.week+'주차'}</span>
+        <span class="week-badge">주 3일</span>
+      </div>`;
+    }
+    const prog = diaProgress(dia.num, s);
+    const complete = prog.done === prog.total;
+    const pct = prog.total ? Math.round(prog.done/prog.total*100) : 0;
+
+    html += `<div class="dia-card ${complete?'completed':''}" id="dia-card-${dia.num}">
+      <div class="dia-card-header" onclick="toggleDia(${dia.num})">
+        <div class="dia-num"><div class="d-label">Día</div><div class="d-num">${String(dia.num).padStart(2,'0')}</div></div>
+        <div class="dia-info">
+          <h3>${dia.title}</h3>
+          <div class="sub">${dia.sub}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="dia-status ${complete?'done':'todo'}">${complete?'✅ 완료':'📖 학습중'}</span>
+          <span class="dia-toggle" id="dia-toggle-${dia.num}">▼</span>
+        </div>
+      </div>
+      <div class="dia-body" id="dia-body-${dia.num}">
+        <div class="progress-mini">
+          <div class="label"><span>학습 진행률</span><span>${prog.done}/${prog.total} 완료</span></div>
+          <div class="bar-wrap"><div class="bar-fill" id="dia-bar-${dia.num}" style="width:${pct}%"></div></div>
+        </div>
+        <div class="task-section">
+          <div class="task-section-title">📚 오늘의 학습 문법</div>
+          <div style="font-size:12px;color:var(--muted);padding:6px 0 10px;line-height:1.7;">${dia.grammar}</div>
+          <div class="task-section-title">✅ 학습 체크리스트</div>
+          ${dia.tasks.map(t => `
+            <div class="task-row">
+              <input type="checkbox" id="task-${t.id}" ${s.tasks[t.id]?'checked':''} onchange="checkTask('${t.id}',${dia.num},this.checked)">
+              <label for="task-${t.id}">${t.text}</label>
+            </div>`).join('')}
+        </div>
+        <div class="nexus-row">
+          <span>🔊</span>
+          <a href="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" target="_blank">넥서스 Día ${String(dia.num).padStart(2,'0')} 음원 · 동영상 바로가기 →</a>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function toggleDia(num) {
+  const body = document.getElementById(`dia-body-${num}`);
+  const toggle = document.getElementById(`dia-toggle-${num}`);
+  const open = body.classList.toggle('open');
+  toggle.textContent = open ? '▲' : '▼';
+}
+
+function checkTask(taskId, diaNum, checked) {
+  const s = getState();
+  s.tasks[taskId] = checked;
+
+  // Auto-mark today as studied when any task is checked
+  if (checked) {
+    const today = todayStr();
+    if (!s.studiedDates.includes(today)) {
+      s.studiedDates.push(today);
+    }
+  }
+
+  saveState(s);
+
+  // Update card UI
+  const prog = diaProgress(diaNum, s);
+  const pct = prog.total ? Math.round(prog.done/prog.total*100) : 0;
+  const complete = prog.done === prog.total;
+  const bar = document.getElementById(`dia-bar-${diaNum}`);
+  if (bar) bar.style.width = pct + '%';
+  const label = document.querySelector(`#dia-card-${diaNum} .label span:last-child`);
+  if (label) label.textContent = `${prog.done}/${prog.total} 완료`;
+  const card = document.getElementById(`dia-card-${diaNum}`);
+  if (card) {
+    card.className = `dia-card${complete?' completed':''}`;
+    const status = card.querySelector('.dia-status');
+    if (status) { status.className = `dia-status ${complete?'done':'todo'}`; status.textContent = complete?'✅ 완료':'📖 학습중'; }
+    const numEl = card.querySelector('.dia-num');
+    if (numEl) numEl.style.background = complete ? 'linear-gradient(135deg,var(--green),#2ecc71)' : '';
+  }
+
+  updateAllStats();
+  updateHomeToday();
+  // Re-render calendar if progress tab active
+  if (document.getElementById('tab-progress').classList.contains('active')) {
+    renderCal(getState().studiedDates);
+    renderDiaProgressList();
+    renderLog(getState().studiedDates);
+  }
+}
+
+// ══════════════════════════════════════
+// HOME today panel
+// ══════════════════════════════════════
+function updateHomeToday() {
+  const s = getState();
+  const el = document.getElementById('home-today');
+  if (!el) return;
+
+  // Find the first incomplete Día
+  const nextDia = DIAS.find(d => !isDiaComplete(d.num, s));
+  if (!nextDia) {
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--green);font-size:16px;font-weight:800;">🎉 ¡Felicidades! 모든 Día 완료!</div>`;
+    return;
+  }
+  const prog = diaProgress(nextDia.num, s);
+  el.innerHTML = `
+    <div style="border-left:4px solid var(--red);padding-left:14px;margin-bottom:12px;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:3px;">현재 진행중</div>
+      <div style="font-size:16px;font-weight:800;color:var(--dark);">Día ${String(nextDia.num).padStart(2,'0')} — ${nextDia.title}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:3px;">${nextDia.sub}</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between;">
+      <span>진행률</span><span>${prog.done}/${prog.total} 항목</span>
+    </div>
+    <div class="bar-wrap"><div class="bar-fill" style="width:${prog.total?Math.round(prog.done/prog.total*100):0}%"></div></div>
+    <button onclick="showTab('plan')" style="margin-top:13px;width:100%;background:var(--red);color:white;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+      📅 학습 계획에서 체크하기 →
+    </button>
+  `;
+}
+
+// ══════════════════════════════════════
+// VOCAB & FLASHCARD
+// ══════════════════════════════════════
+let currentVocab = [...VOCAB], cardIdx = 0;
+
+function renderCard() {
+  const v = currentVocab[cardIdx];
+  if (!v) return;
+  document.getElementById('fc-es').textContent = v.es;
+  document.getElementById('fc-pron').textContent = '[ '+v.pron+' ]';
+  document.getElementById('fc-ko').textContent = v.ko;
+  document.getElementById('fc-ex').textContent = v.ex || '';
+  document.getElementById('card-count').textContent = (cardIdx+1)+' / '+currentVocab.length;
+  document.getElementById('btn-prev').disabled = cardIdx === 0;
+  document.getElementById('btn-next').disabled = cardIdx === currentVocab.length-1;
+  document.getElementById('flashcard').classList.remove('flipped');
+}
+
+function flipCard() { document.getElementById('flashcard').classList.toggle('flipped'); }
+function nextCard() { if (cardIdx < currentVocab.length-1) { cardIdx++; renderCard(); } }
+function prevCard() { if (cardIdx > 0) { cardIdx--; renderCard(); } }
+
+function setFlashMode(mode, btn) {
+  document.querySelectorAll('#tab-vocab .card:first-child .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (mode==='all') currentVocab = [...VOCAB];
+  else if (mode==='1') currentVocab = VOCAB.filter(v=>v.d==='1');
+  else if (mode==='2') currentVocab = VOCAB.filter(v=>v.d==='2');
+  else if (mode==='3') currentVocab = VOCAB.filter(v=>v.d==='3');
+  cardIdx = 0; renderCard();
+}
+
+function renderVocabList(list) {
+  const s = getState();
+  document.getElementById('vocab-body').innerHTML = list.map(v => `
+    <tr>
+      <td class="es-cell">${v.es}</td>
+      <td class="pron-cell">${v.pron}</td>
+      <td>${v.ko}</td>
+      <td><span class="dia-badge">Día ${v.d==='1'?'01~05':v.d==='2'?'06~10':'11~16'}</span></td>
+      <td><input type="checkbox" class="memo-check" ${s.words[v.es]?'checked':''} onchange="toggleWord('${v.es}',this.checked)"></td>
+    </tr>`).join('');
+}
+
+function toggleWord(word, checked) {
+  const s = getState();
+  s.words[word] = checked;
+  saveState(s);
+  updateAllStats();
+}
+
+function filterVocab(q) { renderVocabList(VOCAB.filter(v=>v.es.includes(q)||v.ko.includes(q)||v.pron.includes(q))); }
+function filterByDia(d, btn) {
+  document.querySelectorAll('#tab-vocab .card:last-child .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderVocabList(d==='all'?VOCAB:VOCAB.filter(v=>v.d===d));
+}
+
+// ══════════════════════════════════════
+// ALPHABET
+// ══════════════════════════════════════
+function renderAlphabet() {
+  document.getElementById('alpha-grid').innerHTML = ALPHABET.map(a=>`
+    <div class="alpha-card" onclick="alert('${a.l}\\n이름: ${a.n}\\n발음: ${a.p}')">
+      <div class="alpha-letter">${a.l.split(' ')[0]}</div>
+      <div class="alpha-name">${a.n}</div>
+      <div class="alpha-pron">${a.p}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════
+// PROGRESS
+// ══════════════════════════════════════
+function renderCal(studied) {
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth();
+  document.getElementById('cal-month-label').textContent = `${year}년 ${month+1}월`;
+  const grid = document.getElementById('cal-grid');
+  const days=['일','월','화','수','목','금','토'];
+  const first = new Date(year,month,1).getDay();
+  const total = new Date(year,month+1,0).getDate();
+  const today = now.getDate();
+  let html = days.map(d=>`<div class="cal-day-header">${d}</div>`).join('');
+  for(let i=0;i<first;i++) html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=total;d++) {
+    const key=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    html+=`<div class="cal-day ${studied.includes(key)?'studied':''} ${d===today?'today':''}">${d}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function renderDiaProgressList() {
+  const s = getState();
+  document.getElementById('dia-progress-list').innerHTML = DIAS.map(d=>{
+    const prog = diaProgress(d.num, s);
+    const complete = prog.done === prog.total;
+    const pct = prog.total ? Math.round(prog.done/prog.total*100) : 0;
+    return `
+    <div class="dia-progress-item">
+      <div class="dp-num ${complete?'done':prog.done>0?'current':''}">${complete?'✓':d.num}</div>
+      <div class="dp-info">
+        <div class="title">Día ${String(d.num).padStart(2,'0')} — ${d.title}</div>
+        <div class="sub">${d.sub}</div>
+      </div>
+      <div class="dp-bar-wrap"><div class="dp-bar" style="width:${pct}%"></div></div>
+      <div style="font-size:11px;font-weight:700;color:${complete?'var(--green)':prog.done>0?'var(--red)':'var(--muted)'};min-width:36px;text-align:right;">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderLog(studied) {
+  const el = document.getElementById('study-log');
+  if (!studied.length) {
+    el.innerHTML='<div class="empty-state"><div class="icon">📚</div>아직 학습 기록 없어요.<br>학습 계획 탭에서 항목을 체크해보세요!</div>';
+    return;
+  }
+  const sorted=[...studied].sort().reverse().slice(0,12);
+  el.innerHTML=sorted.map((d,i)=>`
+    <div class="log-item">
+      <div class="log-dot"></div>
+      <div class="log-content">
+        <div class="log-date">${d}</div>
+        <div class="log-desc">${['교재 학습 + 음원 듣기','단어 암기 + 복습 동영상','문법 연습 + 플래시카드','동영상 강의 + 체크리스트'][i%4]} 완료</div>
+      </div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════
+// NEXUS
+// ══════════════════════════════════════
+function toggleNexus() {
+  document.getElementById('nexus-iframe-container').classList.toggle('open');
+}
+
+// ══════════════════════════════════════
+// TABS
+// ══════════════════════════════════════
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  const idx=['home','plan','vocab','grammar','alphabet','progress','nexus'].indexOf(id);
+  document.querySelectorAll('nav button')[idx].classList.add('active');
+  if (id==='progress') { renderCal(getState().studiedDates); renderDiaProgressList(); renderLog(getState().studiedDates); }
+}
+
+// ══════════════════════════════════════
+// PHRASES
+// ══════════════════════════════════════
+let phraseIdx = 0;
+function nextPhrase() {
+  phraseIdx = (phraseIdx+1)%PHRASES.length;
+  document.getElementById('pod-es').textContent = PHRASES[phraseIdx].es;
+  document.getElementById('pod-ko').textContent = PHRASES[phraseIdx].ko;
+  document.getElementById('pod-pron').textContent = PHRASES[phraseIdx].pron;
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+function init() {
+  const now = new Date();
+  const days=['일','월','화','수','목','금','토'];
+  document.getElementById('todayBadge').textContent = `${now.getMonth()+1}/${now.getDate()} (${days[now.getDay()]})`;
+
+  phraseIdx = Math.floor(Math.random()*PHRASES.length);
+  document.getElementById('pod-es').textContent = PHRASES[phraseIdx].es;
+  document.getElementById('pod-ko').textContent = PHRASES[phraseIdx].ko;
+  document.getElementById('pod-pron').textContent = PHRASES[phraseIdx].pron;
+
+  renderPlan();
+  renderCard();
+  renderAlphabet();
+  renderVocabList(VOCAB);
+  updateAllStats();
+  updateHomeToday();
+}
+
+init();
+</script>
+</body>
+</html>
