@@ -508,14 +508,8 @@
   .nexus-banner { background: linear-gradient(135deg,#2c3e50,#1a252f); color: white; border-radius: var(--radius); padding: 24px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; box-shadow: var(--shadow); }
   .nexus-banner h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; color: var(--yellow); }
   .nexus-banner p { font-size: 12.5px; opacity: .8; }
-  .nexus-open-btn { background: var(--yellow); color: #1a1a1a; border: none; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: var(--transition); }
+  .nexus-open-btn { background: var(--yellow); color: #1a1a1a; border: none; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: var(--transition); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
   .nexus-open-btn:hover { background: #fbc02d; transform: translateY(-1px); }
-  
-  .nexus-iframe-container { display: none; border-radius: var(--radius); overflow: hidden; border: 2px solid var(--border); margin-top: 12px; box-shadow: var(--shadow); }
-  .nexus-iframe-container.open { display: block; }
-  .nexus-iframe-container iframe { width: 100%; height: 500px; border: none; display: block; }
-  .iframe-header { background: #2c3e50; color: white; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 600; }
-  .iframe-close { background: none; border: none; color: white; cursor: pointer; font-size: 18px; }
 
   .section-title { font-size: 18px; font-weight: 800; color: var(--dark); margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
   .empty-state { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
@@ -1049,20 +1043,21 @@
 
 <!-- ══ NEXUS ══ -->
 <div id="tab-nexus" class="tab-content">
-  <div class="section-title">🔗 넥서스 공식 부록</div>
+  <div class="section-title">🔗 넥서스 공식 부록 연동</div>
+  
+  <div class="notice">
+    <span>ℹ️</span>
+    <div>
+      <strong>보안 및 편리한 학습을 위한 안내:</strong> 브라우저 보안 정책상 넥서스 공식 홈페이지는 사이트 내부에 매립되지 않고 **안전한 새 탭**으로 열립니다. 부록 페이지를 새 창으로 열어놓고 음원을 재생하며 본 스터디 사이트의 체크리스트와 단어장을 멀티태스킹 뷰로 공부하시는 것을 추천합니다!
+    </div>
+  </div>
+
   <div class="nexus-banner">
     <div>
-      <h3>📚 나혼자 끝내는 독학 스페인어 첫걸음 — 공식 부록</h3>
-      <p>Día 01~16 동영상 강의 · MP3 · 복습 영상 · 단어 암기 영상</p>
+      <h3>📚 나혼자 끝내는 독학 스페인어 첫걸음 — 공식 자료실</h3>
+      <p>Día 01~16 동영상 강의 · MP3 음원 · 복습 영상 · 단어 암기 영상 일체 제공</p>
     </div>
-    <button class="nexus-open-btn" onclick="toggleNexus()">🔊 부록 바로가기</button>
-  </div>
-  <div class="nexus-iframe-container" id="nexus-iframe-container">
-    <div class="iframe-header">
-      <span>📖 넥서스 스페인어 첫걸음 공식 부록</span>
-      <button class="iframe-close" onclick="toggleNexus()">✕ 닫기</button>
-    </div>
-    <iframe src="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" title="넥서스 부록"></iframe>
+    <a href="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" target="_blank" rel="noopener noreferrer" class="nexus-open-btn">🔊 공식 자료실 바로가기 ➔</a>
   </div>
   <div class="grid-2">
     <div class="card">
@@ -2173,11 +2168,8 @@ function speakSpanish(text) {
 }
 
 // ══════════════════════════════════════
-// NEXUS
+// NEXUS (브라우저 보안으로 인해 iframe ➔ 새창 열기로 전환되어 toggle 비활성화)
 // ══════════════════════════════════════
-function toggleNexus() {
-  document.getElementById('nexus-iframe-container').classList.toggle('open');
-}
 
 // ══════════════════════════════════════
 // TABS (퀴즈 탭 연계 추가)
