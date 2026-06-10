@@ -8,6 +8,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+<!-- Firebase 10.8.0 Compat SDK CDN 임포트 (단일 파일 최적화 형태) -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
 <style>
   /* ══════════════════════════════════════
      DESIGN SYSTEM & VARIABLES
@@ -117,6 +123,32 @@
   .nexus-link:hover { background: rgba(255,255,255,0.28); transform: translateY(-1px); }
   .today-badge { background: var(--yellow); color: #1a1a1a; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
   
+  /* [신설] 헤더 구글 프로필 영역 */
+  .profile-badge {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logout-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.85);
+    cursor: pointer;
+    font-size: 11px;
+    text-decoration: underline;
+    font-weight: 600;
+    padding-left: 4px;
+    border-left: 1px solid rgba(255,255,255,0.3);
+  }
+  .logout-btn:hover { color: white; }
+
   nav { display: flex; padding: 0 16px; overflow-x: auto; background: rgba(0,0,0,0.1); scrollbar-width: none; }
   nav::-webkit-scrollbar { display: none; }
   nav button { 
@@ -521,6 +553,22 @@
 </style>
 </head>
 <body>
+
+<!-- [신설] 구글 로그인 유도 오버레이 모달 -->
+<div id="loginOverlay" style="position: fixed; inset: 0; background: rgba(18, 18, 20, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+  <div class="card" style="max-width: 420px; width: 90%; text-align: center; padding: 40px 28px; box-shadow: 0 12px 40px rgba(0,0,0,0.3); border-color: var(--border);">
+    <div style="font-size: 60px; margin-bottom: 20px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));">🇪🇸</div>
+    <h2 style="font-size: 22px; font-weight: 900; margin-bottom: 8px; color: var(--dark); font-family: 'Outfit', sans-serif;">스페인어 첫걸음 스터디</h2>
+    <p style="font-size: 13.5px; color: var(--muted); margin-bottom: 28px; line-height: 1.6;">
+      기기 간의 실시간 진도 동기화를 위해 구글 로그인이 필요합니다. 어디서나 나만의 단어장과 출석 기록이 실시간으로 동기화됩니다!
+    </p>
+    <button onclick="loginWithGoogle()" style="background: var(--red); color: white; border: none; padding: 14px 28px; border-radius: 28px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(211,47,47,0.25);">
+      <svg style="width:18px; height:18px; fill:currentColor" viewBox="0 0 24 24"><path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.513 0-6.386-2.87-6.386-6.385s2.87-6.386 6.386-6.386c1.61 0 3.076.61 4.2 1.61l3.053-3.053C19.16 2.457 15.903 1 12.24 1c-6.077 0-11 4.923-11 11s4.923 11 11 11c5.962 0 10.884-4.854 10.884-11 0-.693-.077-1.37-.216-2.03H12.24z"/></svg>
+      Google 계정으로 시작하기
+    </button>
+  </div>
+</div>
+
 <header>
   <div class="header-top">
     <div class="logo">
@@ -531,6 +579,11 @@
       </div>
     </div>
     <div class="header-right">
+      <!-- [신설] 구글 프로필 영역 -->
+      <span id="userProfile" class="profile-badge" style="display: none;">
+        <span id="userName">👤 로딩중...</span>
+        <button onclick="logout()" class="logout-btn">로그아웃</button>
+      </span>
       <button id="themeToggle" class="theme-toggle-btn" onclick="toggleTheme()">🌓 테마 변경</button>
       <a href="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" target="_blank" class="nexus-link">📚 넥서스 부록</a>
       <span class="today-badge" id="todayBadge"></span>
@@ -627,7 +680,6 @@
 <div id="tab-vocab" class="tab-content">
   <div class="section-title">📖 단어장</div>
   
-  <!-- 나만의 단어 추가 버튼 및 아코디언 입력 폼 -->
   <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
     <button onclick="toggleCustomForm()" class="filter-btn active" style="background: var(--blue); border-color: var(--blue); display: flex; align-items: center; gap: 6px;">➕ 나만의 단어 추가</button>
   </div>
@@ -720,7 +772,7 @@
   </div>
 </div>
 
-<!-- ══ GRAMMAR (문법 리치 텍스트 적용) ══ -->
+<!-- ══ GRAMMAR ══ -->
 <div id="tab-grammar" class="tab-content">
   <div class="section-title">✏️ 핵심 문법 정리</div>
   <div class="card">
@@ -785,7 +837,7 @@
           <tr><td class="pronoun">él/ella</td><td style="color:var(--red); font-weight:700;">-a</td><td class="es-form">habl<span style="color:var(--red);">a</span></td><td>Él <strong>habla</strong> un poco de francés.</td></tr>
           <tr><td class="pronoun">nosotros</td><td style="color:var(--red); font-weight:700;">-amos</td><td class="es-form">habl<span style="color:var(--red);">amos</span></td><td><strong>Hablamos</strong> español.</td></tr>
           <tr><td class="pronoun">vosotros</td><td style="color:var(--red); font-weight:700;">-áis</td><td class="es-form">habl<span style="color:var(--red);">áis</span></td><td>¿Vosotros <strong>habláis</strong> rápido?</td></tr>
-          <tr><td class="pronoun">ellos/ellas</td><td style="color:var(--red); font-weight:700;">-an</td><td class="es-form">habl<span style="color:var(--red);">an</span></td><td>Ellos <strong>hablan</strong> mucho.</td></tr>
+          <tr><td class="pronoun">ellos/ellas</td><td style="color:var(--red); font-weight:700;">-an</td><td class="es-form">habl<span style="color:var(--red);">an</span></td><td>Ellos <strong>hablan</strong> 많이.</td></tr>
         </tbody>
       </table>
     </div>
@@ -843,7 +895,7 @@
         <tbody>
           <tr><td class="pronoun">yo</td><td class="es-form">habl<span style="color:var(--red);">é</span></td><td class="es-form">com<span style="color:var(--red);">í</span></td><td><strong>ayer</strong> (어제)</td></tr>
           <tr><td class="pronoun">tú</td><td class="es-form">habl<span style="color:var(--red);">aste</span></td><td class="es-form">com<span style="color:var(--red);">iste</span></td><td><strong>anoche</strong> (어젯밤)</td></tr>
-          <tr><td class="pronoun">él/ella</td><td class="es-form">habl<span style="color:var(--red);">ó</span></td><td class="es-form">comr<span style="color:var(--red);">ió</span></td><td><strong>la semana pasada</strong> (지난주)</td></tr>
+          <tr><td class="pronoun">él/ella</td><td class="es-form">habl<span style="color:var(--red);">ó</span></td><td class="es-form">com<span style="color:var(--red);">ió</span></td><td><strong>la semana pasada</strong> (지난주)</td></tr>
           <tr><td class="pronoun">nosotros</td><td class="es-form">habl<span style="color:var(--red);">amos</span></td><td class="es-form">com<span style="color:var(--red);">imos</span></td><td><strong>el año pasado</strong> (작년)</td></tr>
           <tr><td class="pronoun">vosotros</td><td class="es-form">habl<span style="color:var(--red);">asteis</span></td><td class="es-form">com<span style="color:var(--red);">isteis</span></td><td><strong>hace dos días</strong> (이틀 전에)</td></tr>
           <tr><td class="pronoun">ellos/ellas</td><td class="es-form">habl<span style="color:var(--red);">aron</span></td><td class="es-form">com<span style="color:var(--red);">ieron</span></td><td><strong>en 2025</strong> (2025년에)</td></tr>
@@ -915,7 +967,7 @@
   </div>
 </div>
 
-<!-- ══ QUIZ (뇌 신설 탭) ══ -->
+<!-- ══ QUIZ ══ -->
 <div id="tab-quiz" class="tab-content">
   <div class="section-title">🧠 스페인어 단어 퀴즈</div>
   
@@ -986,7 +1038,6 @@
     <div class="progress-stat"><span class="p-val" id="prog-streak">0</span><div class="p-lbl">연속 🔥</div></div>
   </div>
 
-  <!-- 최근 7일 학습량 CSS 차트 추가 -->
   <div class="card">
     <div class="card-title">
       <div class="card-title-left">📈 최근 7일간 완료한 항목 수</div>
@@ -1090,6 +1141,119 @@
 </main>
 
 <script>
+// ══════════════════════════════════════
+// FIREBASE INITIALIZATION & AUTH LISTENER
+// ══════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyD4jyqeQw0SIslKe2hsNQ26DbKbG0f5NaE",
+  authDomain: "kospole-union.firebaseapp.com",
+  projectId: "kospole-union",
+  storageBucket: "kospole-union.firebasestorage.app",
+  messagingSenderId: "419112269226",
+  appId: "1:419112269226:web:4110f3c240ff78ea4367d3",
+  measurementId: "G-9FD5YJNWFY"
+};
+
+// Firebase 초기화
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let currentUser = null;
+
+// 실시간 로그인 상태 변화 리스너 감지
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    currentUser = user;
+    document.getElementById('loginOverlay').style.display = 'none';
+    
+    // 프로필 표시 활성화
+    document.getElementById('userProfile').style.display = 'flex';
+    document.getElementById('userName').textContent = `👤 ${user.displayName || '학습자'}`;
+    
+    // Firestore DB 데이터 로드
+    await loadDataFromFirestore(user.uid);
+  } else {
+    currentUser = null;
+    document.getElementById('loginOverlay').style.display = 'flex';
+    document.getElementById('userProfile').style.display = 'none';
+  }
+});
+
+// Google Popup 간편 로그인 실행
+async function loginWithGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await auth.signInWithPopup(provider);
+  } catch (error) {
+    console.error('로그인 에러:', error);
+    alert('구글 로그인 중 문제가 발생했습니다. 다시 시도해 주세요.');
+  }
+}
+
+// 로그아웃 핸들러
+async function logout() {
+  if (confirm('로그아웃 하시겠습니까?')) {
+    await auth.signOut();
+    location.reload();
+  }
+}
+
+// Firestore 데이터 로드 및 로컬 마이그레이션 진행
+async function loadDataFromFirestore(uid) {
+  try {
+    const docRef = db.collection('users').doc(uid);
+    const docSnap = await docRef.get();
+    
+    if (docSnap.exists) {
+      // 1. DB에 기존 학습 데이터가 있다면 로컬 상태로 덮어쓰기 동기화
+      const data = docSnap.data();
+      const state = {
+        tasks: data.tasks || {},
+        words: data.words || {},
+        studiedDates: data.studiedDates || [],
+        customVocab: data.customVocab || [],
+        dailyTasks: data.dailyTasks || {}
+      };
+      saveState(state);
+    } else {
+      // 2. DB에 기록이 없다면(최초 로그인), 기존 이 컴퓨터의 로컬 스토리지를 Firestore로 이동(업로드)
+      const localState = getState();
+      await docRef.set({
+        tasks: localState.tasks || {},
+        words: localState.words || {},
+        studiedDates: localState.studiedDates || [],
+        customVocab: localState.customVocab || [],
+        dailyTasks: localState.dailyTasks || {},
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    
+    // 데이터 로드가 완료되면 UI 초기 렌더링 갱신
+    initUI();
+  } catch (error) {
+    console.error('Firestore 데이터 로드 실패:', error);
+  }
+}
+
+// 학습 상태 변경 시 Firestore DB에 실시간 업로드 동기화
+async function syncToFirestore() {
+  if (!currentUser) return;
+  try {
+    const s = getState();
+    await db.collection('users').doc(currentUser.uid).set({
+      tasks: s.tasks || {},
+      words: s.words || {},
+      studiedDates: s.studiedDates || [],
+      customVocab: s.customVocab || [],
+      dailyTasks: s.dailyTasks || {},
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Firestore 데이터 동기화 에러:', error);
+  }
+}
+
 // ══════════════════════════════════════
 // DATA — Día 01~16 (넥서스 책 구성)
 // ══════════════════════════════════════
@@ -1229,7 +1393,7 @@ const DIAS = [
   {
     num:11, week:4, day:2,
     title:'시간 · 날짜 · 날씨',
-    sub:'¿Qué hora es? · días de la semana · ¿Qué tempo hace?',
+    sub:'¿Qué hora es? · days de la semana · ¿Qué tempo hace?',
     grammar:'시간 표현 · 요일·월 어휘 · hacer 날씨 표현',
     tasks:[
       {id:'11-1', text:'동영상 강의 시청'},
@@ -1325,7 +1489,7 @@ const VOCAB = [
   {es:'profesor',pron:'프로페소르',ko:'선생님',ex:'El profesor es amable.',d:'1',dia:3},
   {es:'español',pron:'에스빠뇰',ko:'스페인어/스페인의',ex:'Hablo español un poco.',d:'1',dia:3},
   {es:'coreano',pron:'꼬레아노',ko:'한국어/한국의',ex:'Soy coreano.',d:'1',dia:3},
-  {es:'este/esta',pron:'에스떼/에스따',ko:'이것/이',ex:'Este libro es interesante.',d:'1',dia:4},
+  {es:'este/esta',pron:'에스떼/에스따',ko:'이것/이',ex:'Este libro es interesting.',d:'1',dia:4},
   {es:'mi',pron:'미',ko:'나의',ex:'Mi familia es grande.',d:'1',dia:4},
   {es:'familia',pron:'파밀리아',ko:'가족',ex:'Tengo una familia grande.',d:'1',dia:4},
   {es:'padre',pron:'빠드레',ko:'아버지',ex:'Mi padre trabaja mucho.',d:'1',dia:4},
@@ -1418,65 +1582,6 @@ const ALPHABET = [
 ];
 
 // ══════════════════════════════════════
-// STATE & LOCALSTORAGE (데이터 구조 확장)
-// ══════════════════════════════════════
-function getState() {
-  const d = localStorage.getItem('sp_v2');
-  const state = d ? JSON.parse(d) : {tasks:{}, words:{}, studiedDates:[], customVocab:[], dailyTasks:{}};
-  // 신설 배열/객체 방어적 할당
-  if (!state.customVocab) state.customVocab = [];
-  if (!state.dailyTasks) state.dailyTasks = {};
-  return state;
-}
-function saveState(s) { localStorage.setItem('sp_v2', JSON.stringify(s)); }
-
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
-function calcStreak(dates) {
-  if (!dates.length) return 0;
-  const sorted = [...dates].sort().reverse();
-  let streak = 0, d = new Date();
-  for (const s of sorted) {
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    if (s === key) { streak++; d.setDate(d.getDate()-1); } else break;
-  }
-  return streak;
-}
-
-// Count completed tasks per Día
-function diaProgress(num, s) {
-  const dia = DIAS.find(d => d.num === num);
-  if (!dia) return {done:0, total:0};
-  const done = dia.tasks.filter(t => s.tasks[t.id]).length;
-  return {done, total: dia.tasks.length};
-}
-
-function isDiaComplete(num, s) {
-  const p = diaProgress(num, s);
-  return p.done === p.total;
-}
-
-function updateAllStats() {
-  const s = getState();
-  const diasDone = DIAS.filter(d => isDiaComplete(d.num, s)).length;
-  const allVocab = [...VOCAB, ...(s.customVocab || [])];
-  const wordsDone = Object.keys(s.words).filter(k => s.words[k] && allVocab.some(v => v.es === k)).length;
-  const streak = calcStreak(s.studiedDates);
-
-  document.querySelectorAll('#stat-days,#prog-days').forEach(el => el && (el.textContent = s.studiedDates.length));
-  document.querySelectorAll('#stat-words,#prog-words').forEach(el => el && (el.textContent = wordsDone));
-  document.getElementById('stat-dias') && (document.getElementById('stat-dias').textContent = diasDone);
-  document.getElementById('stat-streak') && (document.getElementById('stat-streak').textContent = streak);
-  document.getElementById('prog-dias') && (document.getElementById('prog-dias').textContent = `${diasDone}/16`);
-  document.getElementById('prog-streak') && (document.getElementById('prog-streak').textContent = streak);
-  document.getElementById('overall-bar') && (document.getElementById('overall-bar').style.width = (diasDone/16*100)+'%');
-  document.getElementById('overall-pct-text') && (document.getElementById('overall-pct-text').textContent = `${diasDone} / 16 Día`);
-}
-
-// ══════════════════════════════════════
 // PLAN — render Día cards
 // ══════════════════════════════════════
 function renderPlan() {
@@ -1543,7 +1648,7 @@ function toggleDia(num) {
   toggle.textContent = open ? '▲' : '▼';
 }
 
-function checkTask(taskId, diaNum, checked) {
+async function checkTask(taskId, diaNum, checked) {
   const s = getState();
   s.tasks[taskId] = checked;
 
@@ -1555,12 +1660,13 @@ function checkTask(taskId, diaNum, checked) {
     }
   }
 
-  // [신설] 차트 구현을 위한 날짜별 완료한 전체 태스크 양 갱신
+  // 차트 구현을 위한 날짜별 완료한 전체 태스크 양 갱신
   if (!s.dailyTasks) s.dailyTasks = {};
   const totalDone = Object.keys(s.tasks).filter(k => s.tasks[k]).length;
   s.dailyTasks[today] = totalDone;
 
   saveState(s);
+  await syncToFirestore(); // 실시간 DB 업로드
 
   // Update card UI
   const prog = diaProgress(diaNum, s);
@@ -1623,10 +1729,8 @@ function updateHomeToday() {
 }
 
 // ══════════════════════════════════════
-// VOCAB & FLASHCARD (커스텀 데이터 병합 연계)
+// VOCAB & FLASHCARD
 // ══════════════════════════════════════
-let currentVocab = [], cardIdx = 0;
-
 function getMergedVocab() {
   const s = getState();
   return [...VOCAB, ...(s.customVocab || [])];
@@ -1685,10 +1789,11 @@ function renderVocabList(list) {
     </tr>`).join('');
 }
 
-function toggleWord(word, checked) {
+async function toggleWord(word, checked) {
   const s = getState();
   s.words[word] = checked;
   saveState(s);
+  await syncToFirestore(); // DB 백업
   updateAllStats();
 }
 
@@ -1725,7 +1830,7 @@ function clearCustomInputs() {
   document.getElementById('add-dia').value = '1';
 }
 
-function addCustomWord() {
+async function addCustomWord() {
   const esVal = document.getElementById('add-es').value.trim();
   const pronVal = document.getElementById('add-pron').value.trim();
   const koVal = document.getElementById('add-ko').value.trim();
@@ -1759,20 +1864,21 @@ function addCustomWord() {
   
   s.customVocab.push(newWord);
   saveState(s);
+  await syncToFirestore(); // DB 백업
   
   alert('나만의 단어가 추가되었습니다.');
   toggleCustomForm();
   
-  // 데이터 동기화 리프레시
   refreshVocabData();
 }
 
-function deleteCustomWord(wordEs) {
+async function deleteCustomWord(wordEs) {
   if (confirm(`'${wordEs}' 단어를 단어장에서 영구히 삭제하시겠습니까?`)) {
     const s = getState();
     s.customVocab = s.customVocab.filter(v => v.es !== wordEs);
     delete s.words[wordEs]; // 체크 정보 해제
     saveState(s);
+    await syncToFirestore(); // DB 백업
     refreshVocabData();
   }
 }
@@ -1781,12 +1887,10 @@ function refreshVocabData() {
   const s = getState();
   const allVocab = getMergedVocab();
   
-  // 단어 목록 필터 유지 갱신
   const activeFilterBtn = document.querySelector('#tab-vocab .card:last-child .filter-btn.active');
   const dVal = activeFilterBtn ? activeFilterBtn.textContent.includes('01~05') ? '1' : activeFilterBtn.textContent.includes('06~10') ? '2' : activeFilterBtn.textContent.includes('11~16') ? '3' : 'all' : 'all';
   renderVocabList(dVal==='all'?allVocab:allVocab.filter(v=>v.d===dVal));
   
-  // 플래시카드 필터 유지 갱신
   const flashFilterBtn = document.querySelector('#tab-vocab .card:first-child .filter-btn.active');
   const fVal = flashFilterBtn ? flashFilterBtn.textContent.includes('01~05') ? '1' : flashFilterBtn.textContent.includes('06~10') ? '2' : flashFilterBtn.textContent.includes('11~16') ? '3' : 'all' : 'all';
   currentVocab = fVal==='all'?allVocab:allVocab.filter(v=>v.d===fVal);
@@ -1829,7 +1933,7 @@ function speakSelectedAlpha() {
 }
 
 // ══════════════════════════════════════
-// QUIZ ENGINE (뇌 신설 기능)
+// QUIZ ENGINE
 // ══════════════════════════════════════
 let quizQuestions = [];
 let quizIdx = 0;
@@ -1848,10 +1952,8 @@ function startQuiz() {
   const selectedWords = shuffledPool.slice(0, qCount);
   
   quizQuestions = selectedWords.map(word => {
-    // 스페인어->한글 뜻 (EsToKo: true) / 한글 뜻->스페인어 (EsToKo: false) 교차
     const isEsToKo = Math.random() > 0.5;
     
-    // 오답 선지 3개 추출
     const wrongPool = allVocab.filter(v => v.es !== word.es);
     const shuffledWrong = wrongPool.sort(() => 0.5 - Math.random()).slice(0, 3);
     
@@ -1887,7 +1989,6 @@ function renderQuizQuestion() {
   selectedOptIdx = null;
   const q = quizQuestions[quizIdx];
   
-  // 게이지 바 계산
   const progressPct = (quizIdx / quizQuestions.length) * 100;
   document.getElementById('quiz-progress-fill').style.width = progressPct + '%';
   document.getElementById('quiz-prog-text').textContent = `문제 ${quizIdx + 1} / ${quizQuestions.length}`;
@@ -1920,7 +2021,6 @@ function selectQuizOption(idx) {
   const btn = document.getElementById(`quiz-opt-${idx}`);
   const feedbackIcon = document.getElementById(`quiz-feedback-icon-${idx}`);
   
-  // 스페인어 맞추는 문제인 경우 발음 재생 유도
   if (!q.isEsToKo) {
     speakSpanish(q.options[idx].es);
   }
@@ -1933,7 +2033,6 @@ function selectQuizOption(idx) {
     btn.classList.add('incorrect');
     feedbackIcon.innerHTML = '❌';
     
-    // 정답 표시 유도
     const correctBtn = document.getElementById(`quiz-opt-${q.correctIdx}`);
     if (correctBtn) correctBtn.classList.add('correct');
   }
@@ -1971,7 +2070,7 @@ function resetQuiz() {
 }
 
 // ══════════════════════════════════════
-// PROGRESS & CALENDAR (달력 월 이동 내비게이션)
+// PROGRESS & CALENDAR
 // ══════════════════════════════════════
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
@@ -2018,7 +2117,7 @@ function renderCal(studied) {
 }
 
 // ══════════════════════════════════════
-// CSS CHART (최근 7일 학습량 렌더링)
+// CSS CHART (최근 7일 학습량)
 // ══════════════════════════════════════
 function renderChart() {
   const s = getState();
@@ -2029,14 +2128,12 @@ function renderChart() {
   const dates = [];
   const now = new Date();
 
-  // 최근 7일 날짜 리스트 (오늘이 최우측)
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(now.getDate() - i);
     dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
   }
 
-  // 차트 최대값 구하기 (최소 6설정으로 기본 눈금 고정)
   let maxVal = 6;
   dates.forEach(d => {
     if (daily[d] && daily[d] > maxVal) maxVal = daily[d];
@@ -2100,11 +2197,12 @@ function renderLog(studied) {
 }
 
 // ══════════════════════════════════════
-// DATA RESET
+// DATA RESET (데이터 초기화 및 DB 동기화)
 // ══════════════════════════════════════
-function resetAllData() {
+async function resetAllData() {
   if (confirm('⚠️ 정말로 모든 학습 기록을 초기화하시겠습니까?\n체크리스트, 단어장 및 출석 달력 기록이 영구 삭제되며 되돌릴 수 없습니다.')) {
     localStorage.removeItem('sp_v2');
+    await syncToFirestore(); // DB 초기화 동기화
     location.reload();
   }
 }
@@ -2168,11 +2266,14 @@ function speakSpanish(text) {
 }
 
 // ══════════════════════════════════════
-// NEXUS (브라우저 보안으로 인해 iframe ➔ 새창 열기로 전환되어 toggle 비활성화)
+// NEXUS
 // ══════════════════════════════════════
+function toggleNexus() {
+  document.getElementById('nexus-iframe-container').classList.toggle('open');
+}
 
 // ══════════════════════════════════════
-// TABS (퀴즈 탭 연계 추가)
+// TABS
 // ══════════════════════════════════════
 function showTab(id) {
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
@@ -2200,12 +2301,9 @@ function nextPhrase() {
 }
 
 // ══════════════════════════════════════
-// INIT
+// INIT UI (로그인 후 갱신 전담)
 // ══════════════════════════════════════
-function init() {
-  loadTheme();
-  initTTS();
-  
+function initUI() {
   const now = new Date();
   const days=['일','월','화','수','목','금','토'];
   document.getElementById('todayBadge').textContent = `${now.getMonth()+1}/${now.getDate()} (${days[now.getDay()]})`;
@@ -2217,7 +2315,7 @@ function init() {
 
   renderPlan();
   
-  // 단어 초기화
+  // 데이터 병합 연계 단어 갱신
   currentVocab = getMergedVocab();
   renderCard();
   
@@ -2226,6 +2324,27 @@ function init() {
   updateAllStats();
   updateHomeToday();
 }
+
+// ══════════════════════════════════════
+// INITIALIZATION
+// ══════════════════════════════════════
+function init() {
+  loadTheme();
+  initTTS();
+  
+  // 기존 로컬스토리지 기반 1차 렌더링 (로그인 오버레이 덮기 전 기본 뼈대 준비)
+  initUI();
+}
+
+// 기존 로컬스토리지 1차 가동
+function getState() {
+  const d = localStorage.getItem('sp_v2');
+  const state = d ? JSON.parse(d) : {tasks:{}, words:{}, studiedDates:[], customVocab:[], dailyTasks:{}};
+  if (!state.customVocab) state.customVocab = [];
+  if (!state.dailyTasks) state.dailyTasks = {};
+  return state;
+}
+function saveState(s) { localStorage.setItem('sp_v2', JSON.stringify(s)); }
 
 init();
 </script>
