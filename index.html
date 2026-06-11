@@ -213,6 +213,7 @@
     cursor: pointer; font-family: inherit; transition: var(--transition); white-space: nowrap;
   }
   .small-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .small-btn.sel { border-color: var(--blue); color: var(--blue); background: var(--blue-light); font-weight: 800; }
   .join-row { display: flex; gap: 8px; }
   .join-row input {
     flex: 1; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
@@ -317,6 +318,11 @@
       <div class="name">일기장</div>
       <div class="desc">하루를 마무리하는 나만의 기록 공간</div>
     </a>
+    <a class="cat-card" href="shared-diary.html">
+      <div class="icon">💌</div>
+      <div class="name">교환일기</div>
+      <div class="desc">스페이스 멤버와 함께 쓰는 날짜별 교환일기</div>
+    </a>
     <div class="cat-card" onclick="toast('새 카테고리는 곧 만나요! 🚧')">
       <div class="icon">➕</div>
       <div class="name">카테고리 추가 예정</div>
@@ -330,12 +336,36 @@
       <div class="card" style="margin-bottom: 18px;">
         <div class="card-title">
           <span>✅ <span id="todoDateLabel">오늘</span>의 할 일</span>
-          <span class="progress-pill" id="todoProgress">0 / 0</span>
+          <span style="display:flex; gap:8px; align-items:center;">
+            <button class="small-btn" id="recurToggleBtn" onclick="toggleRecurPanel()">🔁 반복</button>
+            <span class="progress-pill" id="todoProgress">0 / 0</span>
+          </span>
         </div>
         <div class="todo-input-row">
           <input id="todoInput" placeholder="할 일을 입력하고 Enter ↵" onkeydown="if(event.key==='Enter') addTodo()">
           <button class="add-btn" onclick="addTodo()">추가</button>
         </div>
+
+        <!-- 반복 할 일 관리 패널 -->
+        <div id="recurPanel" style="display:none; background:var(--bg); border:1.5px dashed var(--border); border-radius:12px; padding:14px 16px; margin-bottom:14px;">
+          <div style="font-size:13px; font-weight:800; margin-bottom:10px;">🔁 반복 할 일 관리</div>
+          <div class="todo-input-row" style="margin-bottom:10px;">
+            <input id="recurInput" placeholder="예: 스페인어 단어 10개 외우기" onkeydown="if(event.key==='Enter') addRecurring()">
+            <button class="add-btn" onclick="addRecurring()">추가</button>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; align-items:center;" id="recurDayBtns">
+            <button class="small-btn" onclick="setRecurEveryday()">매일</button>
+            <button class="small-btn" data-day="1" onclick="toggleRecurDay(1,this)">월</button>
+            <button class="small-btn" data-day="2" onclick="toggleRecurDay(2,this)">화</button>
+            <button class="small-btn" data-day="3" onclick="toggleRecurDay(3,this)">수</button>
+            <button class="small-btn" data-day="4" onclick="toggleRecurDay(4,this)">목</button>
+            <button class="small-btn" data-day="5" onclick="toggleRecurDay(5,this)">금</button>
+            <button class="small-btn" data-day="6" onclick="toggleRecurDay(6,this)">토</button>
+            <button class="small-btn" data-day="0" onclick="toggleRecurDay(0,this)">일</button>
+          </div>
+          <div id="recurList"></div>
+        </div>
+
         <div id="todoList"></div>
       </div>
 
@@ -551,7 +581,89 @@ function copyCode() {
 // ══════════════════════════════════════
 function getDay(key) {
   const d = (spaceData && spaceData.days && spaceData.days[key]) || {};
-  return { todos: d.todos || [], note: d.note || '' };
+  return { todos: d.todos || [], note: d.note || '', recDone: d.recDone || {} };
+}
+
+// ── 반복 할 일 ──
+let recurSelDays = [0,1,2,3,4,5,6]; // 기본: 매일
+
+function getRecurringFor(dateObj) {
+  return ((spaceData && spaceData.recurring) || []).filter(r => (r.days || []).includes(dateObj.getDay()));
+}
+
+function toggleRecurPanel() {
+  const p = document.getElementById('recurPanel');
+  const open = p.style.display === 'none';
+  p.style.display = open ? 'block' : 'none';
+  document.getElementById('recurToggleBtn').classList.toggle('sel', open);
+  if (open) { renderRecurDayBtns(); renderRecurList(); }
+}
+
+function renderRecurDayBtns() {
+  document.querySelectorAll('#recurDayBtns [data-day]').forEach(b =>
+    b.classList.toggle('sel', recurSelDays.includes(Number(b.dataset.day))));
+}
+function toggleRecurDay(d, btn) {
+  recurSelDays = recurSelDays.includes(d) ? recurSelDays.filter(x => x !== d) : [...recurSelDays, d];
+  renderRecurDayBtns();
+}
+function setRecurEveryday() { recurSelDays = [0,1,2,3,4,5,6]; renderRecurDayBtns(); }
+
+async function saveRecurring(arr) {
+  if (!spaceId) return;
+  try {
+    await db.collection('spaces').doc(spaceId).update({
+      recurring: arr,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) { console.error('반복 할 일 저장 실패:', e); toast('저장에 실패했어요.'); }
+}
+
+async function addRecurring() {
+  const input = document.getElementById('recurInput');
+  const text = input.value.trim();
+  if (!text || !spaceData) return;
+  if (!recurSelDays.length) { toast('반복할 요일을 선택해 주세요!'); return; }
+  input.value = '';
+  const arr = [...(spaceData.recurring || []), {
+    id: 'r' + Date.now().toString(36),
+    text,
+    days: [...recurSelDays].sort(),
+    by: currentUser.uid
+  }];
+  spaceData.recurring = arr;
+  renderRecurList(); renderAll();
+  await saveRecurring(arr);
+}
+
+async function deleteRecurring(id) {
+  if (!confirm('이 반복 할 일을 모든 요일에서 삭제할까요?')) return;
+  const arr = (spaceData.recurring || []).filter(r => r.id !== id);
+  spaceData.recurring = arr;
+  renderRecurList(); renderAll();
+  await saveRecurring(arr);
+}
+
+async function toggleRecurringDone(id, checked) {
+  const key = dateKey(selectedDate);
+  const day = getDay(key);
+  day.recDone = { ...day.recDone, [id]: checked };
+  renderTodos(day);
+  await saveDay(key, day);
+}
+
+function renderRecurList() {
+  const box = document.getElementById('recurList');
+  if (!box) return;
+  const arr = (spaceData && spaceData.recurring) || [];
+  const D = ['일','월','화','수','목','금','토'];
+  box.innerHTML = arr.length ? arr.map(r => `
+    <div class="todo-item">
+      <span class="txt">🔁 ${esc(r.text)}</span>
+      <span class="by">${(r.days || []).length === 7 ? '매일' : (r.days || []).map(d => D[d]).join('·')}</span>
+      <button class="del" onclick="deleteRecurring('${r.id}')" title="삭제">✕</button>
+    </div>`).join('')
+    : '<div class="empty-msg" style="padding:8px 0;">아직 반복 할 일이 없어요. 위에서 추가해 보세요!</div>';
 }
 
 async function saveDay(key, day) {
@@ -640,6 +752,7 @@ function renderAll() {
 
   renderMembers();
   renderWeekGlance();
+  if (document.getElementById('recurPanel').style.display !== 'none') renderRecurList();
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -647,15 +760,28 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 function renderTodos(day) {
   const list = document.getElementById('todoList');
   const todos = day.todos;
-  const doneCount = todos.filter(t => t.done).length;
-  document.getElementById('todoProgress').textContent = `${doneCount} / ${todos.length}`;
+  const recs = getRecurringFor(selectedDate);
+  const doneCount = todos.filter(t => t.done).length + recs.filter(r => day.recDone[r.id]).length;
+  const total = todos.length + recs.length;
+  document.getElementById('todoProgress').textContent = `${doneCount} / ${total}`;
 
-  if (!todos.length) {
+  if (!total) {
     list.innerHTML = '<div class="empty-msg">아직 할 일이 없어요. 첫 할 일을 추가해 보세요! ✍️</div>';
     return;
   }
   const shared = isShared();
-  list.innerHTML = todos.map(t => {
+
+  // 반복 할 일 (요일 해당분) 먼저, 그 아래 일반 할 일
+  const recHtml = recs.map(r => {
+    const done = !!day.recDone[r.id];
+    return `<div class="todo-item ${done ? 'done' : ''}">
+      <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleRecurringDone('${r.id}', this.checked)">
+      <span class="txt">${esc(r.text)}</span>
+      <span class="by" title="반복 할 일">🔁</span>
+    </div>`;
+  }).join('');
+
+  const todoHtml = todos.map(t => {
     const byName = shared && spaceData.memberProfiles && spaceData.memberProfiles[t.by]
       ? `<span class="by">${esc(spaceData.memberProfiles[t.by].name.split(' ')[0])}</span>` : '';
     return `<div class="todo-item ${t.done ? 'done' : ''}">
@@ -665,6 +791,8 @@ function renderTodos(day) {
       <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
     </div>`;
   }).join('');
+
+  list.innerHTML = recHtml + todoHtml;
 }
 
 function isShared() { return spaceData && (spaceData.members || []).length > 1; }
@@ -693,8 +821,9 @@ function renderWeekGlance() {
     d.setDate(start.getDate() + i);
     const key = dateKey(d);
     const day = getDay(key);
-    const total = day.todos.length;
-    const done = day.todos.filter(t => t.done).length;
+    const recs = getRecurringFor(d);
+    const total = day.todos.length + recs.length;
+    const done = day.todos.filter(t => t.done).length + recs.filter(r => day.recDone[r.id]).length;
     const isSel = key === dateKey(selectedDate);
     const hasNote = !!day.note;
     const pct = total ? Math.round(done/total*100) : 0;

@@ -230,6 +230,7 @@
     </div>
     <div class="header-right">
       <a href="./" class="hbtn">🏠 마이홈</a>
+      <a href="shared-diary.html" class="hbtn">💌 교환일기</a>
       <a href="study.html" class="hbtn">🇪🇸 스터디</a>
       <span id="userProfile" class="profile-badge" style="display: none;">
         <span id="userName">👤 로딩중...</span>
@@ -255,12 +256,15 @@
     <div class="card">
       <div class="card-title">
         <span>🗂 일기 목록</span>
-        <div class="month-nav">
+        <div class="month-nav" id="monthNav">
           <button onclick="moveMonth(-1)">‹</button>
           <span class="label" id="monthLabel"></span>
           <button onclick="moveMonth(1)">›</button>
         </div>
       </div>
+      <input id="diarySearch" placeholder="🔍 전체 일기에서 검색…"
+        style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; padding:9px 12px; font-size:13px; color:var(--text); font-family:inherit; outline:none; margin-bottom:12px; transition:var(--transition);"
+        oninput="onDiarySearch(this.value)">
       <div id="entryList"></div>
     </div>
 
@@ -320,11 +324,12 @@ auth.onAuthStateChanged(async (user) => {
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('userProfile').style.display = 'flex';
     document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
-    await loadDiary();
+    loadDiary();
   } else {
     currentUser = null;
     document.getElementById('loginOverlay').style.display = 'flex';
     document.getElementById('userProfile').style.display = 'none';
+    if (unsubDiary) { unsubDiary(); unsubDiary = null; }
   }
 });
 
@@ -340,12 +345,20 @@ async function logout() {
 // ══════════════════════════════════════
 // DATA
 // ══════════════════════════════════════
-async function loadDiary() {
-  try {
-    const snap = await db.collection('users').doc(currentUser.uid).get();
+// 실시간 구독 — 다른 기기에서 쓴 일기도 즉시 반영
+let unsubDiary = null;
+function loadDiary() {
+  if (unsubDiary) unsubDiary();
+  unsubDiary = db.collection('users').doc(currentUser.uid).onSnapshot(snap => {
     diary = (snap.exists && snap.data().diary) || {};
-  } catch (e) { console.error('일기 로드 실패:', e); }
-  renderAll();
+    if (isDirty()) {
+      // 작성 중인 글은 건드리지 않고 목록·스트릭만 갱신
+      renderList();
+      renderStreak();
+    } else {
+      renderAll();
+    }
+  }, e => console.error('일기 실시간 구독 실패:', e));
 }
 
 async function saveEntry() {
@@ -421,25 +434,47 @@ function updateCharCount() {
 function moveMonth(delta) { viewMonth.setMonth(viewMonth.getMonth() + delta); renderList(); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+// 일기 키워드 검색 (전체 기간 대상)
+let diarySearchQuery = '';
+function onDiarySearch(q) {
+  diarySearchQuery = q.trim().toLowerCase();
+  document.getElementById('monthNav').style.visibility = diarySearchQuery ? 'hidden' : 'visible';
+  renderList();
+}
+
 function renderList() {
-  const y = viewMonth.getFullYear(), m = viewMonth.getMonth();
-  document.getElementById('monthLabel').textContent = `${y}년 ${m+1}월`;
-  const prefix = `${y}-${String(m+1).padStart(2,'0')}`;
-  const keys = Object.keys(diary).filter(k => k.startsWith(prefix)).sort().reverse();
   const box = document.getElementById('entryList');
-  if (!keys.length) {
-    box.innerHTML = '<div class="empty-msg">이 달에는 아직 일기가 없어요.<br>오른쪽에서 첫 일기를 써보세요 🌱</div>';
-    return;
-  }
   const DAYS_KO = ['일','월','화','수','목','금','토'];
+  let keys;
+
+  if (diarySearchQuery) {
+    keys = Object.keys(diary)
+      .filter(k => (diary[k].text || '').toLowerCase().includes(diarySearchQuery))
+      .sort().reverse();
+    if (!keys.length) {
+      box.innerHTML = `<div class="empty-msg">"${esc(diarySearchQuery)}"가 들어간 일기가 없어요 🔍</div>`;
+      return;
+    }
+  } else {
+    const y = viewMonth.getFullYear(), m = viewMonth.getMonth();
+    document.getElementById('monthLabel').textContent = `${y}년 ${m+1}월`;
+    const prefix = `${y}-${String(m+1).padStart(2,'0')}`;
+    keys = Object.keys(diary).filter(k => k.startsWith(prefix)).sort().reverse();
+    if (!keys.length) {
+      box.innerHTML = '<div class="empty-msg">이 달에는 아직 일기가 없어요.<br>오른쪽에서 첫 일기를 써보세요 🌱</div>';
+      return;
+    }
+  }
+
   box.innerHTML = keys.map(k => {
     const e = diary[k];
     const [yy,mm,dd] = k.split('-').map(Number);
     const day = DAYS_KO[new Date(yy, mm-1, dd).getDay()];
+    const dateLabel = diarySearchQuery ? `${yy}년 ${mm}월 ${dd}일 (${day})` : `${mm}월 ${dd}일 (${day})`;
     return `<div class="entry-item ${k === editingKey ? 'selected' : ''}" onclick="loadEntry('${k}')">
       <div class="entry-head">
         <span class="entry-mood">${e.mood || '📝'}</span>
-        <span class="entry-date">${mm}월 ${dd}일 (${day})</span>
+        <span class="entry-date">${dateLabel}</span>
       </div>
       <div class="entry-preview">${esc(e.text)}</div>
     </div>`;
