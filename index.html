@@ -175,7 +175,17 @@
   .tcat-badge {
     font-size: 10.5px; font-weight: 800; color: white; padding: 2px 8px;
     border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+    cursor: pointer; border: none; font-family: inherit; transition: var(--transition);
   }
+  .tcat-badge:hover { transform: scale(1.08); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+
+  /* 카테고리 변경 팝오버 */
+  #catPicker {
+    position: fixed; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,0.25); padding: 10px;
+    display: none; flex-wrap: wrap; gap: 6px; max-width: 240px; z-index: 2000;
+  }
+  #catPicker.open { display: flex; }
 
   /* ── 월간 달력 ── */
   .mcal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
@@ -472,6 +482,9 @@
   </div>
 
 </main>
+
+<!-- 카테고리 변경 팝오버 -->
+<div id="catPicker"></div>
 
 <!-- 날짜 상세보기 모달 -->
 <div id="dayModal" onclick="if(event.target===this) closeDayModal()">
@@ -820,6 +833,56 @@ async function addCustomCategory() {
   } catch (e) { console.error('카테고리 저장 실패:', e); toast('저장에 실패했어요.'); }
 }
 
+// ── 기존 할 일의 카테고리 변경 (배지 클릭 → 팝오버) ──
+let catPickCtx = null; // { key, kind: 'todo'|'rec', id }
+
+function openCatPicker(ev, key, kind, id) {
+  ev.stopPropagation();
+  catPickCtx = { key, kind, id };
+  const picker = document.getElementById('catPicker');
+  picker.innerHTML = getCategories().map(c =>
+    `<button class="tcat-chip sel" style="background:${c.color}; color:white;" onclick="applyCatChange('${c.id}')">${esc(c.name)}</button>`
+  ).join('');
+  picker.classList.add('open');
+  // 클릭 위치 근처에 표시 (화면 밖으로 나가지 않게 보정)
+  const x = Math.min(ev.clientX, window.innerWidth - 260);
+  const y = Math.min(ev.clientY + 8, window.innerHeight - 120);
+  picker.style.left = Math.max(8, x) + 'px';
+  picker.style.top = Math.max(8, y) + 'px';
+}
+
+function closeCatPicker() {
+  document.getElementById('catPicker').classList.remove('open');
+  catPickCtx = null;
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#catPicker') && !e.target.closest('.tcat-badge')) closeCatPicker();
+});
+
+async function applyCatChange(catId) {
+  if (!catPickCtx) return;
+  const { key, kind, id } = catPickCtx;
+  closeCatPicker();
+  if (kind === 'rec') {
+    // 반복 할 일은 규칙 자체의 카테고리를 변경 (모든 요일에 적용)
+    const arr = [...(spaceData.recurring || [])];
+    const r = arr.find(r => r.id === id);
+    if (!r) return;
+    r.cat = catId;
+    spaceData.recurring = arr;
+    renderAll(); if (modalKey) refreshModal(true);
+    await saveRecurring(arr);
+  } else {
+    const day = getDay(key);
+    const t = day.todos.find(t => t.id === id);
+    if (!t) return;
+    t.cat = catId;
+    renderAll(); if (modalKey) refreshModal(true);
+    await saveDay(key, day);
+  }
+  toast(`🏷 카테고리가 '${catById(catId).name}'(으)로 변경됐어요!`);
+}
+
 async function addTodo() {
   const input = document.getElementById('todoInput');
   // 여러 줄 입력 지원: 줄마다 별도의 할 일로 추가
@@ -929,7 +992,7 @@ function renderTodos(day) {
     return `<div class="todo-item ${done ? 'done' : ''}">
       <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleRecurringDone('${r.id}', this.checked)">
       <span class="txt">${esc(r.text)}</span>
-      <span class="tcat-badge" style="background:${cat.color};">${esc(cat.name)}</span>
+      <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
       <span class="by" title="반복 할 일">🔁</span>
     </div>`;
   }).join('');
@@ -941,7 +1004,7 @@ function renderTodos(day) {
     return `<div class="todo-item ${t.done ? 'done' : ''}">
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', this.checked)">
       <span class="txt">${esc(t.text)}</span>
-      <span class="tcat-badge" style="background:${cat.color};">${esc(cat.name)}</span>
+      <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
       ${byName}
       <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
     </div>`;
@@ -1036,7 +1099,7 @@ function openDayDetail(key) {
     return `<div class="dm-item ${t.done ? 'done' : ''}">
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="mToggleTodo('${t.id}', this.checked)">
       <span class="dm-txt">${esc(t.text)}</span>
-      <span class="tcat-badge" style="background:${cat.color};">${esc(cat.name)}</span>
+      <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
       <button class="del" onclick="mEditTodo('${t.id}')" title="수정">✏️</button>
       <button class="del" onclick="mDeleteTodo('${t.id}')" title="삭제">✕</button>
     </div>`;
@@ -1047,7 +1110,7 @@ function openDayDetail(key) {
     return `<div class="dm-item ${done ? 'done' : ''}">
       <input type="checkbox" ${done ? 'checked' : ''} onchange="mToggleRec('${r.id}', this.checked)">
       <span class="dm-txt">${esc(r.text)}</span>
-      <span class="tcat-badge" style="background:${cat.color};">${esc(cat.name)}</span>
+      <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
       <span title="반복 할 일">🔁</span>
     </div>`;
   };
