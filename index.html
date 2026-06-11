@@ -310,6 +310,7 @@
       <div class="icon">🇪🇸</div>
       <div class="name">스페인어 스터디</div>
       <div class="desc">넥서스 Día 01~16 · 단어장 · 퀴즈 · 진도 체크</div>
+      <div class="desc" id="studyStats" style="display:none; font-weight:700; color: var(--blue);"></div>
     </a>
     <a class="cat-card" href="diary.html">
       <div class="icon">📔</div>
@@ -443,6 +444,7 @@ function genCode() {
 async function ensureSpace() {
   const userRef = db.collection('users').doc(currentUser.uid);
   const snap = await userRef.get();
+  if (snap.exists) renderStudyStats(snap.data());
   spaceId = snap.exists ? (snap.data().spaceId || null) : null;
 
   if (spaceId) {
@@ -466,6 +468,22 @@ async function ensureSpace() {
   }
 
   subscribeSpace();
+}
+
+// 스터디 페이지가 동기화해 둔 stats 요약을 카테고리 카드에 표시
+function renderStudyStats(data) {
+  const el = document.getElementById('studyStats');
+  if (!el) return;
+  const st = data.stats;
+  if (st) {
+    el.innerHTML = `📚 공부한 날 ${st.days} · 단어 ${st.words} · Día ${st.dias}/${st.diasTotal || 16}${st.streak ? ` · 🔥${st.streak}일 연속` : ''}`;
+    el.style.display = 'block';
+  } else if (data.studiedDates || data.words) {
+    // 예전 데이터 형식 fallback (stats는 스터디 페이지 첫 동기화 때 생성됨)
+    const words = Object.keys(data.words || {}).filter(w => data.words[w]).length;
+    el.innerHTML = `📚 공부한 날 ${(data.studiedDates || []).length} · 단어 ${words}`;
+    el.style.display = 'block';
+  }
 }
 
 function profileEntry() {
