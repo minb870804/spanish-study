@@ -1187,7 +1187,7 @@ async function loginWithGoogle() {
     await auth.signInWithPopup(provider);
   } catch (error) {
     console.error('로그인 에러:', error);
-    alert('구글 로그인 중 문제가 발생했습니다. 다시 시도해 주세요.');
+    alert(`구글 로그인 중 문제가 발생했습니다.\n\n[오류 세부 정보]\n코드: ${error.code}\n메시지: ${error.message}\n\n도메인 제한 오류(auth/unauthorized-domain)인 경우 Firebase 콘솔에서 승인된 도메인으로 추가해 주세요.`);
   }
 }
 
