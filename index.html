@@ -155,13 +155,66 @@
   .cat-card .desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
 
   /* ── TODO ── */
-  .todo-input-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .todo-input-row input {
+  .todo-input-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-end; }
+  .todo-input-row input, .todo-input-row textarea {
     flex: 1; background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px;
     padding: 10px 14px; font-size: 14px; color: var(--text); font-family: inherit; outline: none;
     transition: var(--transition);
   }
-  .todo-input-row input:focus { border-color: var(--blue); }
+  .todo-input-row textarea { resize: vertical; min-height: 42px; line-height: 1.6; }
+  .todo-input-row input:focus, .todo-input-row textarea:focus { border-color: var(--blue); }
+
+  /* ── 할 일 카테고리 chips ── */
+  .tcat-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .tcat-chip {
+    padding: 4px 12px; border-radius: 14px; border: 1.5px solid var(--border);
+    background: var(--bg); font-size: 12px; font-weight: 700; cursor: pointer;
+    font-family: inherit; color: var(--text); transition: var(--transition);
+  }
+  .tcat-chip.sel { color: white; border-color: transparent; }
+  .tcat-badge {
+    font-size: 10.5px; font-weight: 800; color: white; padding: 2px 8px;
+    border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* ── 월간 달력 ── */
+  .mcal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .mcal-dow { font-size: 11px; text-align: center; color: var(--muted); font-weight: 800; padding: 4px 0; }
+  .mcal-day {
+    border: 1px solid var(--border); border-radius: 8px; min-height: 58px; padding: 4px;
+    cursor: pointer; font-size: 10px; display: flex; flex-direction: column; gap: 2px;
+    transition: var(--transition); overflow: hidden;
+  }
+  .mcal-day:hover { border-color: var(--blue); box-shadow: var(--shadow-hover); }
+  .mcal-day.empty { border: none; cursor: default; box-shadow: none; }
+  .mcal-day.today { border-color: var(--blue); background: var(--blue-light); }
+  .mcal-day.sel { outline: 2px solid var(--blue); }
+  .mcal-num { font-weight: 800; font-size: 11px; }
+  .mcal-day.sun .mcal-num { color: var(--red); }
+  .mcal-day.sat .mcal-num { color: var(--blue); }
+  .mcal-tag { border-radius: 5px; padding: 0 4px; line-height: 1.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
+  .mcal-tag.t-todo { background: var(--red-light); color: var(--red); }
+  .mcal-tag.t-done { background: var(--green-light); color: var(--green); }
+  .mcal-tag.t-note { background: var(--blue-light); color: var(--blue); }
+
+  /* ── 날짜 상세 모달 ── */
+  #dayModal {
+    position: fixed; inset: 0; background: rgba(18,18,20,0.55); z-index: 1500;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  #dayModal.open { display: flex; }
+  .day-modal-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    max-width: 480px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3); animation: fadeIn 0.25s ease;
+  }
+  .dm-section-title { font-size: 13px; font-weight: 800; margin: 16px 0 8px; color: var(--muted); }
+  .dm-item { display: flex; align-items: center; gap: 8px; padding: 7px 4px; font-size: 13.5px; border-bottom: 1px solid var(--border); }
+  .dm-item:last-child { border-bottom: none; }
+  .dm-item.done .dm-txt { text-decoration: line-through; color: var(--muted); }
+  .dm-txt { flex: 1; word-break: break-all; }
+  .dm-note { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; line-height: 1.8; white-space: pre-wrap; word-break: break-all; }
   .add-btn {
     background: var(--blue); color: white; border: none; border-radius: 12px;
     padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
@@ -256,7 +309,7 @@
 <body>
 
 <!-- 로그인 오버레이 -->
-<div id="loginOverlay">
+<div id="loginOverlay" style="display:none;">
   <div class="login-card">
     <div style="font-size: 60px; margin-bottom: 20px;">🏠</div>
     <h2 style="font-size: 22px; font-weight: 900; margin-bottom: 8px; color: var(--dark);">마이홈 대시보드</h2>
@@ -342,9 +395,11 @@
           </span>
         </div>
         <div class="todo-input-row">
-          <input id="todoInput" placeholder="할 일을 입력하고 Enter ↵" onkeydown="if(event.key==='Enter') addTodo()">
+          <textarea id="todoInput" rows="1" placeholder="할 일 입력 — 여러 줄을 붙여넣으면 줄마다 따로 추가돼요 (Ctrl/⌘+Enter 추가)"
+            onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();addTodo();}"></textarea>
           <button class="add-btn" onclick="addTodo()">추가</button>
         </div>
+        <div class="tcat-row" id="tcatRow"></div>
 
         <!-- 반복 할 일 관리 패널 -->
         <div id="recurPanel" style="display:none; background:var(--bg); border:1.5px dashed var(--border); border-radius:12px; padding:14px 16px; margin-bottom:14px;">
@@ -398,13 +453,36 @@
       </div>
 
       <div class="card">
-        <div class="card-title"><span>📊 이번 주 한눈에</span></div>
-        <div id="weekGlance"></div>
+        <div class="card-title">
+          <span>📆 월간 달력</span>
+          <span style="display:flex; gap:8px; align-items:center;">
+            <button class="small-btn" onclick="moveCalMonth(-1)">‹</button>
+            <span id="calMonthLabel" style="font-size:13px; font-weight:800; min-width:80px; text-align:center;"></span>
+            <button class="small-btn" onclick="moveCalMonth(1)">›</button>
+          </span>
+        </div>
+        <div id="monthCal"></div>
+        <div style="display:flex; gap:10px; margin-top:10px; font-size:11px; color:var(--muted); flex-wrap:wrap;">
+          <span><span class="mcal-tag t-todo">할 일</span> 남은 할 일</span>
+          <span><span class="mcal-tag t-done">한 일</span> 완료</span>
+          <span><span class="mcal-tag t-note">메모</span> 메모 있음</span>
+        </div>
       </div>
     </div>
   </div>
 
 </main>
+
+<!-- 날짜 상세보기 모달 -->
+<div id="dayModal" onclick="if(event.target===this) closeDayModal()">
+  <div class="day-modal-card">
+    <div class="card-title" style="margin-bottom:4px;">
+      <span id="dmDate">날짜</span>
+      <button class="small-btn" onclick="closeDayModal()">✕ 닫기</button>
+    </div>
+    <div id="dmBody"></div>
+  </div>
+</div>
 
 <div id="toast"></div>
 
@@ -646,7 +724,8 @@ async function addRecurring() {
     id: 'r' + Date.now().toString(36),
     text,
     days: [...recurSelDays].sort(),
-    by: currentUser.uid
+    by: currentUser.uid,
+    cat: selectedTodoCat
   }];
   spaceData.recurring = arr;
   renderRecurList(); renderAll();
@@ -693,16 +772,70 @@ async function saveDay(key, day) {
   } catch (e) { console.error('저장 실패:', e); toast('저장에 실패했어요. 네트워크를 확인해 주세요.'); }
 }
 
+// ── 할 일 카테고리 ──
+const DEFAULT_CATS = [
+  { id: 'ex',  name: '운동',   color: '#2e7d32' },
+  { id: 'st',  name: '스터디', color: '#1565c0' },
+  { id: 'wk',  name: '업무',   color: '#6a4fb6' },
+  { id: 'etc', name: '기타',   color: '#70757f' }
+];
+const CUSTOM_CAT_COLORS = ['#c2185b', '#f57c00', '#00838f', '#5d4037', '#827717', '#d32f2f'];
+let selectedTodoCat = 'etc';
+
+function getCategories() {
+  return (spaceData && spaceData.categories && spaceData.categories.length) ? spaceData.categories : DEFAULT_CATS;
+}
+function catById(id) { return getCategories().find(c => c.id === id) || DEFAULT_CATS[3]; }
+
+function renderCatChips() {
+  const row = document.getElementById('tcatRow');
+  if (!row) return;
+  const cats = getCategories();
+  if (!cats.some(c => c.id === selectedTodoCat)) selectedTodoCat = cats[0].id;
+  row.innerHTML = cats.map(c =>
+    `<button class="tcat-chip ${c.id === selectedTodoCat ? 'sel' : ''}" style="${c.id === selectedTodoCat ? `background:${c.color};` : ''}" onclick="pickTodoCat('${c.id}')">${esc(c.name)}</button>`
+  ).join('') + `<button class="tcat-chip" onclick="addCustomCategory()" title="새 카테고리 만들기">＋ 카테고리</button>`;
+}
+function pickTodoCat(id) { selectedTodoCat = id; renderCatChips(); }
+
+async function addCustomCategory() {
+  const name = (prompt('새 카테고리 이름을 입력하세요 (예: 취미, 집안일)') || '').trim();
+  if (!name || !spaceData) return;
+  const cats = [...getCategories()];
+  if (cats.some(c => c.name === name)) { toast('이미 있는 카테고리예요!'); return; }
+  cats.push({
+    id: 'c' + Date.now().toString(36),
+    name,
+    color: CUSTOM_CAT_COLORS[(cats.length - DEFAULT_CATS.length) % CUSTOM_CAT_COLORS.length]
+  });
+  spaceData.categories = cats;
+  selectedTodoCat = cats[cats.length - 1].id;
+  renderCatChips();
+  try {
+    await db.collection('spaces').doc(spaceId).update({
+      categories: cats,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast(`🏷 '${name}' 카테고리가 만들어졌어요!`);
+  } catch (e) { console.error('카테고리 저장 실패:', e); toast('저장에 실패했어요.'); }
+}
+
 async function addTodo() {
   const input = document.getElementById('todoInput');
-  const text = input.value.trim();
-  if (!text || !spaceData) return;
+  // 여러 줄 입력 지원: 줄마다 별도의 할 일로 추가
+  const lines = input.value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length || !spaceData) return;
   input.value = '';
   const key = dateKey(selectedDate);
   const day = getDay(key);
-  day.todos.push({ id: Date.now().toString(36), text, done: false, by: currentUser.uid });
+  const base = Date.now();
+  lines.forEach((text, i) => {
+    day.todos.push({ id: (base + i).toString(36), text, done: false, by: currentUser.uid, cat: selectedTodoCat });
+  });
   renderTodos(day); // 낙관적 렌더링
+  renderMonthCal();
   await saveDay(key, day);
+  if (lines.length > 1) toast(`✅ 할 일 ${lines.length}개가 추가됐어요!`);
 }
 
 async function toggleTodo(id, checked) {
@@ -743,9 +876,9 @@ function onNoteInput() {
 // ══════════════════════════════════════
 // DATE NAV
 // ══════════════════════════════════════
-function moveDate(delta) { selectedDate.setDate(selectedDate.getDate() + delta); renderAll(); }
-function goToday() { selectedDate = new Date(); renderAll(); }
-function onDatePick(v) { if (v) { const [y,m,d] = v.split('-').map(Number); selectedDate = new Date(y, m-1, d); renderAll(); } }
+function moveDate(delta) { selectedDate.setDate(selectedDate.getDate() + delta); calMonth = new Date(selectedDate); renderAll(); }
+function goToday() { selectedDate = new Date(); calMonth = new Date(); renderAll(); }
+function onDatePick(v) { if (v) { const [y,m,d] = v.split('-').map(Number); selectedDate = new Date(y, m-1, d); calMonth = new Date(selectedDate); renderAll(); } }
 
 // ══════════════════════════════════════
 // RENDER
@@ -768,7 +901,8 @@ function renderAll() {
   if (document.activeElement !== noteArea) noteArea.value = day.note;
 
   renderMembers();
-  renderWeekGlance();
+  renderCatChips();
+  renderMonthCal();
   if (document.getElementById('recurPanel').style.display !== 'none') renderRecurList();
 }
 
@@ -791,9 +925,11 @@ function renderTodos(day) {
   // 반복 할 일 (요일 해당분) 먼저, 그 아래 일반 할 일
   const recHtml = recs.map(r => {
     const done = !!day.recDone[r.id];
+    const cat = catById(r.cat);
     return `<div class="todo-item ${done ? 'done' : ''}">
       <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleRecurringDone('${r.id}', this.checked)">
       <span class="txt">${esc(r.text)}</span>
+      <span class="tcat-badge" style="background:${cat.color};">${esc(cat.name)}</span>
       <span class="by" title="반복 할 일">🔁</span>
     </div>`;
   }).join('');
@@ -801,9 +937,11 @@ function renderTodos(day) {
   const todoHtml = todos.map(t => {
     const byName = shared && spaceData.memberProfiles && spaceData.memberProfiles[t.by]
       ? `<span class="by">${esc(spaceData.memberProfiles[t.by].name.split(' ')[0])}</span>` : '';
+    const cat = catById(t.cat);
     return `<div class="todo-item ${t.done ? 'done' : ''}">
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', this.checked)">
       <span class="txt">${esc(t.text)}</span>
+      <span class="tcat-badge" style="background:${cat.color};">${esc(cat.name)}</span>
       ${byName}
       <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
     </div>`;
@@ -828,33 +966,99 @@ function renderMembers() {
   }).join('');
 }
 
-function renderWeekGlance() {
-  const box = document.getElementById('weekGlance');
-  const start = new Date(selectedDate);
-  start.setDate(start.getDate() - start.getDay()); // 일요일 시작
-  let html = '<div style="display:flex; flex-direction:column; gap:6px;">';
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const key = dateKey(d);
-    const day = getDay(key);
-    const recs = getRecurringFor(d);
-    const total = day.todos.length + recs.length;
-    const done = day.todos.filter(t => t.done).length + recs.filter(r => day.recDone[r.id]).length;
-    const isSel = key === dateKey(selectedDate);
-    const hasNote = !!day.note;
-    const pct = total ? Math.round(done/total*100) : 0;
-    html += `<div onclick="onDatePick('${key}')" style="display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:10px; cursor:pointer; font-size:12.5px; ${isSel ? 'background: var(--blue-light); font-weight:800;' : ''}">
-      <span style="width:52px;">${d.getMonth()+1}/${d.getDate()} (${DAYS_KO[d.getDay()]})</span>
-      <div style="flex:1; height:7px; background:var(--border); border-radius:4px; overflow:hidden;">
-        <div style="width:${pct}%; height:100%; background:var(--green); border-radius:4px; transition:width .3s;"></div>
-      </div>
-      <span style="width:42px; text-align:right; color:var(--muted);">${total ? `${done}/${total}` : '–'}</span>
-      <span style="width:16px;">${hasNote ? '📝' : ''}</span>
-    </div>`;
-  }
-  box.innerHTML = html + '</div>';
+// ── 월간 달력 ──
+let calMonth = new Date();
+
+function dayCounts(d) {
+  const day = getDay(dateKey(d));
+  const recs = getRecurringFor(d);
+  const done = day.todos.filter(t => t.done).length + recs.filter(r => day.recDone[r.id]).length;
+  const total = day.todos.length + recs.length;
+  return { total, done, remain: total - done, hasNote: !!day.note };
 }
+
+function moveCalMonth(delta) { calMonth.setMonth(calMonth.getMonth() + delta); renderMonthCal(); }
+
+function renderMonthCal() {
+  const box = document.getElementById('monthCal');
+  if (!box) return;
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  document.getElementById('calMonthLabel').textContent = `${y}년 ${m+1}월`;
+  const first = new Date(y, m, 1).getDay();
+  const total = new Date(y, m+1, 0).getDate();
+  const todayK = dateKey(new Date());
+  const selK = dateKey(selectedDate);
+
+  let html = '<div class="mcal-grid">';
+  html += DAYS_KO.map(d => `<div class="mcal-dow">${d}</div>`).join('');
+  for (let i = 0; i < first; i++) html += '<div class="mcal-day empty"></div>';
+  for (let dd = 1; dd <= total; dd++) {
+    const d = new Date(y, m, dd);
+    const key = dateKey(d);
+    const c = dayCounts(d);
+    const cls = [
+      'mcal-day',
+      key === todayK ? 'today' : '',
+      key === selK ? 'sel' : '',
+      d.getDay() === 0 ? 'sun' : d.getDay() === 6 ? 'sat' : ''
+    ].join(' ');
+    let tags = '';
+    if (c.remain) tags += `<span class="mcal-tag t-todo">할일 ${c.remain}</span>`;
+    if (c.done)   tags += `<span class="mcal-tag t-done">한일 ${c.done}</span>`;
+    if (c.hasNote) tags += `<span class="mcal-tag t-note">메모</span>`;
+    html += `<div class="${cls}" onclick="onCalDayClick('${key}')"><span class="mcal-num">${dd}</span>${tags}</div>`;
+  }
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+// 달력 클릭 → 해당 날짜 선택 + 상세보기 모달
+function onCalDayClick(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  selectedDate = new Date(y, m-1, d);
+  renderAll();
+  openDayDetail(key);
+}
+
+function openDayDetail(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  const dateObj = new Date(y, m-1, d);
+  const day = getDay(key);
+  const recs = getRecurringFor(dateObj);
+  document.getElementById('dmDate').textContent = `📅 ${m}월 ${d}일 (${DAYS_KO[dateObj.getDay()]})`;
+
+  const itemHtml = (text, done, catId, recurring) => {
+    const cat = catById(catId);
+    return `<div class="dm-item ${done ? 'done' : ''}">
+      <span>${done ? '✅' : '⬜'}</span>
+      <span class="dm-txt">${esc(text)}</span>
+      <span class="tcat-badge" style="background:${cat.color};">${esc(cat.name)}</span>
+      ${recurring ? '<span title="반복 할 일">🔁</span>' : ''}
+    </div>`;
+  };
+
+  const remainHtml =
+    recs.filter(r => !day.recDone[r.id]).map(r => itemHtml(r.text, false, r.cat, true)).join('') +
+    day.todos.filter(t => !t.done).map(t => itemHtml(t.text, false, t.cat, false)).join('');
+  const doneHtml =
+    recs.filter(r => day.recDone[r.id]).map(r => itemHtml(r.text, true, r.cat, true)).join('') +
+    day.todos.filter(t => t.done).map(t => itemHtml(t.text, true, t.cat, false)).join('');
+
+  let body = '';
+  body += `<div class="dm-section-title">📋 할 일 (남은 일)</div>`;
+  body += remainHtml || '<div style="font-size:12.5px; color:var(--muted); padding:4px;">남은 할 일이 없어요!</div>';
+  body += `<div class="dm-section-title">🌟 한 일 (완료)</div>`;
+  body += doneHtml || '<div style="font-size:12.5px; color:var(--muted); padding:4px;">완료한 일이 아직 없어요.</div>';
+  body += `<div class="dm-section-title">🌙 하루 메모</div>`;
+  body += day.note
+    ? `<div class="dm-note">${esc(day.note)}</div>`
+    : '<div style="font-size:12.5px; color:var(--muted); padding:4px;">메모가 없어요.</div>';
+
+  document.getElementById('dmBody').innerHTML = body;
+  document.getElementById('dayModal').classList.add('open');
+}
+
+function closeDayModal() { document.getElementById('dayModal').classList.remove('open'); }
 
 // ══════════════════════════════════════
 // THEME / TOAST / INIT
