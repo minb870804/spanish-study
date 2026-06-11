@@ -756,7 +756,8 @@ async function deleteRecurring(id) {
 async function toggleRecurringDone(id, checked) {
   const key = dateKey(selectedDate);
   const day = getDay(key);
-  day.recDone = { ...day.recDone, [id]: checked };
+  // 완료 시 누가 완료했는지 uid를 기록 (truthy라 기존 로직과 호환)
+  day.recDone = { ...day.recDone, [id]: checked ? currentUser.uid : false };
   renderTodos(day);
   await saveDay(key, day);
 }
@@ -989,23 +990,24 @@ function renderTodos(day) {
   const recHtml = recs.map(r => {
     const done = !!day.recDone[r.id];
     const cat = catById(r.cat);
-    return `<div class="todo-item ${done ? 'done' : ''}">
+    const borderStyle = shared ? `border-left:3px solid ${memberColor(r.by)}; padding-left:9px;` : '';
+    return `<div class="todo-item ${done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleRecurringDone('${r.id}', this.checked)">
       <span class="txt">${esc(r.text)}</span>
       <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+      ${authorChip(r.by)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
       <span class="by" title="반복 할 일">🔁</span>
     </div>`;
   }).join('');
 
   const todoHtml = todos.map(t => {
-    const byName = shared && spaceData.memberProfiles && spaceData.memberProfiles[t.by]
-      ? `<span class="by">${esc(spaceData.memberProfiles[t.by].name.split(' ')[0])}</span>` : '';
     const cat = catById(t.cat);
-    return `<div class="todo-item ${t.done ? 'done' : ''}">
+    const borderStyle = shared ? `border-left:3px solid ${memberColor(t.by)}; padding-left:9px;` : '';
+    return `<div class="todo-item ${t.done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', this.checked)">
       <span class="txt">${esc(t.text)}</span>
       <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-      ${byName}
+      ${authorChip(t.by)}${doneByChip(t)}
       <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
     </div>`;
   }).join('');
@@ -1014,6 +1016,29 @@ function renderTodos(day) {
 }
 
 function isShared() { return spaceData && (spaceData.members || []).length > 1; }
+
+// ── 멤버별 색상 구분 ──
+const MEMBER_COLORS = ['#1565c0', '#c2185b', '#2e7d32', '#f57c00', '#6a4fb6', '#00838f'];
+function memberColor(uid) {
+  const idx = ((spaceData && spaceData.members) || []).indexOf(uid);
+  return MEMBER_COLORS[(idx >= 0 ? idx : 0) % MEMBER_COLORS.length];
+}
+function memberFirstName(uid) {
+  const p = spaceData && spaceData.memberProfiles && spaceData.memberProfiles[uid];
+  return p ? p.name.split(' ')[0] : '멤버';
+}
+// 작성자 표시 칩 (공유 중일 때만)
+function authorChip(uid) {
+  if (!isShared() || !uid) return '';
+  const c = memberColor(uid);
+  return `<span class="by" style="color:${c}; border-color:${c};">● ${esc(memberFirstName(uid))}</span>`;
+}
+// 완료자 표시 칩 (작성자와 다른 사람이 완료했을 때)
+function doneByChip(t) {
+  if (!isShared() || !t.done || !t.doneBy || t.doneBy === t.by) return '';
+  const c = memberColor(t.doneBy);
+  return `<span class="by" style="color:${c}; border-color:${c};" title="완료한 사람">✓ ${esc(memberFirstName(t.doneBy))}</span>`;
+}
 
 function renderMembers() {
   const box = document.getElementById('memberChips');
@@ -1025,7 +1050,8 @@ function renderMembers() {
     const p = profiles[uid] || { name: '멤버', photo: '' };
     const img = p.photo ? `<img src="${esc(p.photo)}" alt="" referrerpolicy="no-referrer">` : '👤';
     const me = currentUser && uid === currentUser.uid ? ' (나)' : '';
-    return `<span class="member-chip">${img} ${esc(p.name)}${me}</span>`;
+    const dot = isShared() ? `<span style="width:9px; height:9px; border-radius:50%; background:${memberColor(uid)}; display:inline-block;"></span>` : '';
+    return `<span class="member-chip">${dot}${img} ${esc(p.name)}${me}</span>`;
   }).join('');
 }
 
@@ -1096,10 +1122,12 @@ function openDayDetail(key) {
   // 일반 할 일: 체크·수정·삭제 / 반복 할 일: 체크만 (규칙 관리는 🔁 반복 패널에서)
   const todoItem = t => {
     const cat = catById(t.cat);
-    return `<div class="dm-item ${t.done ? 'done' : ''}">
+    const borderStyle = isShared() ? `border-left:3px solid ${memberColor(t.by)}; padding-left:9px;` : '';
+    return `<div class="dm-item ${t.done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="mToggleTodo('${t.id}', this.checked)">
       <span class="dm-txt">${esc(t.text)}</span>
       <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+      ${authorChip(t.by)}${doneByChip(t)}
       <button class="del" onclick="mEditTodo('${t.id}')" title="수정">✏️</button>
       <button class="del" onclick="mDeleteTodo('${t.id}')" title="삭제">✕</button>
     </div>`;
@@ -1107,10 +1135,12 @@ function openDayDetail(key) {
   const recItem = r => {
     const done = !!day.recDone[r.id];
     const cat = catById(r.cat);
-    return `<div class="dm-item ${done ? 'done' : ''}">
+    const borderStyle = isShared() ? `border-left:3px solid ${memberColor(r.by)}; padding-left:9px;` : '';
+    return `<div class="dm-item ${done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${done ? 'checked' : ''} onchange="mToggleRec('${r.id}', this.checked)">
       <span class="dm-txt">${esc(r.text)}</span>
       <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+      ${authorChip(r.by)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
       <span title="반복 할 일">🔁</span>
     </div>`;
   };
@@ -1181,7 +1211,7 @@ async function mDeleteTodo(id) {
 
 async function mToggleRec(id, checked) {
   const day = getDay(modalKey);
-  day.recDone = { ...day.recDone, [id]: checked };
+  day.recDone = { ...day.recDone, [id]: checked ? currentUser.uid : false };
   if (spaceData.days && spaceData.days[modalKey]) spaceData.days[modalKey].recDone = day.recDone;
   refreshModal(true); renderAll();
   await saveDay(modalKey, day);
