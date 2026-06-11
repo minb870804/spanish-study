@@ -596,14 +596,16 @@ async function deleteTodo(id) {
 }
 
 // 메모: 입력 1초 후 자동 저장 (디바운스)
+// 날짜와 내용은 입력 시점에 캡처한다 — 저장 전에 날짜를 이동해도 원래 날짜에 저장되도록
 let noteTimer = null;
 function onNoteInput() {
   document.getElementById('noteSaveHint').textContent = '입력 중…';
+  const key = dateKey(selectedDate);
+  const val = document.getElementById('noteArea').value;
   clearTimeout(noteTimer);
   noteTimer = setTimeout(async () => {
-    const key = dateKey(selectedDate);
     const day = getDay(key);
-    day.note = document.getElementById('noteArea').value;
+    day.note = val;
     await saveDay(key, day);
     document.getElementById('noteSaveHint').textContent = '✅ 자동 저장됨';
   }, 1000);
@@ -676,7 +678,7 @@ function renderMembers() {
   box.innerHTML = (spaceData.members || []).map(uid => {
     const p = profiles[uid] || { name: '멤버', photo: '' };
     const img = p.photo ? `<img src="${esc(p.photo)}" alt="" referrerpolicy="no-referrer">` : '👤';
-    const me = uid === currentUser.uid ? ' (나)' : '';
+    const me = currentUser && uid === currentUser.uid ? ' (나)' : '';
     return `<span class="member-chip">${img} ${esc(p.name)}${me}</span>`;
   }).join('');
 }

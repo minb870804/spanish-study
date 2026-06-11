@@ -388,7 +388,18 @@ function renderMoodRow() {
 }
 function pickMood(m) { selectedMood = m; renderMoodRow(); }
 
+// 저장 안 한 일기 내용이 있는지 확인
+function isDirty() {
+  const cur = document.getElementById('diaryArea').value.trim();
+  const saved = (diary[editingKey] && diary[editingKey].text || '').trim();
+  return cur !== saved;
+}
+
 function loadEntry(key) {
+  if (key !== editingKey && isDirty() && !confirm('저장하지 않은 일기 내용이 있어요.\n저장 없이 이동하면 사라집니다. 이동할까요?')) {
+    document.getElementById('entryDate').value = editingKey; // 날짜 선택을 원래대로 되돌림
+    return;
+  }
   editingKey = key;
   const e = diary[key];
   document.getElementById('entryDate').value = key;
