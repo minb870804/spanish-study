@@ -334,6 +334,23 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 async function loginWithGoogle() {
+  // iOS/Android 앱(Capacitor)에서는 네이티브 구글 로그인을 사용한다
+  // (웹뷰에서는 구글이 OAuth 팝업을 차단하기 때문)
+  const cap = window.Capacitor;
+  if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
+    try {
+      const result = await cap.Plugins.FirebaseAuthentication.signInWithGoogle();
+      const idToken = result.credential && result.credential.idToken;
+      const accessToken = result.credential && result.credential.accessToken;
+      if (!idToken) throw new Error('네이티브 로그인에서 토큰을 받지 못했습니다.');
+      const credential = firebase.auth.GoogleAuthProvider.credential(idToken, accessToken || null);
+      await auth.signInWithCredential(credential);
+    } catch (e) {
+      console.error('네이티브 로그인 에러:', e);
+      alert('구글 로그인 중 문제가 발생했습니다.\n' + (e.message || e));
+    }
+    return;
+  }
   const provider = new firebase.auth.GoogleAuthProvider();
   try { await auth.signInWithPopup(provider); }
   catch (e) { console.error('로그인 에러:', e); alert(`구글 로그인 중 문제가 발생했습니다.\n코드: ${e.code}\n메시지: ${e.message}`); }

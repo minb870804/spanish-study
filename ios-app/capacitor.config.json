@@ -1,0 +1,25 @@
+{
+  "appId": "com.minb.myhome",
+  "appName": "마이홈",
+  "webDir": "www",
+  "server": {
+    "url": "https://minb87.vercel.app",
+    "allowNavigation": [
+      "minb87.vercel.app",
+      "spanish-study-rouge.vercel.app",
+      "*.firebaseapp.com",
+      "*.googleapis.com",
+      "accounts.google.com",
+      "www.nexusbook.com"
+    ]
+  },
+  "ios": {
+    "contentInset": "always"
+  },
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": ["google.com"]
+    }
+  }
+}

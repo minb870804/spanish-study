@@ -1,3 +1,6 @@
 .vercel
 .claude/
 firebase-debug.log
+ios-app/node_modules/
+ios-app/ios/App/App/public/
+ios-app/ios/DerivedData/
