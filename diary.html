@@ -2,7 +2,15 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- PWA: 홈 화면에 추가하면 전체화면 앱으로 실행 -->
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#533c94">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="일기장">
 <title>일기장 | 마이홈</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -318,6 +326,14 @@ function todayKey() { const d = new Date(); return `${d.getFullYear()}-${String(
 // ══════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════
+// 리다이렉트 로그인 복귀 시 에러 표면화 (정상 로그인은 onAuthStateChanged가 처리)
+auth.getRedirectResult().catch(e => {
+  if (e && e.code && e.code !== 'auth/no-auth-event') {
+    console.error('리다이렉트 로그인 에러:', e);
+    alert('구글 로그인 중 문제가 발생했습니다.\n코드: ' + e.code + '\n메시지: ' + e.message);
+  }
+});
+
 auth.onAuthStateChanged(async (user) => {
   if (user) {
     currentUser = user;
@@ -352,8 +368,19 @@ async function loginWithGoogle() {
     return;
   }
   const provider = new firebase.auth.GoogleAuthProvider();
-  try { await auth.signInWithPopup(provider); }
-  catch (e) { console.error('로그인 에러:', e); alert(`구글 로그인 중 문제가 발생했습니다.\n코드: ${e.code}\n메시지: ${e.message}`); }
+  // 홈 화면 앱(PWA standalone)에서는 팝업이 막히므로 리다이렉트로 로그인
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  try {
+    if (standalone) { await auth.signInWithRedirect(provider); return; }
+    await auth.signInWithPopup(provider);
+  } catch (e) {
+    // 팝업이 차단되면 리다이렉트로 자동 전환
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment' || e.code === 'auth/cancelled-popup-request') {
+      try { await auth.signInWithRedirect(provider); return; } catch (e2) { e = e2; }
+    }
+    console.error('로그인 에러:', e);
+    alert(`구글 로그인 중 문제가 발생했습니다.\n코드: ${e.code}\n메시지: ${e.message}`);
+  }
 }
 async function logout() {
   if (confirm('로그아웃 하시겠습니까?')) { await auth.signOut(); location.reload(); }

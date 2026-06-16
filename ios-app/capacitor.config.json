@@ -1,6 +1,6 @@
 {
   "appId": "com.minb.myhome",
-  "appName": "마이홈",
+  "appName": "Minb",
   "webDir": "www",
   "server": {
     "url": "https://minb87.vercel.app",

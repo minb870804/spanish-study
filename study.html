@@ -2,7 +2,15 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- PWA: 홈 화면에 추가하면 전체화면 앱으로 실행 -->
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#a82525">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="스페인어">
 <title>스페인어 첫걸음 | 스터디 홈페이지</title>
 <!-- Google Fonts: Outfit (영문/숫자), Noto Sans KR (한국어) 연동 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1178,6 +1186,14 @@ const db = firebase.firestore();
 let currentUser = null;
 
 // 실시간 로그인 상태 변화 리스너 감지
+// 리다이렉트 로그인 복귀 시 에러 표면화 (정상 로그인은 onAuthStateChanged가 처리)
+auth.getRedirectResult().catch(e => {
+  if (e && e.code && e.code !== 'auth/no-auth-event') {
+    console.error('리다이렉트 로그인 에러:', e);
+    alert('구글 로그인 중 문제가 발생했습니다.\n코드: ' + e.code + '\n메시지: ' + e.message);
+  }
+});
+
 auth.onAuthStateChanged(async (user) => {
   if (user) {
     currentUser = user;
@@ -1216,9 +1232,15 @@ async function loginWithGoogle() {
     return;
   }
   const provider = new firebase.auth.GoogleAuthProvider();
+  // 홈 화면 앱(PWA standalone)에서는 팝업이 막히므로 리다이렉트로 로그인
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   try {
+    if (standalone) { await auth.signInWithRedirect(provider); return; }
     await auth.signInWithPopup(provider);
   } catch (error) {
+    if (error.code === 'auth/popup-blocked' || error.code === 'auth/operation-not-supported-in-this-environment' || error.code === 'auth/cancelled-popup-request') {
+      try { await auth.signInWithRedirect(provider); return; } catch (e2) { error = e2; }
+    }
     console.error('로그인 에러:', error);
     alert(`구글 로그인 중 문제가 발생했습니다.\n\n[오류 세부 정보]\n코드: ${error.code}\n메시지: ${error.message}\n\n도메인 제한 오류(auth/unauthorized-domain)인 경우 Firebase 콘솔에서 승인된 도메인으로 추가해 주세요.`);
   }
