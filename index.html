@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#283593">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Minb">
-<title>마이홈 | 나의 대시보드</title>
+<title>Minb | 나의 대시보드</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -120,8 +120,16 @@
     transition: var(--transition);
   }
   .card-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .grid-2 { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 18px; margin-bottom: 18px; }
-  @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+  .dashboard-grid {
+    display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 18px; margin-bottom: 18px;
+    grid-template-areas:
+      "quick quick"
+      "content side";
+  }
+  .cat-grid { grid-area: quick; }
+  .content-col { grid-area: content; }
+  .side-col { grid-area: side; }
+  .content-col > .card + .card, .side-col > .card + .card { margin-top: 18px; }
 
   @keyframes fadeIn { from { opacity:0; transform: translateY(8px);} to {opacity:1; transform:translateY(0);} }
   .fade { animation: fadeIn 0.4s ease; }
@@ -171,6 +179,24 @@
   }
   .todo-input-row textarea { resize: vertical; min-height: 42px; line-height: 1.6; }
   .todo-input-row input:focus, .todo-input-row textarea:focus { border-color: var(--blue); }
+  .reminder-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: -2px 0 12px; }
+  .reminder-field {
+    display: inline-flex; align-items: center; gap: 8px; background: var(--bg);
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 7px 10px;
+    font-size: 12px; font-weight: 800; color: var(--muted);
+  }
+  .reminder-field input {
+    border: none; background: transparent; color: var(--text); font-family: inherit;
+    font-size: 13px; font-weight: 700; outline: none;
+  }
+  body.dark .reminder-field input { color-scheme: dark; }
+  .reminder-status { font-size: 11px; color: var(--muted); font-weight: 700; }
+  .reminder-chip {
+    background: var(--yellow); color: #3c2f00; border: none; border-radius: 10px;
+    padding: 2px 8px; font-size: 11px; font-weight: 800; white-space: nowrap;
+    cursor: pointer; font-family: inherit;
+  }
+  .reminder-chip.sent { background: var(--green-light); color: var(--green); cursor: default; }
 
   /* ── 할 일 카테고리 chips ── */
   .tcat-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
@@ -207,13 +233,27 @@
   .mcal-day.empty { border: none; cursor: default; box-shadow: none; }
   .mcal-day.today { border-color: var(--blue); background: var(--blue-light); }
   .mcal-day.sel { outline: 2px solid var(--blue); }
+  .mcal-day.drop-target { outline: 2px dashed var(--blue); background: var(--blue-light); }
+  .mcal-day.is-drag-source { opacity: 0.55; }
   .mcal-num { font-weight: 800; font-size: 11px; }
   .mcal-day.sun .mcal-num { color: var(--red); }
   .mcal-day.sat .mcal-num { color: var(--blue); }
-  .mcal-tag { border-radius: 5px; padding: 0 4px; line-height: 1.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
+  .mcal-tag {
+    border-radius: 5px; padding: 0 4px; line-height: 1.6; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; font-weight: 700;
+  }
+  .mcal-tag[role="button"] { cursor: grab; touch-action: none; user-select: none; }
+  .mcal-tag[role="button"]:active { cursor: grabbing; }
   .mcal-tag.t-todo { background: var(--red-light); color: var(--red); }
   .mcal-tag.t-done { background: var(--green-light); color: var(--green); }
   .mcal-tag.t-note { background: var(--blue-light); color: var(--blue); }
+  .mcal-more { font-size: 9px; color: var(--muted); font-weight: 800; padding-left: 2px; }
+  .month-drag-ghost {
+    position: fixed; z-index: 3000; pointer-events: none; max-width: 180px;
+    border-radius: 8px; padding: 4px 8px; background: var(--dark); color: var(--card);
+    font-size: 12px; font-weight: 800; box-shadow: 0 10px 24px rgba(0,0,0,0.24);
+    transform: translate(-50%, -50%);
+  }
 
   /* ── 날짜 상세 모달 ── */
   #dayModal {
@@ -322,6 +362,62 @@
   }
   body.dark #toast { background: #e1e1e6; color: #1e1e24; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 760px) {
+    header { position: sticky; }
+    .header-top { padding: 10px 14px; gap: 8px; }
+    .logo { gap: 8px; }
+    .logo-flag { font-size: 24px; }
+    .logo-text h1 { font-size: 16px; }
+    .logo-text p { display: none; }
+    .header-right { gap: 6px; }
+    .hbtn { padding: 5px 10px; font-size: 11px; }
+    main { margin: 12px auto 20px; padding: 0 10px; }
+    .hero { padding: 14px; margin-bottom: 12px; border-radius: 12px; gap: 10px; }
+    .hero h2 { font-size: 18px; }
+    .hero .sub { display: none; }
+    .date-nav { width: 100%; gap: 6px; }
+    .date-nav input[type="date"] { flex: 1; min-width: 0; }
+    .dashboard-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+    .content-col, .side-col { display: contents; }
+    .calendar-card { order: 1; }
+    .cat-grid { order: 2; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 0; }
+    .todo-card { order: 3; }
+    .note-card { order: 4; }
+    .share-card { order: 5; }
+    .content-col > .card + .card, .side-col > .card + .card { margin-top: 0; }
+    .card { padding: 14px; border-radius: 12px; }
+    .card-title { font-size: 14px; margin-bottom: 10px; align-items: flex-start; }
+    .cat-card { padding: 10px 6px; gap: 4px; min-height: 76px; border-radius: 12px; align-items: center; text-align: center; justify-content: center; }
+    .cat-card .icon { font-size: 22px; }
+    .cat-card .name { font-size: 11.5px; line-height: 1.25; word-break: keep-all; overflow-wrap: anywhere; }
+    .cat-card .desc { display: none !important; }
+    .todo-input-row { gap: 6px; align-items: stretch; }
+    .todo-input-row textarea { min-height: 38px; max-height: 78px; padding: 9px 10px; font-size: 13px; }
+    .add-btn { padding: 9px 12px; }
+    .reminder-row { gap: 6px; margin-bottom: 10px; }
+    .reminder-field { flex: 1 1 auto; min-width: 145px; padding: 7px 9px; }
+    .reminder-status { flex: 1 1 100%; }
+    .tcat-row { margin-bottom: 10px; gap: 5px; }
+    .tcat-chip { padding: 4px 9px; font-size: 11px; }
+    .todo-item { gap: 7px; padding: 8px 2px; font-size: 13px; }
+    .todo-item .by { display: none; }
+    .note-area { min-height: 86px; font-size: 13.5px; }
+    .mcal-grid { gap: 3px; }
+    .mcal-dow { font-size: 10px; padding: 2px 0; }
+    .mcal-day { min-height: 54px; padding: 3px; border-radius: 7px; gap: 1px; }
+    .mcal-num { font-size: 10px; }
+    .mcal-tag { font-size: 9.5px; line-height: 1.45; padding: 0 3px; }
+    .calendar-legend { display: none !important; }
+    .invite-code-box { padding: 10px 12px; }
+    .invite-code-box .code { font-size: 17px; letter-spacing: 3px; }
+    .join-row { flex-direction: column; }
+  }
+
+  @media (max-width: 380px) {
+    .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cat-card { min-height: 62px; }
+  }
 </style>
 </head>
 <body>
@@ -330,7 +426,7 @@
 <div id="loginOverlay" style="display:none;">
   <div class="login-card">
     <div style="font-size: 60px; margin-bottom: 20px;">🏠</div>
-    <h2 style="font-size: 22px; font-weight: 900; margin-bottom: 8px; color: var(--dark);">마이홈 대시보드</h2>
+    <h2 style="font-size: 22px; font-weight: 900; margin-bottom: 8px; color: var(--dark);">Minb 대시보드</h2>
     <p style="font-size: 13.5px; color: var(--muted); margin-bottom: 28px; line-height: 1.6;">
       할 일·일기·스터디 기록을 어디서나 동기화하고,<br>소중한 사람과 공유하려면 구글 로그인이 필요해요.
     </p>
@@ -346,7 +442,7 @@
     <div class="logo">
       <span class="logo-flag">🏠</span>
       <div class="logo-text">
-        <h1>마이홈</h1>
+        <h1>Minb</h1>
         <p>나의 하루를 한곳에서 — 할 일 · 스터디 · 일기</p>
       </div>
     </div>
@@ -376,6 +472,7 @@
     </div>
   </div>
 
+  <div class="dashboard-grid">
   <!-- 카테고리 -->
   <div class="cat-grid">
     <a class="cat-card" href="study.html">
@@ -401,10 +498,9 @@
     </div>
   </div>
 
-  <div class="grid-2">
     <!-- 할 일 / 한 일 -->
-    <div>
-      <div class="card" style="margin-bottom: 18px;">
+    <div class="content-col">
+      <div class="card todo-card">
         <div class="card-title">
           <span>✅ <span id="todoDateLabel">오늘</span>의 할 일</span>
           <span style="display:flex; gap:8px; align-items:center;">
@@ -416,6 +512,14 @@
           <textarea id="todoInput" rows="1" placeholder="할 일 입력 — 여러 줄을 붙여넣으면 줄마다 따로 추가돼요 (Ctrl/⌘+Enter 추가)"
             onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();addTodo();}"></textarea>
           <button class="add-btn" onclick="addTodo()">추가</button>
+        </div>
+        <div class="reminder-row">
+          <label class="reminder-field">
+            <span>🔔 알림</span>
+            <input type="time" id="reminderTimeInput" aria-label="할 일 알림 시간">
+          </label>
+          <button class="small-btn" id="pushEnableBtn" onclick="requestPushPermission()">알림 허용</button>
+          <span class="reminder-status" id="pushStatus">알림 꺼짐</span>
         </div>
         <div class="tcat-row" id="tcatRow"></div>
 
@@ -442,7 +546,7 @@
         <div id="todoList"></div>
       </div>
 
-      <div class="card">
+      <div class="card note-card">
         <div class="card-title"><span>🌙 오늘 한 일 · 하루 메모</span></div>
         <textarea id="noteArea" class="note-area" placeholder="계획에 없었지만 해낸 일, 오늘의 기록을 자유롭게 적어보세요." oninput="onNoteInput()"></textarea>
         <div class="save-hint" id="noteSaveHint">&nbsp;</div>
@@ -450,8 +554,8 @@
     </div>
 
     <!-- 공유 -->
-    <div>
-      <div class="card" style="margin-bottom: 18px;">
+    <div class="side-col">
+      <div class="card share-card">
         <div class="card-title"><span>👥 함께 쓰는 사람</span></div>
         <div class="member-chips" id="memberChips"></div>
         <div class="share-desc">
@@ -470,7 +574,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card calendar-card">
         <div class="card-title">
           <span>📆 월간 달력</span>
           <span style="display:flex; gap:8px; align-items:center;">
@@ -480,7 +584,7 @@
           </span>
         </div>
         <div id="monthCal"></div>
-        <div style="display:flex; gap:10px; margin-top:10px; font-size:11px; color:var(--muted); flex-wrap:wrap;">
+        <div class="calendar-legend" style="display:flex; gap:10px; margin-top:10px; font-size:11px; color:var(--muted); flex-wrap:wrap;">
           <span><span class="mcal-tag t-todo">할 일</span> 남은 할 일</span>
           <span><span class="mcal-tag t-done">한 일</span> 완료</span>
           <span><span class="mcal-tag t-note">메모</span> 메모 있음</span>
@@ -527,10 +631,20 @@ let currentUser = null;
 let spaceId = null;
 let spaceData = null;       // 실시간 스냅샷 데이터
 let unsubSpace = null;
-let selectedDate = new Date();
+let selectedDate = initialSelectedDate();
 
 const DAYS_KO = ['일','월','화','수','목','금','토'];
 const dateKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const VAPID_PUBLIC_KEY = 'BCPdp5SbsCG0ovPsD6DSZmIpa3ZzMFpgoXIJ3T82a9UOZOp1mt-3LGsdC4UHnhhdsk7DV_rKxDFzp9gNOH7F7NA';
+
+function initialSelectedDate() {
+  const param = new URLSearchParams(location.search).get('date');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(param || '')) {
+    const [y, m, d] = param.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return new Date();
+}
 
 // ══════════════════════════════════════
 // AUTH
@@ -550,11 +664,18 @@ auth.onAuthStateChanged(async (user) => {
     document.getElementById('userProfile').style.display = 'flex';
     document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
     await ensureSpace();
+    try {
+      await syncPushSubscriptionIfAllowed();
+    } catch (e) {
+      console.warn('알림 구독 동기화 실패:', e);
+    }
+    updatePushStatus();
   } else {
     currentUser = null;
     document.getElementById('loginOverlay').style.display = 'flex';
     document.getElementById('userProfile').style.display = 'none';
     if (unsubSpace) { unsubSpace(); unsubSpace = null; }
+    updatePushStatus();
   }
 });
 
@@ -707,6 +828,203 @@ async function leaveSpace() {
 function copyCode() {
   if (!spaceId) return;
   navigator.clipboard.writeText(spaceId).then(() => toast('📋 초대 코드가 복사됐어요! 함께 쓸 사람에게 보내주세요.'));
+}
+
+// ══════════════════════════════════════
+// PUSH REMINDERS
+// ══════════════════════════════════════
+function pushSupported() {
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(ch => ch.charCodeAt(0)));
+}
+
+async function hashText(text) {
+  const bytes = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function getReminderWorkerRegistration() {
+  if (!pushSupported()) throw new Error('이 브라우저는 푸시 알림을 지원하지 않습니다.');
+  return navigator.serviceWorker.register('/sw.js');
+}
+
+async function savePushSubscription(subscription) {
+  if (!currentUser) return false;
+  const data = subscription.toJSON();
+  const endpointHash = await hashText(data.endpoint);
+  await db.collection('users').doc(currentUser.uid).set({
+    pushTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul',
+    pushUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  await db.collection('users').doc(currentUser.uid).update({
+    [`pushSubscriptions.${endpointHash}`]: {
+      endpoint: data.endpoint,
+      keys: data.keys,
+      userAgent: navigator.userAgent,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }
+  });
+  return true;
+}
+
+async function syncPushSubscriptionIfAllowed() {
+  if (!currentUser || !pushSupported() || Notification.permission !== 'granted') return false;
+  const reg = await getReminderWorkerRegistration();
+  const sub = await reg.pushManager.getSubscription();
+  if (!sub) return false;
+  await savePushSubscription(sub);
+  return true;
+}
+
+async function requestPushPermission() {
+  const status = document.getElementById('pushStatus');
+  try {
+    if (!pushSupported()) {
+      if (status) status.textContent = '이 브라우저는 알림 미지원';
+      toast('이 브라우저에서는 알림을 사용할 수 없어요.');
+      return false;
+    }
+    if (!currentUser) {
+      toast('로그인 후 알림을 켤 수 있어요.');
+      return false;
+    }
+    const permission = Notification.permission === 'granted'
+      ? 'granted'
+      : await Notification.requestPermission();
+    if (permission !== 'granted') {
+      if (status) status.textContent = '알림 권한 필요';
+      toast('알림 권한을 허용해야 할 일 알림을 받을 수 있어요.');
+      return false;
+    }
+    const reg = await getReminderWorkerRegistration();
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    await savePushSubscription(sub);
+    updatePushStatus('알림 켜짐');
+    toast('🔔 할 일 알림이 켜졌어요!');
+    return true;
+  } catch (e) {
+    console.error('알림 등록 실패:', e);
+    if (status) status.textContent = '알림 등록 실패';
+    toast('알림 등록에 실패했어요. 배포 주소와 브라우저 권한을 확인해 주세요.');
+    return false;
+  }
+}
+
+function updatePushStatus(text) {
+  const status = document.getElementById('pushStatus');
+  const btn = document.getElementById('pushEnableBtn');
+  if (!status || !btn) return;
+  if (!pushSupported()) {
+    status.textContent = '알림 미지원';
+    btn.disabled = true;
+    return;
+  }
+  if (text) {
+    status.textContent = text;
+    btn.textContent = text === '알림 켜짐' ? '알림 재등록' : '알림 허용';
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    status.textContent = '알림 켜짐';
+    btn.textContent = '알림 재등록';
+  } else if (Notification.permission === 'denied') {
+    status.textContent = '브라우저 설정에서 허용 필요';
+    btn.textContent = '알림 차단됨';
+  } else {
+    status.textContent = '알림 꺼짐';
+    btn.textContent = '알림 허용';
+  }
+}
+
+function reminderDateFromTime(key, time) {
+  if (!time) return null;
+  const [y, m, d] = key.split('-').map(Number);
+  const [hh, mm] = time.split(':').map(Number);
+  return new Date(y, m - 1, d, hh, mm || 0, 0, 0);
+}
+
+function buildReminderFields(key, time) {
+  if (!time) return {};
+  const remindAt = reminderDateFromTime(key, time);
+  if (!remindAt || Number.isNaN(remindAt.getTime())) return {};
+  if (remindAt.getTime() <= Date.now()) {
+    toast('현재보다 미래 시간으로 알림을 설정해 주세요.');
+    return null;
+  }
+  return {
+    reminderTime: time,
+    remindAtMs: remindAt.getTime(),
+    reminderSentAt: null,
+    reminderSkippedAt: null
+  };
+}
+
+function formatReminder(todo) {
+  if (!todo.remindAtMs) return '';
+  const d = new Date(todo.remindAtMs);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function reminderChip(todo, key = dateKey(selectedDate), refreshModalAfter = false) {
+  if (!todo.remindAtMs) return '';
+  if (todo.reminderSentAt) return '<span class="reminder-chip sent">🔔 완료</span>';
+  return `<button class="reminder-chip" onclick="setTodoReminderForKey('${key}', '${todo.id}', ${refreshModalAfter})" title="알림 시간 변경">🔔 ${formatReminder(todo)}</button>`;
+}
+
+function rebaseTodoReminder(todo, targetKey) {
+  if (!todo.reminderTime) return;
+  const remindAt = reminderDateFromTime(targetKey, todo.reminderTime);
+  if (!remindAt) return;
+  todo.remindAtMs = remindAt.getTime();
+  todo.reminderSentAt = null;
+  todo.reminderSkippedAt = null;
+}
+
+async function setTodoReminderForKey(key, id, refreshModalAfter = false) {
+  const day = getDay(key);
+  const t = day.todos.find(todo => todo.id === id);
+  if (!t) return;
+  const current = t.reminderTime || '';
+  const value = prompt('알림 시간을 입력하세요 (예: 09:30). 비워두면 알림이 삭제됩니다.', current);
+  if (value === null) return;
+  const time = value.trim();
+  if (!time) {
+    delete t.reminderTime;
+    delete t.remindAtMs;
+    delete t.reminderSentAt;
+    delete t.reminderSkippedAt;
+  } else if (/^\d{1,2}:\d{2}$/.test(time)) {
+    const normalized = time.split(':').map((v, i) => String(Math.min(i === 0 ? 23 : 59, Number(v))).padStart(2, '0')).join(':');
+    const fields = buildReminderFields(key, normalized);
+    if (fields === null) return;
+    Object.assign(t, fields);
+    await requestPushPermission();
+  } else {
+    toast('시간은 09:30처럼 입력해 주세요.');
+    return;
+  }
+  setDayLocal(key, day);
+  renderAll();
+  if (refreshModalAfter) refreshModal(true);
+  await saveDay(key, day);
+}
+
+function editTodoReminder(id) {
+  setTodoReminderForKey(dateKey(selectedDate), id);
 }
 
 // ══════════════════════════════════════
@@ -911,20 +1229,34 @@ async function applyCatChange(catId) {
 
 async function addTodo() {
   const input = document.getElementById('todoInput');
+  const reminderInput = document.getElementById('reminderTimeInput');
   // 여러 줄 입력 지원: 줄마다 별도의 할 일로 추가
   const lines = input.value.split('\n').map(l => l.trim()).filter(Boolean);
   if (!lines.length || !spaceData) return;
-  input.value = '';
   const key = dateKey(selectedDate);
+  const reminderFields = buildReminderFields(key, reminderInput ? reminderInput.value : '');
+  if (reminderFields === null) return;
+  if (reminderFields.remindAtMs) await requestPushPermission();
+
+  input.value = '';
+  if (reminderInput) reminderInput.value = '';
   const day = getDay(key);
   const base = Date.now();
   lines.forEach((text, i) => {
-    day.todos.push({ id: (base + i).toString(36), text, done: false, by: currentUser.uid, cat: selectedTodoCat });
+    day.todos.push({
+      id: (base + i).toString(36),
+      text,
+      done: false,
+      by: currentUser.uid,
+      cat: selectedTodoCat,
+      ...reminderFields
+    });
   });
   renderTodos(day); // 낙관적 렌더링
   renderMonthCal();
   await saveDay(key, day);
   if (lines.length > 1) toast(`✅ 할 일 ${lines.length}개가 추가됐어요!`);
+  else if (reminderFields.remindAtMs) toast('✅ 할 일과 알림이 추가됐어요!');
 }
 
 async function toggleTodo(id, checked) {
@@ -1032,7 +1364,9 @@ function renderTodos(day) {
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', this.checked)">
       <span class="txt">${esc(t.text)}</span>
       <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+      ${reminderChip(t)}
       ${authorChip(t.by)}${doneByChip(t)}
+      <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
       <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
     </div>`;
   }).join('');
@@ -1093,6 +1427,37 @@ function dayCounts(d) {
 
 function moveCalMonth(delta) { calMonth.setMonth(calMonth.getMonth() + delta); renderMonthCal(); }
 
+function calendarDragAttrs(kind, key, id = '') {
+  return `role="button" tabindex="0" onpointerdown="startMonthItemDrag(event, '${key}', '${kind}', '${id}')" title="드래그해서 다른 날짜로 이동"`;
+}
+
+function renderCalendarTags(key, dateObj) {
+  const day = getDay(key);
+  const tags = [];
+  const previewTodos = day.todos.slice(0, 2);
+
+  previewTodos.forEach(t => {
+    const cls = t.done ? 't-done' : 't-todo';
+    const prefix = t.done ? '✓ ' : '';
+    tags.push(`<span class="mcal-tag ${cls}" ${calendarDragAttrs('todo', key, t.id)}>${esc(prefix + t.text)}</span>`);
+  });
+
+  if (day.todos.length > previewTodos.length) {
+    tags.push(`<span class="mcal-more">+${day.todos.length - previewTodos.length}</span>`);
+  }
+
+  const recCount = getRecurringFor(dateObj).length;
+  if (!day.todos.length && recCount) {
+    tags.push(`<span class="mcal-tag t-todo" title="반복 할 일">반복 ${recCount}</span>`);
+  }
+
+  if (day.note) {
+    tags.push(`<span class="mcal-tag t-note" ${calendarDragAttrs('note', key)}>메모</span>`);
+  }
+
+  return tags.join('');
+}
+
 function renderMonthCal() {
   const box = document.getElementById('monthCal');
   if (!box) return;
@@ -1109,21 +1474,159 @@ function renderMonthCal() {
   for (let dd = 1; dd <= total; dd++) {
     const d = new Date(y, m, dd);
     const key = dateKey(d);
-    const c = dayCounts(d);
     const cls = [
       'mcal-day',
       key === todayK ? 'today' : '',
       key === selK ? 'sel' : '',
       d.getDay() === 0 ? 'sun' : d.getDay() === 6 ? 'sat' : ''
     ].join(' ');
-    let tags = '';
-    if (c.remain) tags += `<span class="mcal-tag t-todo">할일 ${c.remain}</span>`;
-    if (c.done)   tags += `<span class="mcal-tag t-done">한일 ${c.done}</span>`;
-    if (c.hasNote) tags += `<span class="mcal-tag t-note">메모</span>`;
-    html += `<div class="${cls}" onclick="onCalDayClick('${key}')"><span class="mcal-num">${dd}</span>${tags}</div>`;
+    html += `<div class="${cls}" data-date="${key}" onclick="onCalDayClick('${key}')"><span class="mcal-num">${dd}</span>${renderCalendarTags(key, d)}</div>`;
   }
   html += '</div>';
   box.innerHTML = html;
+}
+
+function setDayLocal(key, day) {
+  if (!spaceData) return;
+  if (!spaceData.days) spaceData.days = {};
+  spaceData.days[key] = day;
+}
+
+async function saveMovedDays(sourceKey, sourceDay, targetKey, targetDay) {
+  if (!spaceId) return;
+  try {
+    await db.collection('spaces').doc(spaceId).update({
+      [`days.${sourceKey}`]: sourceDay,
+      [`days.${targetKey}`]: targetDay,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    return true;
+  } catch (e) {
+    console.error('날짜 이동 저장 실패:', e);
+    toast('이동 저장에 실패했어요. 네트워크를 확인해 주세요.');
+    return false;
+  }
+}
+
+async function moveCalendarItem(sourceKey, targetKey, kind, id) {
+  if (!spaceData || !sourceKey || !targetKey || sourceKey === targetKey) return;
+  const sourceDay = getDay(sourceKey);
+  const targetDay = getDay(targetKey);
+
+  if (kind === 'todo') {
+    const idx = sourceDay.todos.findIndex(t => t.id === id);
+    if (idx < 0) return;
+    const [todo] = sourceDay.todos.splice(idx, 1);
+    rebaseTodoReminder(todo, targetKey);
+    targetDay.todos = [...targetDay.todos, todo];
+    setDayLocal(sourceKey, sourceDay);
+    setDayLocal(targetKey, targetDay);
+    renderAll();
+    if (modalKey === sourceKey || modalKey === targetKey) refreshModal(true);
+    if (await saveMovedDays(sourceKey, sourceDay, targetKey, targetDay)) {
+      toast('📆 할 일을 다른 날짜로 옮겼어요!');
+    }
+    return;
+  }
+
+  if (kind === 'note') {
+    const note = sourceDay.note;
+    if (!note) return;
+    if (targetDay.note && !confirm('이동할 날짜에 이미 메모가 있어요. 아래에 이어 붙일까요?')) return;
+    targetDay.note = targetDay.note ? `${targetDay.note.trimEnd()}\n\n${note}` : note;
+    sourceDay.note = '';
+    setDayLocal(sourceKey, sourceDay);
+    setDayLocal(targetKey, targetDay);
+    renderAll();
+    if (modalKey === sourceKey || modalKey === targetKey) refreshModal(true);
+    if (await saveMovedDays(sourceKey, sourceDay, targetKey, targetDay)) {
+      toast('📆 메모를 다른 날짜로 옮겼어요!');
+    }
+  }
+}
+
+let monthDragState = null;
+
+function startMonthItemDrag(event, sourceKey, kind, id = '') {
+  if (!spaceData) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const tag = event.currentTarget;
+  try { tag.setPointerCapture(event.pointerId); } catch (e) {}
+  monthDragState = {
+    sourceKey,
+    kind,
+    id,
+    startX: event.clientX,
+    startY: event.clientY,
+    active: false,
+    label: tag.textContent.trim(),
+    ghost: null,
+    dropEl: null,
+    sourceEl: tag.closest('.mcal-day')
+  };
+  document.addEventListener('pointermove', onMonthItemDragMove);
+  document.addEventListener('pointerup', onMonthItemDragEnd, { once: true });
+  document.addEventListener('pointercancel', cancelMonthItemDrag, { once: true });
+}
+
+function onMonthItemDragMove(event) {
+  if (!monthDragState) return;
+  const dx = event.clientX - monthDragState.startX;
+  const dy = event.clientY - monthDragState.startY;
+  if (!monthDragState.active && Math.hypot(dx, dy) < 6) return;
+  if (!monthDragState.active) {
+    monthDragState.active = true;
+    monthDragState.ghost = document.createElement('div');
+    monthDragState.ghost.className = 'month-drag-ghost';
+    monthDragState.ghost.textContent = monthDragState.kind === 'note' ? '메모' : monthDragState.label;
+    document.body.appendChild(monthDragState.ghost);
+    if (monthDragState.sourceEl) monthDragState.sourceEl.classList.add('is-drag-source');
+  }
+  moveMonthDragGhost(event.clientX, event.clientY);
+  markMonthDropTarget(event.clientX, event.clientY);
+}
+
+function moveMonthDragGhost(x, y) {
+  if (!monthDragState || !monthDragState.ghost) return;
+  monthDragState.ghost.style.left = `${x}px`;
+  monthDragState.ghost.style.top = `${y}px`;
+}
+
+function markMonthDropTarget(x, y) {
+  if (!monthDragState) return;
+  const el = document.elementFromPoint(x, y);
+  const dayEl = el && el.closest ? el.closest('.mcal-day[data-date]') : null;
+  if (monthDragState.dropEl && monthDragState.dropEl !== dayEl) {
+    monthDragState.dropEl.classList.remove('drop-target');
+  }
+  monthDragState.dropEl = dayEl;
+  if (dayEl) dayEl.classList.add('drop-target');
+}
+
+async function onMonthItemDragEnd(event) {
+  if (!monthDragState) return;
+  const state = monthDragState;
+  cleanupMonthItemDrag();
+  if (!state.active) {
+    onCalDayClick(state.sourceKey);
+    return;
+  }
+  const targetKey = state.dropEl && state.dropEl.dataset.date;
+  if (targetKey) await moveCalendarItem(state.sourceKey, targetKey, state.kind, state.id);
+}
+
+function cancelMonthItemDrag() {
+  cleanupMonthItemDrag();
+}
+
+function cleanupMonthItemDrag() {
+  if (!monthDragState) return;
+  document.removeEventListener('pointermove', onMonthItemDragMove);
+  if (monthDragState.ghost) monthDragState.ghost.remove();
+  if (monthDragState.dropEl) monthDragState.dropEl.classList.remove('drop-target');
+  if (monthDragState.sourceEl) monthDragState.sourceEl.classList.remove('is-drag-source');
+  monthDragState = null;
 }
 
 // 달력 클릭 → 해당 날짜 선택 + 상세보기 모달
@@ -1152,7 +1655,9 @@ function openDayDetail(key) {
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="mToggleTodo('${t.id}', this.checked)">
       <span class="dm-txt">${esc(t.text)}</span>
       <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+      ${reminderChip(t, key, true)}
       ${authorChip(t.by)}${doneByChip(t)}
+      <button class="del" onclick="mEditTodoReminder('${t.id}')" title="알림 설정">🔔</button>
       <button class="del" onclick="mEditTodo('${t.id}')" title="수정">✏️</button>
       <button class="del" onclick="mDeleteTodo('${t.id}')" title="삭제">✕</button>
     </div>`;
@@ -1222,6 +1727,10 @@ async function mEditTodo(id) {
   t.text = text;
   refreshModal(true); renderAll();
   await saveDay(modalKey, day);
+}
+
+function mEditTodoReminder(id) {
+  setTodoReminderForKey(modalKey, id, true);
 }
 
 async function mDeleteTodo(id) {

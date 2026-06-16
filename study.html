@@ -587,7 +587,7 @@
       </div>
     </div>
     <div class="header-right">
-      <a href="./" class="nexus-link">🏠 마이홈</a>
+      <a href="./" class="nexus-link">🏠 Minb</a>
       <!-- [신설] 구글 프로필 영역 -->
       <span id="userProfile" class="profile-badge" style="display: none;">
         <span id="userName">👤 로딩중...</span>
@@ -1300,7 +1300,7 @@ async function syncToFirestore() {
       studiedDates: s.studiedDates || [],
       customVocab: s.customVocab || [],
       dailyTasks: s.dailyTasks || {},
-      stats: computeStats(s), // 마이홈 대시보드 표시용 요약
+      stats: computeStats(s), // Minb 대시보드 표시용 요약
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
   } catch (error) {

@@ -1,6 +1,7 @@
 {
   "name": "Minb",
   "short_name": "Minb",
+  "id": "/",
   "description": "나의 하루를 한곳에서 — 할 일 · 스터디 · 일기",
   "start_url": "/",
   "scope": "/",
