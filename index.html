@@ -577,10 +577,8 @@ async function loginWithGoogle() {
     return;
   }
   const provider = new firebase.auth.GoogleAuthProvider();
-  // 홈 화면 앱(PWA standalone)에서는 팝업이 막히므로 리다이렉트로 로그인
-  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  // 팝업 우선 (iOS 홈 화면 앱에서도 팝업이 리다이렉트보다 안정적)
   try {
-    if (standalone) { await auth.signInWithRedirect(provider); return; }
     await auth.signInWithPopup(provider);
   } catch (e) {
     // 팝업이 차단되면 리다이렉트로 자동 전환
