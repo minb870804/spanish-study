@@ -1270,6 +1270,19 @@ async function toggleTodo(id, checked) {
   await saveDay(key, day);
 }
 
+async function editTodo(id) {
+  const key = dateKey(selectedDate);
+  const day = getDay(key);
+  const t = day.todos.find(t => t.id === id);
+  if (!t) return;
+  const text = (prompt('할 일 내용 수정', t.text) || '').trim();
+  if (!text || text === t.text) return;
+  t.text = text;
+  renderTodos(day);
+  renderMonthCal();
+  await saveDay(key, day);
+}
+
 async function deleteTodo(id) {
   const key = dateKey(selectedDate);
   const day = getDay(key);
@@ -1366,6 +1379,7 @@ function renderTodos(day) {
       <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
       ${reminderChip(t)}
       ${authorChip(t.by)}${doneByChip(t)}
+      <button class="del" onclick="editTodo('${t.id}')" title="내용 수정">✏️</button>
       <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
       <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
     </div>`;
@@ -1657,6 +1671,7 @@ function openDayDetail(key) {
       <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
       ${reminderChip(t, key, true)}
       ${authorChip(t.by)}${doneByChip(t)}
+      <button class="del" onclick="moveTodoToDate('${t.id}')" title="다른 날짜로 이동">📅</button>
       <button class="del" onclick="mEditTodoReminder('${t.id}')" title="알림 설정">🔔</button>
       <button class="del" onclick="mEditTodo('${t.id}')" title="수정">✏️</button>
       <button class="del" onclick="mDeleteTodo('${t.id}')" title="삭제">✕</button>
@@ -1731,6 +1746,39 @@ async function mEditTodo(id) {
 
 function mEditTodoReminder(id) {
   setTodoReminderForKey(modalKey, id, true);
+}
+
+// 할 일을 다른 날짜로 이동 — 드래그 대신 클릭(모바일 포함). 네이티브 날짜 선택기 사용, 미지원 시 입력창으로 대체.
+function moveTodoToDate(id) {
+  const sourceKey = modalKey;
+  if (!sourceKey) return;
+  const day = getDay(sourceKey);
+  if (!day.todos.find(t => t.id === id)) return;
+
+  const finish = (targetKey) => {
+    if (!targetKey || targetKey === sourceKey) return;
+    moveCalendarItem(sourceKey, targetKey, 'todo', id);
+  };
+
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.value = sourceKey;
+  input.style.cssText = 'position:fixed; left:50%; top:0; transform:translateX(-50%); opacity:0; width:1px; height:1px; border:0; padding:0;';
+  document.body.appendChild(input);
+  let handled = false;
+  const cleanup = () => setTimeout(() => input.remove(), 0);
+  input.addEventListener('change', () => { handled = true; finish(input.value); cleanup(); });
+  input.addEventListener('blur', cleanup);
+
+  if (typeof input.showPicker === 'function') {
+    try { input.showPicker(); return; } catch (e) {}
+  }
+  // 폴백: 날짜 선택기를 못 띄우는 환경
+  input.remove();
+  const v = (prompt('옮길 날짜를 입력하세요 (예: 2026-06-25)', sourceKey) || '').trim();
+  const m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!m) return;
+  finish(`${m[1]}-${String(+m[2]).padStart(2,'0')}-${String(+m[3]).padStart(2,'0')}`);
 }
 
 async function mDeleteTodo(id) {
