@@ -381,6 +381,11 @@
     font-family: inherit; line-height: 1.7; resize: vertical; outline: none; transition: var(--transition);
   }
   .note-area:focus { border-color: var(--blue); }
+  .memo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .memo-box { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .memo-box-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--text); }
+  .memo-box-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+  .memo-area { min-height: 72px; }
   .save-hint { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: right; }
 
   /* ── SHARE ── */
@@ -482,6 +487,8 @@
     .todo-item .by { display: none; }
     .quick-move-btn { display: none; }
     .note-area { min-height: 86px; font-size: 13.5px; }
+    .memo-grid { grid-template-columns: 1fr; gap: 8px; }
+    .memo-area { min-height: 64px; }
     .mcal-grid { gap: 3px; }
     .mcal-dow { font-size: 10px; padding: 2px 0; }
     .mcal-day { min-height: 54px; padding: 3px; border-radius: 7px; gap: 1px; }
@@ -633,7 +640,24 @@
 
       <div class="card note-card">
         <div class="card-title"><span>🌙 오늘 한 일 · 하루 메모</span></div>
-        <textarea id="noteArea" class="note-area" placeholder="계획에 없었지만 해낸 일, 오늘의 기록을 자유롭게 적어보세요." oninput="onNoteInput()"></textarea>
+        <div class="memo-grid">
+          <div class="memo-box">
+            <label class="memo-box-label" for="homeNote_ex"><span class="memo-box-dot" style="background:#2e7d32;"></span>💪 운동</label>
+            <textarea id="homeNote_ex" class="note-area memo-area" placeholder="운동 관련 기록" oninput="onNoteInput()"></textarea>
+          </div>
+          <div class="memo-box">
+            <label class="memo-box-label" for="homeNote_st"><span class="memo-box-dot" style="background:#1565c0;"></span>📚 자기계발</label>
+            <textarea id="homeNote_st" class="note-area memo-area" placeholder="자기계발 관련 기록" oninput="onNoteInput()"></textarea>
+          </div>
+          <div class="memo-box">
+            <label class="memo-box-label" for="homeNote_wk"><span class="memo-box-dot" style="background:#6a4fb6;"></span>💼 업무</label>
+            <textarea id="homeNote_wk" class="note-area memo-area" placeholder="업무 관련 기록" oninput="onNoteInput()"></textarea>
+          </div>
+          <div class="memo-box">
+            <label class="memo-box-label" for="homeNote_etc"><span class="memo-box-dot" style="background:#70757f;"></span>🗂 기타</label>
+            <textarea id="homeNote_etc" class="note-area memo-area" placeholder="기타 기록" oninput="onNoteInput()"></textarea>
+          </div>
+        </div>
         <div class="save-hint" id="noteSaveHint">&nbsp;</div>
       </div>
     </div>
@@ -1168,7 +1192,44 @@ function editTodoReminder(id) {
 // ══════════════════════════════════════
 function getDay(key) {
   const d = (spaceData && spaceData.days && spaceData.days[key]) || {};
-  return { todos: d.todos || [], note: d.note || '', recDone: d.recDone || {} };
+  return { todos: d.todos || [], note: d.note || '', notes: getDayNotes(d), recDone: d.recDone || {} };
+}
+
+// ── 카테고리별 하루 메모 ──
+const MEMO_CATS = [
+  { id: 'ex',  name: '운동',     color: '#2e7d32', icon: '💪' },
+  { id: 'st',  name: '자기계발', color: '#1565c0', icon: '📚' },
+  { id: 'wk',  name: '업무',     color: '#6a4fb6', icon: '💼' },
+  { id: 'etc', name: '기타',     color: '#70757f', icon: '🗂' }
+];
+const MEMO_CAT_IDS = MEMO_CATS.map(c => c.id);
+
+function normalizeNotes(src) {
+  const o = {};
+  MEMO_CAT_IDS.forEach(id => { o[id] = src && src[id] ? String(src[id]) : ''; });
+  return o;
+}
+// 저장된 day에서 카테고리별 메모를 꺼낸다. 예전 자유 메모(day.note)는 '기타'로 이관.
+function getDayNotes(day) {
+  if (day && day.notes && typeof day.notes === 'object') return normalizeNotes(day.notes);
+  const o = normalizeNotes(null);
+  if (day && day.note) o.etc = String(day.note);
+  return o;
+}
+function notesHaveContent(notesObj) { return MEMO_CAT_IDS.some(id => (notesObj[id] || '').trim()); }
+// 달력 태그·하위호환을 위한 합본 문자열 (카테고리 헤더 포함)
+function combinedNoteText(notesObj) {
+  return MEMO_CATS
+    .filter(c => (notesObj[c.id] || '').trim())
+    .map(c => `【${c.name}】\n${notesObj[c.id].trim()}`)
+    .join('\n\n');
+}
+function memoBoxesHtml(prefix, notesObj, oninput) {
+  return MEMO_CATS.map(c => `
+    <div class="memo-box">
+      <label class="memo-box-label" for="${prefix}_${c.id}"><span class="memo-box-dot" style="background:${c.color};"></span>${c.icon} ${c.name}</label>
+      <textarea id="${prefix}_${c.id}" class="note-area memo-area" placeholder="${c.name} 관련 기록"${oninput ? ` oninput="${oninput}"` : ''}>${esc((notesObj && notesObj[c.id]) || '')}</textarea>
+    </div>`).join('');
 }
 
 // ── 반복 할 일 ──
@@ -1268,7 +1329,7 @@ async function saveDay(key, day) {
 // ── 할 일 카테고리 ──
 const DEFAULT_CATS = [
   { id: 'ex',  name: '운동',   color: '#2e7d32' },
-  { id: 'st',  name: '스터디', color: '#1565c0' },
+  { id: 'st',  name: '자기계발', color: '#1565c0' },
   { id: 'wk',  name: '업무',   color: '#6a4fb6' },
   { id: 'etc', name: '기타',   color: '#70757f' }
 ];
@@ -1447,11 +1508,13 @@ let noteTimer = null;
 function onNoteInput() {
   document.getElementById('noteSaveHint').textContent = '입력 중…';
   const key = dateKey(selectedDate);
-  const val = document.getElementById('noteArea').value;
+  const notes = {};
+  MEMO_CAT_IDS.forEach(id => { notes[id] = document.getElementById('homeNote_' + id).value; });
   clearTimeout(noteTimer);
   noteTimer = setTimeout(async () => {
     const day = getDay(key);
-    day.note = val;
+    day.notes = normalizeNotes(notes);
+    day.note = combinedNoteText(day.notes);
     await saveDay(key, day);
     document.getElementById('noteSaveHint').textContent = '✅ 자동 저장됨';
   }, 1000);
@@ -1480,9 +1543,12 @@ function renderAll() {
   const day = getDay(key);
   renderTodos(day);
 
-  // 메모: 입력 중이 아닐 때만 덮어쓰기
-  const noteArea = document.getElementById('noteArea');
-  if (document.activeElement !== noteArea) noteArea.value = day.note;
+  // 메모: 입력 중이 아닐 때만 덮어쓰기 (카테고리별)
+  const dnotes = getDayNotes(day);
+  MEMO_CAT_IDS.forEach(id => {
+    const el = document.getElementById('homeNote_' + id);
+    if (el && document.activeElement !== el) el.value = dnotes[id];
+  });
 
   renderMembers();
   renderCatChips();
@@ -1729,7 +1795,7 @@ function dayCounts(d) {
   const recs = getRecurringFor(d);
   const done = day.todos.filter(t => t.done).length + recs.filter(r => day.recDone[r.id]).length;
   const total = day.todos.length + recs.length;
-  return { total, done, remain: total - done, hasNote: !!day.note };
+  return { total, done, remain: total - done, hasNote: notesHaveContent(day.notes) };
 }
 
 function moveCalMonth(delta) { calMonth.setMonth(calMonth.getMonth() + delta); renderMoveDeck(); renderMonthCal(); }
@@ -1759,7 +1825,7 @@ function renderCalendarTags(key, dateObj) {
     tags.push(`<span class="mcal-tag t-todo" title="반복 할 일">반복 ${recCount}</span>`);
   }
 
-  if (day.note) {
+  if (notesHaveContent(day.notes)) {
     tags.push(`<span class="mcal-tag t-note" ${calendarDragAttrs('note', key)}>메모</span>`);
   }
 
@@ -1774,7 +1840,7 @@ function renderCalendarMoveSummary(key, dateObj) {
   const tags = [];
   if (remain) tags.push(`<span class="mcal-count todo">할 ${remain}</span>`);
   if (done) tags.push(`<span class="mcal-count done">완 ${done}</span>`);
-  if (day.note) tags.push('<span class="mcal-count note">메모</span>');
+  if (notesHaveContent(day.notes)) tags.push('<span class="mcal-count note">메모</span>');
   const summary = tags.length ? `<div class="mcal-summary">${tags.join('')}</div>` : '<div class="mcal-summary"><span class="mcal-count">비어있음</span></div>';
   if (!selectedMoveTask) return summary;
   if (selectedMoveTask.sourceKey === key) return `${summary}<div class="mcal-drop-label">출발</div>`;
@@ -1894,10 +1960,18 @@ async function moveCalendarItem(sourceKey, targetKey, kind, id) {
   }
 
   if (kind === 'note') {
-    const note = sourceDay.note;
-    if (!note) return;
-    if (targetDay.note && !confirm('이동할 날짜에 이미 메모가 있어요. 아래에 이어 붙일까요?')) return;
-    targetDay.note = targetDay.note ? `${targetDay.note.trimEnd()}\n\n${note}` : note;
+    const srcNotes = getDayNotes(sourceDay);
+    if (!notesHaveContent(srcNotes)) return;
+    const tgtNotes = getDayNotes(targetDay);
+    if (notesHaveContent(tgtNotes) && !confirm('이동할 날짜에 이미 메모가 있어요. 카테고리별로 이어 붙일까요?')) return;
+    MEMO_CAT_IDS.forEach(id => {
+      const s = (srcNotes[id] || '').trim();
+      if (!s) return;
+      tgtNotes[id] = tgtNotes[id] ? `${tgtNotes[id].trimEnd()}\n${s}` : s;
+    });
+    targetDay.notes = tgtNotes;
+    targetDay.note = combinedNoteText(tgtNotes);
+    sourceDay.notes = normalizeNotes(null);
     sourceDay.note = '';
     setDayLocal(sourceKey, sourceDay);
     setDayLocal(targetKey, targetDay);
@@ -2186,7 +2260,7 @@ function openDayDetail(key) {
   body += `<div class="dm-section-title">🌟 한 일 (완료)</div>`;
   body += doneHtml || '<div style="font-size:12.5px; color:var(--muted); padding:4px;">완료한 일이 아직 없어요.</div>';
   body += `<div class="dm-section-title">🌙 하루 메모</div>`;
-  body += `<textarea id="dmNote" class="note-area" style="min-height:90px;" placeholder="이 날의 메모를 적어보세요.">${esc(day.note)}</textarea>
+  body += `<div class="memo-grid">${memoBoxesHtml('dmNote', getDayNotes(day))}</div>
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
       <button class="small-btn" onclick="mSaveNote()">💾 메모 저장</button>
     </div>`;
@@ -2200,10 +2274,17 @@ function closeDayModal() { document.getElementById('dayModal').classList.remove(
 // 모달을 데이터 변경 후 다시 그리되, 작성 중인 메모는 보존한다
 function refreshModal(keepNote) {
   if (!modalKey) return;
-  const noteEl = document.getElementById('dmNote');
-  const pending = keepNote && noteEl ? noteEl.value : null;
+  // 작성 중인 카테고리별 메모 보존
+  const pending = keepNote ? {} : null;
+  if (pending) MEMO_CAT_IDS.forEach(id => {
+    const el = document.getElementById('dmNote_' + id);
+    if (el) pending[id] = el.value;
+  });
   openDayDetail(modalKey);
-  if (pending !== null) document.getElementById('dmNote').value = pending;
+  if (pending) MEMO_CAT_IDS.forEach(id => {
+    const el = document.getElementById('dmNote_' + id);
+    if (el && pending[id] !== undefined) el.value = pending[id];
+  });
 }
 
 async function mToggleTodo(id, checked) {
@@ -2297,8 +2378,14 @@ async function mToggleRec(id, checked) {
 
 async function mSaveNote() {
   const day = getDay(modalKey);
-  day.note = document.getElementById('dmNote').value;
-  if (spaceData.days && spaceData.days[modalKey]) spaceData.days[modalKey].note = day.note;
+  const notes = {};
+  MEMO_CAT_IDS.forEach(id => { notes[id] = (document.getElementById('dmNote_' + id) || {}).value || ''; });
+  day.notes = normalizeNotes(notes);
+  day.note = combinedNoteText(day.notes);
+  if (spaceData.days && spaceData.days[modalKey]) {
+    spaceData.days[modalKey].notes = day.notes;
+    spaceData.days[modalKey].note = day.note;
+  }
   renderAll();
   await saveDay(modalKey, day);
   toast('💾 메모가 저장됐어요!');
@@ -2355,6 +2442,20 @@ function noteItemsFor(key, note) {
     .map(cleanNoteLine)
     .filter(line => line.length > 1)
     .map(text => ({ date: key, text }));
+}
+
+// 카테고리별 메모를 리포트 항목으로 (cat 배지 포함)
+function noteItemsForDay(key, day) {
+  const dn = getDayNotes(day);
+  const items = [];
+  MEMO_CATS.forEach(c => {
+    String(dn[c.id] || '')
+      .split(/\n+/)
+      .map(cleanNoteLine)
+      .filter(line => line.length > 1)
+      .forEach(text => items.push({ date: key, text, cat: c.id }));
+  });
+  return items;
 }
 
 function addCategoryStat(map, catId, field) {
@@ -2416,7 +2517,7 @@ function buildMonthReport(baseDate) {
     const key = dateKey(d);
     const day = getDay(key);
     const recs = getRecurringFor(d);
-    const notes = noteItemsFor(key, day.note);
+    const notes = noteItemsForDay(key, day);
     let done = 0;
     let total = 0;
 
