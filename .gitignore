@@ -1,5 +1,6 @@
 .vercel
 .claude/
+.DS_Store
 firebase-debug.log
 ios-app/node_modules/
 ios-app/ios/App/App/public/
