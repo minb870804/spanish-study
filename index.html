@@ -68,6 +68,9 @@
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+    overflow-wrap: anywhere;
     transition: var(--transition);
   }
 
@@ -83,7 +86,7 @@
   .header-top {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 24px; flex-wrap: wrap; gap: 12px;
-    max-width: 1060px; margin: 0 auto;
+    max-width: 1220px; margin: 0 auto;
   }
   .logo { display: flex; align-items: center; gap: 12px; }
   .logo-flag { font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); }
@@ -113,7 +116,7 @@
   .logout-btn:hover { color: white; }
 
   /* ── LAYOUT ── */
-  main { max-width: 1020px; margin: 28px auto; padding: 0 20px; }
+  main { max-width: 1180px; margin: 28px auto; padding: 0 20px; }
   .card {
     background: var(--card); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow);
@@ -123,9 +126,11 @@
   .dashboard-grid {
     display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 18px; margin-bottom: 18px;
     grid-template-areas:
+      "calendar calendar"
       "quick quick"
       "content side";
   }
+  .calendar-card { grid-area: calendar; }
   .cat-grid { grid-area: quick; }
   .content-col { grid-area: content; }
   .side-col { grid-area: side; }
@@ -158,17 +163,17 @@
   }
 
   /* ── CATEGORY CARDS ── */
-  .cat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .cat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 0; }
   .cat-card {
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 20px; cursor: pointer; text-decoration: none; color: var(--text);
+    padding: 12px 10px; cursor: pointer; text-decoration: none; color: var(--text);
     box-shadow: var(--shadow); transition: var(--transition);
-    display: flex; flex-direction: column; gap: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center;
   }
   .cat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--blue); }
-  .cat-card .icon { font-size: 30px; }
-  .cat-card .name { font-size: 15px; font-weight: 800; }
-  .cat-card .desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .cat-card .icon { font-size: 22px; flex-shrink: 0; }
+  .cat-card .name { font-size: 13px; font-weight: 800; line-height: 1.35; word-break: keep-all; }
+  .cat-card .desc { display: none !important; }
 
   /* ── TODO ── */
   .todo-input-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-end; }
@@ -191,6 +196,25 @@
   }
   body.dark .reminder-field input { color-scheme: dark; }
   .reminder-status { font-size: 11px; color: var(--muted); font-weight: 700; }
+  .todo-detail-row {
+    display: grid; grid-template-columns: minmax(140px, 0.7fr) minmax(220px, 1.3fr);
+    align-items: stretch; gap: 8px; margin: -2px 0 8px;
+  }
+  .todo-detail-field {
+    display: grid; grid-template-rows: auto minmax(22px, auto); align-content: center;
+    gap: 3px; min-width: 0; min-height: 56px;
+    background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 7px 11px 8px; color: var(--muted); font-size: 11px; font-weight: 800;
+  }
+  .todo-detail-field > span { display: block; min-width: 0; line-height: 1.25; white-space: nowrap; }
+  .todo-detail-field input {
+    width: 100%; min-width: 0; border: none; outline: none; background: transparent;
+    color: var(--text); font-family: inherit; font-size: 13px; font-weight: 700;
+    line-height: 22px; height: 22px; padding: 0; margin: 0;
+  }
+  .todo-detail-field input::placeholder { color: var(--muted); opacity: 0.72; }
+  .todo-detail-field input[type="time"]::-webkit-calendar-picker-indicator { margin: 0; padding: 0; }
+  body.dark .todo-detail-field input[type="time"] { color-scheme: dark; }
   .reminder-chip {
     background: var(--yellow); color: #3c2f00; border: none; border-radius: 10px;
     padding: 2px 8px; font-size: 11px; font-weight: 800; white-space: nowrap;
@@ -222,11 +246,11 @@
   #catPicker.open { display: flex; }
 
   /* ── 월간 달력 ── */
-  .mcal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .mcal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
   .mcal-dow { font-size: 11px; text-align: center; color: var(--muted); font-weight: 800; padding: 4px 0; }
   .mcal-day {
-    border: 1px solid var(--border); border-radius: 8px; min-height: 58px; padding: 4px;
-    cursor: pointer; font-size: 10px; display: flex; flex-direction: column; gap: 2px;
+    border: 1px solid var(--border); border-radius: 10px; min-height: 112px; padding: 7px;
+    cursor: pointer; font-size: 11px; display: flex; flex-direction: column; gap: 3px;
     transition: var(--transition); overflow: hidden;
   }
   .mcal-day:hover { border-color: var(--blue); box-shadow: var(--shadow-hover); }
@@ -235,9 +259,9 @@
   .mcal-day.sel { outline: 2px solid var(--blue); }
   .mcal-day.drop-target { outline: 2px dashed var(--blue); background: var(--blue-light); }
   .mcal-day.is-drag-source { opacity: 0.55; }
-  .mcal-day.move-target { min-height: 64px; justify-content: space-between; }
+  .mcal-day.move-target { min-height: 112px; justify-content: space-between; }
   .mcal-day.move-source { outline: 2px dashed var(--gold); background: rgba(245,124,0,0.10); }
-  .mcal-num { font-weight: 800; font-size: 11px; }
+  .mcal-num { font-weight: 800; font-size: 12px; line-height: 1.3; }
   .mcal-day.sun .mcal-num { color: var(--red); }
   .mcal-day.sat .mcal-num { color: var(--blue); }
   .mcal-tag {
@@ -256,7 +280,14 @@
     font-size: 12px; font-weight: 800; box-shadow: 0 10px 24px rgba(0,0,0,0.24);
     transform: translate(-50%, -50%);
   }
-  .calendar-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+  .calendar-titlebar { align-items: center; margin-bottom: 16px; }
+  .calendar-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; min-width: 0; }
+  .calendar-tools { display: flex; align-items: center; gap: 8px; }
+  .month-nav {
+    display: grid; grid-template-columns: 36px minmax(96px, auto) 36px;
+    align-items: center; gap: 6px; white-space: nowrap;
+  }
+  .month-nav .small-btn { width: 36px; padding-left: 0; padding-right: 0; }
   .month-label { font-size: 13px; font-weight: 800; min-width: 80px; text-align: center; }
   .move-deck {
     display: none; background: var(--bg); border: 1.5px dashed var(--border);
@@ -301,10 +332,12 @@
     box-shadow: 0 12px 40px rgba(0,0,0,0.3); animation: fadeIn 0.25s ease;
   }
   .dm-section-title { font-size: 13px; font-weight: 800; margin: 16px 0 8px; color: var(--muted); }
-  .dm-item { display: flex; align-items: center; gap: 8px; padding: 7px 4px; font-size: 13.5px; border-bottom: 1px solid var(--border); }
+  .dm-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 9px 4px; font-size: 13.5px; border-bottom: 1px solid var(--border); }
   .dm-item:last-child { border-bottom: none; }
   .dm-item.done .dm-txt { text-decoration: line-through; color: var(--muted); }
-  .dm-txt { flex: 1; word-break: break-all; }
+  .dm-content { min-width: 0; display: grid; gap: 4px; }
+  .dm-txt { min-width: 0; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.55; }
+  .dm-actions { display: flex; align-items: center; justify-content: flex-end; gap: 3px; flex-wrap: wrap; max-width: 160px; }
   .dm-note { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; line-height: 1.8; white-space: pre-wrap; word-break: break-all; }
   #reportModal, #moveDateModal {
     position: fixed; inset: 0; background: rgba(18,18,20,0.55); z-index: 1500;
@@ -345,14 +378,24 @@
   }
   .add-btn:hover { filter: brightness(1.12); }
   .todo-item {
-    display: flex; align-items: center; gap: 10px; padding: 10px 6px;
+    display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 11px 6px;
     border-bottom: 1px solid var(--border); font-size: 14px;
     transition: transform 0.16s ease, background 0.16s ease;
   }
   .todo-item:last-child { border-bottom: none; }
   .todo-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
-  .todo-item .txt { flex: 1; word-break: break-all; }
+  .todo-content { min-width: 0; display: grid; gap: 4px; }
+  .todo-item .txt { min-width: 0; line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere; }
   .todo-item.done .txt { text-decoration: line-through; color: var(--muted); }
+  .todo-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .todo-meta-chip {
+    display: inline-flex; align-items: center; max-width: 100%; padding: 2px 7px;
+    border-radius: 999px; background: var(--bg); border: 1px solid var(--border);
+    color: var(--muted); font-size: 10.5px; font-weight: 700; line-height: 1.35;
+  }
+  .todo-meta-chip.location { white-space: normal; word-break: keep-all; overflow-wrap: anywhere; }
+  .todo-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; flex-wrap: wrap; max-width: 190px; }
+  .todo-item.recurring { grid-template-columns: auto minmax(0, 1fr) auto; }
   .todo-item .by { font-size: 11px; color: var(--muted); background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
   .todo-item .del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 6px; }
   .todo-item .del:hover { color: var(--red); background: var(--red-light); }
@@ -416,6 +459,43 @@
   .join-row input:focus { border-color: var(--blue); }
   .share-desc { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
 
+  /* ── WEEK OVERVIEW ── */
+  .week-card { overflow: hidden; }
+  .week-range { font-size: 11px; font-weight: 800; color: var(--muted); white-space: nowrap; }
+  .week-summary {
+    background: linear-gradient(135deg, var(--blue-light), var(--purple-light));
+    border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; margin-bottom: 16px;
+  }
+  .week-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .week-summary-label { font-size: 12px; font-weight: 800; color: var(--muted); }
+  .week-summary-value { font-size: 13px; font-weight: 900; color: var(--blue); white-space: nowrap; }
+  .week-meter { height: 8px; margin-top: 9px; overflow: hidden; background: var(--card); border-radius: 999px; }
+  .week-meter > span { display: block; width: 0; height: 100%; background: linear-gradient(90deg, var(--blue), var(--green)); border-radius: inherit; transition: width 0.35s ease; }
+  .week-agenda-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .week-agenda-head strong { font-size: 12.5px; }
+  .week-agenda-head span { color: var(--muted); font-size: 10.5px; font-weight: 700; }
+  .week-agenda-list { display: grid; }
+  .week-agenda-item {
+    width: 100%; display: grid; grid-template-columns: 46px minmax(0, 1fr) auto;
+    align-items: center; gap: 9px; padding: 10px 2px; border: none; border-bottom: 1px solid var(--border);
+    background: transparent; color: var(--text); cursor: pointer; text-align: left; font-family: inherit;
+  }
+  .week-agenda-item:last-child { border-bottom: none; }
+  .week-agenda-item:hover { background: var(--blue-light); border-radius: 8px; padding-left: 7px; padding-right: 7px; }
+  .week-agenda-date { font-size: 10.5px; font-weight: 900; color: var(--muted); text-align: center; line-height: 1.35; }
+  .week-agenda-date.today { color: var(--blue); }
+  .week-agenda-main { min-width: 0; display: grid; gap: 3px; }
+  .week-agenda-title { min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800; line-height: 1.4; }
+  .week-agenda-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .week-agenda-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .week-agenda-meta { min-width: 0; color: var(--muted); font-size: 10.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .week-status {
+    padding: 2px 7px; border-radius: 999px; background: var(--bg); color: var(--muted);
+    border: 1px solid var(--border); font-size: 9.5px; font-weight: 900; white-space: nowrap;
+  }
+  .week-status.overdue { background: var(--red-light); color: var(--red); border-color: transparent; }
+  .week-empty { color: var(--muted); font-size: 12.5px; text-align: center; padding: 24px 8px 18px; line-height: 1.7; }
+
   /* ── LOGIN OVERLAY ── */
   #loginOverlay {
     position: fixed; inset: 0; background: rgba(18, 18, 20, 0.6);
@@ -466,24 +546,50 @@
     .cat-grid { order: 2; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 0; }
     .todo-card { order: 3; }
     .note-card { order: 4; }
-    .share-card { order: 5; }
+    .week-card { order: 5; }
+    .share-card { order: 6; }
     .content-col > .card + .card, .side-col > .card + .card { margin-top: 0; }
     .card { padding: 14px; border-radius: 12px; }
     .card-title { font-size: 14px; margin-bottom: 10px; align-items: flex-start; }
-    .calendar-actions { gap: 6px; }
+    .calendar-titlebar { flex-direction: column; align-items: stretch; gap: 10px; }
+    .calendar-actions { width: 100%; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
+    .calendar-tools { gap: 6px; }
+    .month-nav { grid-template-columns: 34px minmax(92px, auto) 34px; gap: 4px; }
+    .month-nav .small-btn { width: 34px; }
     .cat-card { padding: 10px 6px; gap: 4px; min-height: 76px; border-radius: 12px; align-items: center; text-align: center; justify-content: center; }
     .cat-card .icon { font-size: 22px; }
     .cat-card .name { font-size: 11.5px; line-height: 1.25; word-break: keep-all; overflow-wrap: anywhere; }
     .cat-card .desc { display: none !important; }
     .todo-input-row { gap: 6px; align-items: stretch; }
     .todo-input-row textarea { min-height: 38px; max-height: 78px; padding: 9px 10px; font-size: 13px; }
+    .todo-detail-row {
+      grid-template-columns: minmax(112px, 0.82fr) minmax(0, 1.18fr);
+      gap: 6px; margin-bottom: 8px;
+    }
+    .todo-detail-field { min-height: 54px; padding: 7px 9px; }
+    .todo-detail-field input { font-size: 12px; }
     .add-btn { padding: 9px 12px; }
     .reminder-row { gap: 6px; margin-bottom: 10px; }
     .reminder-field { flex: 1 1 auto; min-width: 145px; padding: 7px 9px; }
     .reminder-status { flex: 1 1 100%; }
     .tcat-row { margin-bottom: 10px; gap: 5px; }
     .tcat-chip { padding: 4px 9px; font-size: 11px; }
-    .todo-item { gap: 7px; padding: 8px 2px; font-size: 13px; }
+    .todo-item {
+      grid-template-columns: auto auto minmax(0, 1fr); gap: 6px 7px;
+      padding: 9px 2px; font-size: 13px; align-items: start;
+    }
+    .todo-item > .move-handle { grid-column: 1; grid-row: 1; }
+    .todo-item > input[type="checkbox"] { grid-column: 2; grid-row: 1; margin-top: 2px; }
+    .todo-item > .todo-content { grid-column: 3; grid-row: 1; }
+    .todo-item > .todo-actions { grid-column: 3; grid-row: 2; justify-content: flex-start; max-width: none; }
+    .todo-item.recurring { grid-template-columns: auto minmax(0, 1fr); }
+    .todo-item.recurring > input[type="checkbox"] { grid-column: 1; }
+    .todo-item.recurring > .todo-content, .todo-item.recurring > .todo-actions { grid-column: 2; }
+    .dm-item { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+    .dm-item > input[type="checkbox"] { grid-column: 1; grid-row: 1; margin-top: 2px; }
+    .dm-item > .dm-content { grid-column: 2; grid-row: 1; }
+    .dm-item > .dm-actions { grid-column: 2; grid-row: 2; justify-content: flex-start; max-width: none; }
+    .day-modal-card { padding: 16px; }
     .todo-item .by { display: none; }
     .quick-move-btn { display: none; }
     .note-area { min-height: 86px; font-size: 13.5px; }
@@ -491,8 +597,8 @@
     .memo-area { min-height: 64px; }
     .mcal-grid { gap: 3px; }
     .mcal-dow { font-size: 10px; padding: 2px 0; }
-    .mcal-day { min-height: 54px; padding: 3px; border-radius: 7px; gap: 1px; }
-    .mcal-day.move-target { min-height: 58px; }
+    .mcal-day { min-height: 72px; padding: 4px; border-radius: 7px; gap: 2px; }
+    .mcal-day.move-target { min-height: 72px; }
     .mcal-num { font-size: 10px; }
     .mcal-tag { font-size: 9.5px; line-height: 1.45; padding: 0 3px; }
     .calendar-legend { display: none !important; }
@@ -504,11 +610,18 @@
     .report-modal-card, .move-date-card { padding: 16px; max-height: 86vh; }
     .report-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .report-date { flex-basis: 46px; }
+    .week-agenda-item { grid-template-columns: 44px minmax(0, 1fr) auto; }
   }
 
   @media (max-width: 380px) {
     .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .cat-card { min-height: 62px; }
+    .calendar-actions { justify-content: center; }
+    .calendar-tools { width: 100%; justify-content: center; }
+  }
+
+  @media (max-width: 330px) {
+    .todo-detail-row { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -565,6 +678,31 @@
   </div>
 
   <div class="dashboard-grid">
+  <!-- 가장 큰 메인 영역: 월간 달력 -->
+  <div class="card calendar-card">
+    <div class="card-title calendar-titlebar">
+      <span>📆 월간 달력</span>
+      <div class="calendar-actions">
+        <div class="calendar-tools">
+          <button class="small-btn" onclick="openMonthReport()">월 리포트</button>
+          <button class="small-btn" id="moveModeBtn" onclick="toggleCalendarMoveMode()">이동 모드</button>
+        </div>
+        <div class="month-nav" aria-label="달력 월 이동">
+          <button class="small-btn" onclick="moveCalMonth(-1)" aria-label="이전 달">‹</button>
+          <span id="calMonthLabel" class="month-label"></span>
+          <button class="small-btn" onclick="moveCalMonth(1)" aria-label="다음 달">›</button>
+        </div>
+      </div>
+    </div>
+    <div id="moveDeck" class="move-deck"></div>
+    <div id="monthCal"></div>
+    <div class="calendar-legend" style="display:flex; gap:10px; margin-top:10px; font-size:11px; color:var(--muted); flex-wrap:wrap;">
+      <span><span class="mcal-tag t-todo">할 일</span> 남은 할 일</span>
+      <span><span class="mcal-tag t-done">한 일</span> 완료</span>
+      <span><span class="mcal-tag t-note">메모</span> 메모 있음</span>
+    </div>
+  </div>
+
   <!-- 카테고리 -->
   <div class="cat-grid">
     <a class="cat-card" href="study.html">
@@ -601,9 +739,20 @@
           </span>
         </div>
         <div class="todo-input-row">
-          <textarea id="todoInput" rows="1" placeholder="할 일 입력 — 여러 줄을 붙여넣으면 줄마다 따로 추가돼요 (Ctrl/⌘+Enter 추가)"
+          <textarea id="todoInput" rows="1" placeholder="할 일을 입력하세요. 여러 줄은 각각 정리해 추가해요."
+            oninput="autoSizeTodoInput(this)"
             onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();addTodo();}"></textarea>
           <button class="add-btn" onclick="addTodo()">추가</button>
+        </div>
+        <div class="todo-detail-row">
+          <label class="todo-detail-field">
+            <span>🕐 시간</span>
+            <input type="time" id="todoTimeInput" aria-label="할 일 시간" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('todoLocationInput').focus();}">
+          </label>
+          <label class="todo-detail-field">
+            <span>📍 장소</span>
+            <input type="text" id="todoLocationInput" maxlength="80" placeholder="장소를 입력하세요" aria-label="할 일 장소" onkeydown="if(event.key==='Enter'){event.preventDefault();addTodo();}">
+          </label>
         </div>
         <div class="reminder-row">
           <label class="reminder-field">
@@ -662,8 +811,27 @@
       </div>
     </div>
 
-    <!-- 공유 -->
+    <!-- 주간 요약 / 공유 -->
     <div class="side-col">
+      <div class="card week-card">
+        <div class="card-title">
+          <span>🗓 이번 주 한눈에</span>
+          <span class="week-range" id="weekRange"></span>
+        </div>
+        <div class="week-summary">
+          <div class="week-summary-row">
+            <span class="week-summary-label">이번 주 할 일 완료율</span>
+            <span class="week-summary-value" id="weekProgressText">0 / 0 · 0%</span>
+          </div>
+          <div class="week-meter" aria-hidden="true"><span id="weekMeterFill"></span></div>
+        </div>
+        <div class="week-agenda-head">
+          <strong>다가오는 일정</strong>
+          <span>최근 미완료 포함 · 최대 5개</span>
+        </div>
+        <div class="week-agenda-list" id="weekAgendaList"></div>
+      </div>
+
       <div class="card share-card">
         <div class="card-title"><span>👥 함께 쓰는 사람</span></div>
         <div class="member-chips" id="memberChips"></div>
@@ -683,25 +851,6 @@
         </div>
       </div>
 
-      <div class="card calendar-card">
-        <div class="card-title">
-          <span>📆 월간 달력</span>
-          <span class="calendar-actions">
-            <button class="small-btn" onclick="openMonthReport()">월 리포트</button>
-            <button class="small-btn" id="moveModeBtn" onclick="toggleCalendarMoveMode()">이동 모드</button>
-            <button class="small-btn" onclick="moveCalMonth(-1)">‹</button>
-            <span id="calMonthLabel" class="month-label"></span>
-            <button class="small-btn" onclick="moveCalMonth(1)">›</button>
-          </span>
-        </div>
-        <div id="moveDeck" class="move-deck"></div>
-        <div id="monthCal"></div>
-        <div class="calendar-legend" style="display:flex; gap:10px; margin-top:10px; font-size:11px; color:var(--muted); flex-wrap:wrap;">
-          <span><span class="mcal-tag t-todo">할 일</span> 남은 할 일</span>
-          <span><span class="mcal-tag t-done">한 일</span> 완료</span>
-          <span><span class="mcal-tag t-note">메모</span> 메모 있음</span>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -1424,19 +1573,39 @@ async function applyCatChange(catId) {
   toast(`🏷 카테고리가 '${catById(catId).name}'(으)로 변경됐어요!`);
 }
 
+function normalizeTodoText(text) {
+  return String(text || '')
+    .trim()
+    .replace(/^(?:[-*•·]|✅|✔|✓|\d+[.)])\s+/, '')
+    .replace(/[\t ]+/g, ' ');
+}
+
+function autoSizeTodoInput(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+}
+
 async function addTodo() {
   const input = document.getElementById('todoInput');
   const reminderInput = document.getElementById('reminderTimeInput');
+  const timeInput = document.getElementById('todoTimeInput');
+  const locationInput = document.getElementById('todoLocationInput');
   // 여러 줄 입력 지원: 줄마다 별도의 할 일로 추가
-  const lines = input.value.split('\n').map(l => l.trim()).filter(Boolean);
+  const lines = input.value.split('\n').map(normalizeTodoText).filter(Boolean);
   if (!lines.length || !spaceData) return;
   const key = dateKey(selectedDate);
   const reminderFields = buildReminderFields(key, reminderInput ? reminderInput.value : '');
   if (reminderFields === null) return;
   if (reminderFields.remindAtMs) await requestPushPermission();
+  const scheduleTime = timeInput ? timeInput.value : '';
+  const scheduleLocation = normalizeTodoText(locationInput ? locationInput.value : '');
 
   input.value = '';
+  autoSizeTodoInput(input);
   if (reminderInput) reminderInput.value = '';
+  if (timeInput) timeInput.value = '';
+  if (locationInput) locationInput.value = '';
   const day = getDay(key);
   const base = Date.now();
   lines.forEach((text, i) => {
@@ -1449,6 +1618,8 @@ async function addTodo() {
       createdAt: base + i,
       createdDate: key,
       moveCount: 0,
+      time: scheduleTime,
+      location: scheduleLocation,
       ...reminderFields
     });
   });
@@ -1458,6 +1629,7 @@ async function addTodo() {
   await saveDay(key, day);
   if (lines.length > 1) toast(`✅ 할 일 ${lines.length}개가 추가됐어요!`);
   else if (reminderFields.remindAtMs) toast('✅ 할 일과 알림이 추가됐어요!');
+  else if (scheduleTime || scheduleLocation) toast('✅ 시간·장소와 함께 할 일을 추가했어요!');
 }
 
 async function toggleTodo(id, checked) {
@@ -1479,14 +1651,33 @@ async function toggleTodo(id, checked) {
   await saveDay(key, day);
 }
 
+function promptTodoEdits(todo) {
+  const rawText = prompt('할 일 내용 수정', todo.text);
+  if (rawText === null) return null;
+  const text = normalizeTodoText(rawText);
+  if (!text) return null;
+
+  const rawTime = prompt('시간 수정 (예: 09:30, 비워두면 없음)', todo.time || '');
+  if (rawTime === null) return null;
+  const time = rawTime.trim();
+  if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+    toast('시간은 09:30처럼 입력해 주세요.');
+    return null;
+  }
+
+  const rawLocation = prompt('장소 수정 (비워두면 없음)', todo.location || '');
+  if (rawLocation === null) return null;
+  return { text, time, location: normalizeTodoText(rawLocation) };
+}
+
 async function editTodo(id) {
   const key = dateKey(selectedDate);
   const day = getDay(key);
   const t = day.todos.find(t => t.id === id);
   if (!t) return;
-  const text = (prompt('할 일 내용 수정', t.text) || '').trim();
-  if (!text || text === t.text) return;
-  t.text = text;
+  const edits = promptTodoEdits(t);
+  if (!edits) return;
+  Object.assign(t, edits);
   renderTodos(day);
   renderMoveDeck();
   renderMonthCal();
@@ -1554,10 +1745,132 @@ function renderAll() {
   renderCatChips();
   renderMoveDeck();
   renderMonthCal();
+  renderWeekOverview();
   if (document.getElementById('recurPanel').style.display !== 'none') renderRecurList();
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function todoMetaHtml(todo) {
+  const parts = [];
+  if (todo.time) parts.push(`<span class="todo-meta-chip">🕐 ${esc(todo.time)}</span>`);
+  if (todo.location) parts.push(`<span class="todo-meta-chip location">📍 ${esc(todo.location)}</span>`);
+  return parts.length ? `<span class="todo-meta">${parts.join('')}</span>` : '';
+}
+
+function dayOffset(base, amount) {
+  const d = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  d.setDate(d.getDate() + amount);
+  return d;
+}
+
+function mondayFor(dateObj) {
+  const d = dayOffset(dateObj, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+
+function shortMonthDay(dateObj) {
+  return `${dateObj.getMonth() + 1}.${dateObj.getDate()}`;
+}
+
+function collectWeekAgenda(today) {
+  const overdue = [];
+  const upcoming = [];
+
+  for (let offset = -7; offset < 0; offset++) {
+    const d = dayOffset(today, offset);
+    const key = dateKey(d);
+    getDay(key).todos.filter(todo => !todo.done).forEach(todo => overdue.push({
+      key, date: d, todo, overdue: true, recurring: false
+    }));
+  }
+
+  for (let offset = 0; offset < 7; offset++) {
+    const d = dayOffset(today, offset);
+    const key = dateKey(d);
+    const day = getDay(key);
+    day.todos.filter(todo => !todo.done).forEach(todo => upcoming.push({
+      key, date: d, todo, overdue: false, recurring: false
+    }));
+    getRecurringFor(d).filter(rule => !day.recDone[rule.id]).forEach(rule => upcoming.push({
+      key, date: d, todo: rule, overdue: false, recurring: true
+    }));
+  }
+
+  overdue.sort((a, b) => b.key.localeCompare(a.key));
+  upcoming.sort((a, b) =>
+    a.key.localeCompare(b.key) ||
+    (a.todo.time || '99:99').localeCompare(b.todo.time || '99:99') ||
+    String(a.todo.text || '').localeCompare(String(b.todo.text || '')));
+
+  return [...overdue.slice(0, 2), ...upcoming].slice(0, 5);
+}
+
+function openWeekAgendaDay(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  selectedDate = new Date(y, m - 1, d);
+  calMonth = new Date(selectedDate);
+  renderAll();
+  openDayDetail(key);
+}
+
+function renderWeekOverview() {
+  const rangeEl = document.getElementById('weekRange');
+  const progressEl = document.getElementById('weekProgressText');
+  const meterEl = document.getElementById('weekMeterFill');
+  const listEl = document.getElementById('weekAgendaList');
+  if (!rangeEl || !progressEl || !meterEl || !listEl) return;
+
+  const today = dayOffset(new Date(), 0);
+  const todayKey = dateKey(today);
+  const weekStart = mondayFor(today);
+  const weekEnd = dayOffset(weekStart, 6);
+  let total = 0;
+  let done = 0;
+
+  for (let offset = 0; offset < 7; offset++) {
+    const d = dayOffset(weekStart, offset);
+    const day = getDay(dateKey(d));
+    const recs = getRecurringFor(d);
+    total += day.todos.length + recs.length;
+    done += day.todos.filter(todo => todo.done).length;
+    done += recs.filter(rule => day.recDone[rule.id]).length;
+  }
+
+  const rate = total ? Math.round((done / total) * 100) : 0;
+  rangeEl.textContent = `${shortMonthDay(weekStart)} – ${shortMonthDay(weekEnd)}`;
+  progressEl.textContent = `${done} / ${total} · ${rate}%`;
+  meterEl.style.width = `${rate}%`;
+
+  const items = collectWeekAgenda(today);
+  if (!items.length) {
+    listEl.innerHTML = '<div class="week-empty">예정된 미완료 일정이 없어요.<br>이번 주도 산뜻합니다 ✨</div>';
+    return;
+  }
+
+  listEl.innerHTML = items.map(item => {
+    const todo = item.todo;
+    const cat = catById(todo.cat);
+    const isToday = item.key === todayKey;
+    const dateLabel = isToday ? '오늘' : `${item.date.getMonth() + 1}/${item.date.getDate()}<br>${DAYS_KO[item.date.getDay()]}`;
+    const meta = [];
+    if (todo.time) meta.push(`🕐 ${esc(todo.time)}`);
+    if (todo.location) meta.push(`📍 ${esc(todo.location)}`);
+    if (item.recurring) meta.push('🔁 반복');
+    if (!meta.length) meta.push(esc(cat.name));
+    const statusClass = item.overdue ? 'week-status overdue' : 'week-status';
+    const statusText = item.overdue ? '지연' : (item.recurring ? '반복' : '예정');
+    return `<button class="week-agenda-item" onclick="openWeekAgendaDay('${item.key}')" aria-label="${esc(todo.text)} 일정 열기">
+      <span class="week-agenda-date ${isToday ? 'today' : ''}">${dateLabel}</span>
+      <span class="week-agenda-main">
+        <span class="week-agenda-title"><span class="week-agenda-dot" style="background:${cat.color};"></span><span class="week-agenda-title-text">${esc(todo.text)}</span></span>
+        <span class="week-agenda-meta">${meta.join(' · ')}</span>
+      </span>
+      <span class="${statusClass}">${statusText}</span>
+    </button>`;
+  }).join('');
+}
 
 function renderTodos(day) {
   const list = document.getElementById('todoList');
@@ -1579,12 +1892,14 @@ function renderTodos(day) {
     const done = !!day.recDone[r.id];
     const cat = catById(r.cat);
     const borderStyle = shared ? `border-left:3px solid ${memberColor(r.by)}; padding-left:9px;` : '';
-    return `<div class="todo-item ${done ? 'done' : ''}" style="${borderStyle}">
+    return `<div class="todo-item recurring ${done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleRecurringDone('${r.id}', this.checked)">
-      <span class="txt">${esc(r.text)}</span>
-      <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-      ${authorChip(r.by)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
-      <span class="by" title="반복 할 일">🔁</span>
+      <span class="todo-content"><span class="txt">${esc(r.text)}</span></span>
+      <span class="todo-actions">
+        <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+        ${authorChip(r.by)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
+        <span class="by" title="반복 할 일">🔁</span>
+      </span>
     </div>`;
   }).join('');
 
@@ -1594,16 +1909,18 @@ function renderTodos(day) {
     return `<div class="todo-item swipeable ${t.done ? 'done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
       <button class="del move-handle" onpointerdown="startTodoItemDrag(event, '${currentKey}', '${t.id}')" title="드래그해서 날짜 이동">↕</button>
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', this.checked)">
-      <span class="txt">${esc(t.text)}</span>
-      <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-      ${reminderChip(t)}
-      ${authorChip(t.by)}${doneByChip(t)}
-      <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 1)" title="내일로 이동">내일</button>
-      <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
-      <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
-      <button class="del" onclick="editTodo('${t.id}')" title="내용 수정">✏️</button>
-      <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
-      <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
+      <span class="todo-content"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
+      <span class="todo-actions">
+        <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+        ${reminderChip(t)}
+        ${authorChip(t.by)}${doneByChip(t)}
+        <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 1)" title="내일로 이동">내일</button>
+        <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
+        <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
+        <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
+        <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
+        <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
+      </span>
     </div>`;
   }).join('');
 
@@ -1812,7 +2129,7 @@ function renderCalendarTags(key, dateObj) {
 
   previewTodos.forEach(t => {
     const cls = t.done ? 't-done' : 't-todo';
-    const prefix = t.done ? '✓ ' : '';
+    const prefix = `${t.done ? '✓ ' : ''}${t.time ? `${t.time} · ` : ''}`;
     tags.push(`<span class="mcal-tag ${cls}" ${calendarDragAttrs('todo', key, t.id)}>${esc(prefix + t.text)}</span>`);
   });
 
@@ -2224,14 +2541,16 @@ function openDayDetail(key) {
     const borderStyle = isShared() ? `border-left:3px solid ${memberColor(t.by)}; padding-left:9px;` : '';
     return `<div class="dm-item ${t.done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="mToggleTodo('${t.id}', this.checked)">
-      <span class="dm-txt">${esc(t.text)}</span>
-      <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-      ${reminderChip(t, key, true)}
-      ${authorChip(t.by)}${doneByChip(t)}
-      <button class="del" onclick="moveTodoToDate('${t.id}')" title="다른 날짜로 이동">📅</button>
-      <button class="del" onclick="mEditTodoReminder('${t.id}')" title="알림 설정">🔔</button>
-      <button class="del" onclick="mEditTodo('${t.id}')" title="수정">✏️</button>
-      <button class="del" onclick="mDeleteTodo('${t.id}')" title="삭제">✕</button>
+      <span class="dm-content"><span class="dm-txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
+      <span class="dm-actions">
+        <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+        ${reminderChip(t, key, true)}
+        ${authorChip(t.by)}${doneByChip(t)}
+        <button class="del" onclick="moveTodoToDate('${t.id}')" title="다른 날짜로 이동">📅</button>
+        <button class="del" onclick="mEditTodoReminder('${t.id}')" title="알림 설정">🔔</button>
+        <button class="del" onclick="mEditTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
+        <button class="del" onclick="mDeleteTodo('${t.id}')" title="삭제">✕</button>
+      </span>
     </div>`;
   };
   const recItem = r => {
@@ -2240,10 +2559,12 @@ function openDayDetail(key) {
     const borderStyle = isShared() ? `border-left:3px solid ${memberColor(r.by)}; padding-left:9px;` : '';
     return `<div class="dm-item ${done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${done ? 'checked' : ''} onchange="mToggleRec('${r.id}', this.checked)">
-      <span class="dm-txt">${esc(r.text)}</span>
-      <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-      ${authorChip(r.by)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
-      <span title="반복 할 일">🔁</span>
+      <span class="dm-content"><span class="dm-txt">${esc(r.text)}</span></span>
+      <span class="dm-actions">
+        <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+        ${authorChip(r.by)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
+        <span title="반복 할 일">🔁</span>
+      </span>
     </div>`;
   };
 
@@ -2308,9 +2629,9 @@ async function mEditTodo(id) {
   const day = getDay(modalKey);
   const t = day.todos.find(t => t.id === id);
   if (!t) return;
-  const text = (prompt('할 일 내용 수정', t.text) || '').trim();
-  if (!text || text === t.text) return;
-  t.text = text;
+  const edits = promptTodoEdits(t);
+  if (!edits) return;
+  Object.assign(t, edits);
   refreshModal(true); renderAll();
   await saveDay(modalKey, day);
 }
