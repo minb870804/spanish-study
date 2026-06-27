@@ -214,7 +214,7 @@
   }
   .todo-detail-field input::placeholder { color: var(--muted); opacity: 0.72; }
   .todo-detail-field input[type="time"]::-webkit-calendar-picker-indicator { margin: 0; padding: 0; }
-  body.dark .todo-detail-field input[type="time"] { color-scheme: dark; }
+  body.dark .todo-detail-field input[type="time"], body.dark .todo-detail-field input[type="date"] { color-scheme: dark; }
   .reminder-chip {
     background: var(--yellow); color: #3c2f00; border: none; border-radius: 10px;
     padding: 2px 8px; font-size: 11px; font-weight: 800; white-space: nowrap;
@@ -274,6 +274,16 @@
   .mcal-tag.t-done { background: var(--green-light); color: var(--green); }
   .mcal-tag.t-note { background: var(--blue-light); color: var(--blue); }
   .mcal-more { font-size: 9px; color: var(--muted); font-weight: 800; padding-left: 2px; }
+  /* 기간 일정 막대 */
+  .mcal-bar {
+    display: block; font-size: 9.5px; font-weight: 800; line-height: 1.55;
+    padding: 1px 5px; margin: 0 -3px; color: #fff; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; cursor: grab; touch-action: none; user-select: none;
+  }
+  .mcal-bar.start { border-top-left-radius: 6px; border-bottom-left-radius: 6px; margin-left: 0; }
+  .mcal-bar.end { border-top-right-radius: 6px; border-bottom-right-radius: 6px; margin-right: 0; }
+  .mcal-bar.done { opacity: 0.5; }
+  .mcal-bar:active { cursor: grabbing; }
   .month-drag-ghost {
     position: fixed; z-index: 3000; pointer-events: none; max-width: 180px;
     border-radius: 8px; padding: 4px 8px; background: var(--dark); color: var(--card);
@@ -752,6 +762,16 @@
           <label class="todo-detail-field">
             <span>📍 장소</span>
             <input type="text" id="todoLocationInput" maxlength="80" placeholder="장소를 입력하세요" aria-label="할 일 장소" onkeydown="if(event.key==='Enter'){event.preventDefault();addTodo();}">
+          </label>
+        </div>
+        <div class="todo-detail-row">
+          <label class="todo-detail-field">
+            <span>📅 시작일</span>
+            <input type="date" id="todoStartInput" aria-label="기간 시작일">
+          </label>
+          <label class="todo-detail-field">
+            <span>🏁 종료일 (기간 일정)</span>
+            <input type="date" id="todoEndInput" aria-label="기간 종료일">
           </label>
         </div>
         <div class="reminder-row">
@@ -1634,10 +1654,17 @@ async function addTodo() {
   const reminderInput = document.getElementById('reminderTimeInput');
   const timeInput = document.getElementById('todoTimeInput');
   const locationInput = document.getElementById('todoLocationInput');
+  const startInput = document.getElementById('todoStartInput');
+  const endInput = document.getElementById('todoEndInput');
   // 여러 줄 입력 지원: 줄마다 별도의 할 일로 추가
   const lines = input.value.split('\n').map(normalizeTodoText).filter(Boolean);
   if (!lines.length || !spaceData) return;
-  const key = dateKey(selectedDate);
+  // 기간 일정: 시작일(기본=선택한 날) ~ 종료일. 종료일이 더 뒤면 기간 일정으로 저장.
+  const startKey = normalizeDateKey(startInput && startInput.value) || dateKey(selectedDate);
+  const endKey = normalizeDateKey(endInput && endInput.value);
+  if (endKey && endKey < startKey) { toast('종료일이 시작일보다 빨라요.'); return; }
+  const isPeriod = !!endKey && endKey > startKey;
+  const key = startKey; // 기간 일정은 시작일 칸에 저장
   const reminderFields = buildReminderFields(key, reminderInput ? reminderInput.value : '');
   if (reminderFields === null) return;
   if (reminderFields.remindAtMs) await requestPushPermission();
@@ -1649,10 +1676,12 @@ async function addTodo() {
   if (reminderInput) reminderInput.value = '';
   if (timeInput) timeInput.value = '';
   if (locationInput) locationInput.value = '';
+  if (startInput) startInput.value = '';
+  if (endInput) endInput.value = '';
   const day = getDay(key);
   const base = Date.now();
   lines.forEach((text, i) => {
-    day.todos.push({
+    const todo = {
       id: (base + i).toString(36),
       text,
       done: false,
@@ -1664,13 +1693,15 @@ async function addTodo() {
       time: scheduleTime,
       location: scheduleLocation,
       ...reminderFields
-    });
+    };
+    if (isPeriod) { todo.startDate = startKey; todo.endDate = endKey; }
+    day.todos.push(todo);
   });
-  renderTodos(day); // 낙관적 렌더링
-  renderMoveDeck();
-  renderMonthCal();
+  setDayLocal(key, day);
+  renderAll(); // 낙관적 렌더링
   await saveDay(key, day);
-  if (lines.length > 1) toast(`✅ 할 일 ${lines.length}개가 추가됐어요!`);
+  if (isPeriod) toast(`✅ ${shortDateLabel(startKey)}~${shortDateLabel(endKey)} 기간 일정을 추가했어요!`);
+  else if (lines.length > 1) toast(`✅ 할 일 ${lines.length}개가 추가됐어요!`);
   else if (reminderFields.remindAtMs) toast('✅ 할 일과 알림이 추가됐어요!');
   else if (scheduleTime || scheduleLocation) toast('✅ 시간·장소와 함께 할 일을 추가했어요!');
 }
@@ -1694,7 +1725,7 @@ async function toggleTodo(id, checked) {
   await saveDay(key, day);
 }
 
-function promptTodoEdits(todo) {
+function promptTodoEdits(todo, startKey) {
   const rawText = prompt('할 일 내용 수정', todo.text);
   if (rawText === null) return null;
   const text = normalizeTodoText(rawText);
@@ -1710,7 +1741,20 @@ function promptTodoEdits(todo) {
 
   const rawLocation = prompt('장소 수정 (비워두면 없음)', todo.location || '');
   if (rawLocation === null) return null;
-  return { text, time, location: normalizeTodoText(rawLocation) };
+
+  const baseStart = todo.startDate || startKey;
+  const rawEnd = prompt('종료일 수정 (예: 2026-07-03, 기간 일정으로 만들려면 입력 · 비우면 기간 해제)', todo.endDate || '');
+  if (rawEnd === null) return null;
+  const endKey = normalizeDateKey(rawEnd);
+  if (rawEnd.trim() && !endKey) { toast('종료일은 2026-07-03 형식으로 입력해 주세요.'); return null; }
+
+  const result = { text, time, location: normalizeTodoText(rawLocation) };
+  if (endKey && baseStart && endKey > baseStart) {
+    result.startDate = baseStart; result.endDate = endKey;
+  } else {
+    result.startDate = null; result.endDate = null; // 기간 해제 → 단일 일정
+  }
+  return result;
 }
 
 async function editTodo(id) {
@@ -1718,12 +1762,10 @@ async function editTodo(id) {
   const day = getDay(key);
   const t = day.todos.find(t => t.id === id);
   if (!t) return;
-  const edits = promptTodoEdits(t);
+  const edits = promptTodoEdits(t, key);
   if (!edits) return;
   Object.assign(t, edits);
-  renderTodos(day);
-  renderMoveDeck();
-  renderMonthCal();
+  renderAll();
   await saveDay(key, day);
 }
 
@@ -1777,6 +1819,10 @@ function renderAll() {
   const day = getDay(key);
   renderTodos(day);
 
+  // 기간 일정 시작일 기본값 = 선택한 날 (사용자가 아직 안 건드렸을 때만)
+  const startEl = document.getElementById('todoStartInput');
+  if (startEl && document.activeElement !== startEl && !startEl.value) startEl.value = key;
+
   // 메모: 카테고리별 칸 렌더 + 입력 중이 아닐 때만 값 덮어쓰기
   renderHomeMemo(day);
 
@@ -1792,6 +1838,7 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 
 function todoMetaHtml(todo) {
   const parts = [];
+  if (isPeriodTodo(todo)) parts.push(`<span class="todo-meta-chip">📅 ${shortDateLabel(todo.startDate)}~${shortDateLabel(todo.endDate)}</span>`);
   if (todo.time) parts.push(`<span class="todo-meta-chip">🕐 ${esc(todo.time)}</span>`);
   if (todo.location) parts.push(`<span class="todo-meta-chip location">📍 ${esc(todo.location)}</span>`);
   return parts.length ? `<span class="todo-meta">${parts.join('')}</span>` : '';
@@ -2164,7 +2211,19 @@ function renderCalendarTags(key, dateObj) {
   if (calendarMoveMode) return renderCalendarMoveSummary(key, dateObj);
   const day = getDay(key);
   const tags = [];
-  const previewTodos = day.todos.slice(0, 2);
+
+  // 기간 일정 막대 — 시작일~종료일을 가로질러 표시
+  (periodIndex[key] || []).forEach(b => {
+    const cat = catById(b.todo.cat);
+    const showLabel = b.isStart || dateObj.getDay() === 0; // 시작일 또는 주 시작(일)에 제목 표시
+    const cls = ['mcal-bar', b.isStart ? 'start' : '', b.isEnd ? 'end' : '', b.todo.done ? 'done' : ''].filter(Boolean).join(' ');
+    const label = showLabel ? esc((b.todo.done ? '✓ ' : '') + b.todo.text) : '&nbsp;';
+    tags.push(`<span class="${cls}" style="background:${cat.color};" ${calendarDragAttrs('todo', b.startK, b.todo.id)} title="${esc(b.todo.text)} (${shortDateLabel(b.startK)}~${shortDateLabel(b.endK)})">${label}</span>`);
+  });
+
+  // 기간 일정이 아닌 일반 할 일
+  const regularTodos = day.todos.filter(t => !isPeriodTodo(t));
+  const previewTodos = regularTodos.slice(0, 2);
 
   previewTodos.forEach(t => {
     const prefix = `${t.done ? '✓ ' : ''}${t.time ? `${t.time} · ` : ''}`;
@@ -2177,12 +2236,12 @@ function renderCalendarTags(key, dateObj) {
     }
   });
 
-  if (day.todos.length > previewTodos.length) {
-    tags.push(`<span class="mcal-more">+${day.todos.length - previewTodos.length}</span>`);
+  if (regularTodos.length > previewTodos.length) {
+    tags.push(`<span class="mcal-more">+${regularTodos.length - previewTodos.length}</span>`);
   }
 
   const recCount = getRecurringFor(dateObj).length;
-  if (!day.todos.length && recCount) {
+  if (!day.todos.length && !(periodIndex[key] || []).length && recCount) {
     tags.push(`<span class="mcal-tag t-todo" title="반복 할 일">반복 ${recCount}</span>`);
   }
 
@@ -2208,9 +2267,33 @@ function renderCalendarMoveSummary(key, dateObj) {
   return `${summary}<div class="mcal-drop-label">보내기</div>`;
 }
 
+// ── 기간 일정 ──
+function isPeriodTodo(t) { return !!(t && t.startDate && t.endDate && t.endDate > t.startDate); }
+
+// 날짜별로 그날을 지나는 기간 일정 목록을 만든다. renderCalendarTags에서 사용.
+let periodIndex = {};
+function buildPeriodIndex() {
+  const idx = {};
+  const days = (spaceData && spaceData.days) || {};
+  Object.keys(days).forEach(startK => {
+    (days[startK].todos || []).forEach(t => {
+      if (!isPeriodTodo(t)) return;
+      const s = t.startDate, e = t.endDate;
+      let cur = s, guard = 0;
+      while (cur <= e && guard < 400) {
+        (idx[cur] = idx[cur] || []).push({ todo: t, startK: s, endK: e, isStart: cur === s, isEnd: cur === e });
+        cur = keyPlusDays(cur, 1);
+        guard++;
+      }
+    });
+  });
+  return idx;
+}
+
 function renderMonthCal() {
   const box = document.getElementById('monthCal');
   if (!box) return;
+  periodIndex = buildPeriodIndex();
   const y = calMonth.getFullYear(), m = calMonth.getMonth();
   document.getElementById('calMonthLabel').textContent = `${y}년 ${m+1}월`;
   const first = new Date(y, m, 1).getDay();
@@ -2321,6 +2404,12 @@ async function moveCalendarItem(sourceKey, targetKey, kind, id) {
     const moveEvent = createTodoMoveEvent(todo, sourceKey, targetKey);
     applyMoveMeta(todo, sourceKey, targetKey, moveEvent);
     rebaseTodoReminder(todo, targetKey);
+    // 기간 일정은 시작·종료일을 같은 폭으로 함께 이동
+    if (isPeriodTodo(todo)) {
+      const delta = dayDiff(sourceKey, targetKey);
+      todo.startDate = targetKey;
+      todo.endDate = keyPlusDays(todo.endDate, delta);
+    }
     targetDay.todos = [...targetDay.todos, todo];
     setDayLocal(sourceKey, sourceDay);
     setDayLocal(targetKey, targetDay);
@@ -2686,7 +2775,7 @@ async function mEditTodo(id) {
   const day = getDay(modalKey);
   const t = day.todos.find(t => t.id === id);
   if (!t) return;
-  const edits = promptTodoEdits(t);
+  const edits = promptTodoEdits(t, modalKey);
   if (!edits) return;
   Object.assign(t, edits);
   refreshModal(true); renderAll();
