@@ -349,12 +349,23 @@
   .dm-txt { min-width: 0; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.55; }
   .dm-actions { display: flex; align-items: center; justify-content: flex-end; gap: 3px; flex-wrap: wrap; max-width: 160px; }
   .dm-note { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; line-height: 1.8; white-space: pre-wrap; word-break: break-all; }
-  #reportModal, #moveDateModal {
+  #reportModal, #moveDateModal, #catEditModal {
     position: fixed; inset: 0; background: rgba(18,18,20,0.55); z-index: 1500;
     display: none; align-items: center; justify-content: center; padding: 20px;
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
-  #reportModal.open, #moveDateModal.open { display: flex; }
+  #reportModal.open, #moveDateModal.open, #catEditModal.open { display: flex; }
+  #catEditModal .move-date-card { max-height: 84vh; overflow-y: auto; }
+  .cat-edit-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .cat-edit-row:last-child { border-bottom: none; }
+  .cat-edit-color { width: 38px; height: 34px; flex-shrink: 0; padding: 0; border: 1.5px solid var(--border); border-radius: 9px; background: var(--bg); cursor: pointer; }
+  .cat-edit-color::-webkit-color-swatch-wrapper { padding: 2px; }
+  .cat-edit-color::-webkit-color-swatch { border: none; border-radius: 6px; }
+  .cat-edit-name {
+    flex: 1; min-width: 0; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
+    color: var(--text); font-family: inherit; font-size: 14px; font-weight: 700; padding: 9px 11px; outline: none;
+  }
+  .cat-edit-name:focus { border-color: var(--blue); }
   .report-modal-card, .move-date-card {
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
     width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.3); animation: fadeIn 0.25s ease;
@@ -811,6 +822,7 @@
         <div class="card-title">
           <span>🌙 오늘 한 일 · 하루 메모</span>
           <button class="small-btn" onclick="addMemoCategory()" title="메모 카테고리 추가">＋ 카테고리</button>
+          <button class="small-btn" onclick="openCatEditor()" title="카테고리 색·이름 편집">🎨</button>
         </div>
         <div id="homeMemoGrid" class="memo-grid"></div>
         <div class="save-hint" id="noteSaveHint">&nbsp;</div>
@@ -887,6 +899,21 @@
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
       <button class="small-btn" onclick="closeMoveDateModal()">취소</button>
       <button class="add-btn" onclick="confirmMoveDate()">이동</button>
+    </div>
+  </div>
+</div>
+
+<!-- 카테고리 편집 모달 -->
+<div id="catEditModal" onclick="if(event.target===this) closeCatEditor()">
+  <div class="move-date-card" style="max-width:420px;">
+    <div class="card-title">
+      <span>🎨 카테고리 편집</span>
+      <button class="small-btn" onclick="closeCatEditor()">✕ 닫기</button>
+    </div>
+    <div id="catEditBody"></div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+      <button class="small-btn" onclick="closeCatEditor()">취소</button>
+      <button class="add-btn" onclick="saveCatEditor()">저장</button>
     </div>
   </div>
 </div>
@@ -1418,6 +1445,55 @@ async function addMemoCategory() {
   } catch (e) { console.error('메모 카테고리 저장 실패:', e); toast('저장에 실패했어요.'); }
 }
 
+// ── 카테고리 편집(색·이름) ── 할 일/메모 카테고리 모두
+function catEditRows(scope, cats) {
+  return cats.map(c => `
+    <div class="cat-edit-row">
+      <input type="color" class="cat-edit-color" value="${c.color}" data-scope="${scope}" data-id="${c.id}" aria-label="${esc(c.name)} 색상">
+      <input type="text" class="cat-edit-name" value="${esc(c.name)}" maxlength="20" data-scope="${scope}" data-id="${c.id}" aria-label="${esc(c.name)} 이름">
+    </div>`).join('');
+}
+function openCatEditor() {
+  if (!spaceData) { toast('데이터를 불러오는 중이에요.'); return; }
+  document.getElementById('catEditBody').innerHTML = `
+    <div class="dm-section-title">✅ 할 일 카테고리</div>
+    ${catEditRows('todo', getCategories())}
+    <div class="dm-section-title">🌙 하루 메모 카테고리</div>
+    ${catEditRows('memo', getMemoCats())}`;
+  document.getElementById('catEditModal').classList.add('open');
+}
+function closeCatEditor() {
+  document.getElementById('catEditModal').classList.remove('open');
+}
+async function saveCatEditor() {
+  if (!spaceData) return;
+  const todoCats = getCategories().map(c => ({ ...c }));
+  const memoCats = getMemoCats().map(c => ({ ...c }));
+  document.querySelectorAll('#catEditBody .cat-edit-row').forEach(row => {
+    const colorEl = row.querySelector('.cat-edit-color');
+    const nameEl = row.querySelector('.cat-edit-name');
+    const arr = colorEl.dataset.scope === 'todo' ? todoCats : memoCats;
+    const cat = arr.find(c => c.id === colorEl.dataset.id);
+    if (!cat) return;
+    cat.color = colorEl.value;
+    cat.name = nameEl.value.trim() || cat.name;
+  });
+  spaceData.categories = todoCats;
+  spaceData.memoCategories = memoCats;
+  homeMemoSig = ''; // 메모 칸 라벨·색 갱신 위해 재생성
+  closeCatEditor();
+  renderAll();
+  if (!spaceId) return;
+  try {
+    await db.collection('spaces').doc(spaceId).update({
+      categories: todoCats,
+      memoCategories: memoCats,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('🎨 카테고리를 수정했어요!');
+  } catch (e) { console.error('카테고리 수정 저장 실패:', e); toast('저장에 실패했어요.'); }
+}
+
 // 홈 카드 메모: 카테고리 목록이 바뀔 때만 구조를 다시 그리고, 그 외엔 값만 갱신(포커스 보존)
 let homeMemoSig = '';
 function renderHomeMemo(day) {
@@ -1560,7 +1636,9 @@ function renderCatChips() {
   if (!cats.some(c => c.id === selectedTodoCat)) selectedTodoCat = cats[0].id;
   row.innerHTML = cats.map(c =>
     `<button class="tcat-chip ${c.id === selectedTodoCat ? 'sel' : ''}" style="${c.id === selectedTodoCat ? `background:${c.color};` : ''}" onclick="pickTodoCat('${c.id}')">${esc(c.name)}</button>`
-  ).join('') + `<button class="tcat-chip" onclick="addCustomCategory()" title="새 카테고리 만들기">＋ 카테고리</button>`;
+  ).join('')
+    + `<button class="tcat-chip" onclick="addCustomCategory()" title="새 카테고리 만들기">＋ 카테고리</button>`
+    + `<button class="tcat-chip" onclick="openCatEditor()" title="카테고리 색·이름 편집">🎨 편집</button>`;
 }
 function pickTodoCat(id) { selectedTodoCat = id; renderCatChips(); }
 
