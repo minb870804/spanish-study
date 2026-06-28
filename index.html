@@ -255,6 +255,7 @@
   .mcal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
   .mcal-dow { font-size: 11px; text-align: center; color: var(--muted); font-weight: 800; padding: 4px 0; }
   .mcal-day {
+    position: relative;
     border: 1px solid var(--border); border-radius: 10px; min-height: 112px; padding: 7px;
     cursor: pointer; font-size: 11px; display: flex; flex-direction: column; gap: 3px;
     transition: var(--transition); overflow: hidden;
@@ -524,6 +525,14 @@
   .share-desc { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
 
   /* ── WEEK OVERVIEW ── */
+  /* 금주 현황 카드 */
+  .sobriety-streak { font-size: 20px; font-weight: 900; color: var(--green); line-height: 1.25; }
+  .sobriety-stats { font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 6px 0 12px; }
+  .sobriety-toggle { width: 100%; }
+  .sobriety-toggle.sel { border-color: var(--gold); color: var(--gold); background: rgba(245,124,0,0.12); font-weight: 800; }
+  /* 달력 음주일 마커 */
+  .mcal-drink-mark { position: absolute; top: 3px; right: 4px; font-size: 11px; line-height: 1; pointer-events: none; }
+
   .week-card { overflow: hidden; }
   .week-range { font-size: 11px; font-weight: 800; color: var(--muted); white-space: nowrap; }
   .week-summary {
@@ -611,7 +620,8 @@
     .todo-card { order: 3; }
     .note-card { order: 4; }
     .week-card { order: 5; }
-    .share-card { order: 6; }
+    .sobriety-card { order: 6; }
+    .share-card { order: 7; }
     .content-col > .card + .card, .side-col > .card + .card { margin-top: 0; }
     .card { padding: 14px; border-radius: 12px; }
     .card-title { font-size: 14px; margin-bottom: 10px; align-items: flex-start; }
@@ -894,6 +904,13 @@
           <span>최근 미완료 포함 · 최대 5개</span>
         </div>
         <div class="week-agenda-list" id="weekAgendaList"></div>
+      </div>
+
+      <div class="card sobriety-card">
+        <div class="card-title"><span>🍺 금주 현황</span></div>
+        <div class="sobriety-streak" id="sobrietyStreak">—</div>
+        <div class="sobriety-stats" id="sobrietyStats"></div>
+        <button class="small-btn sobriety-toggle" id="sobrietyToggleBtn" onclick="toggleDrinkDay(dateKey(selectedDate))"></button>
       </div>
 
       <div class="card share-card">
@@ -1983,7 +2000,72 @@ function renderAll() {
   renderMoveDeck();
   renderMonthCal();
   renderWeekOverview();
+  renderSobriety();
   if (document.getElementById('recurPanel').style.display !== 'none') renderRecurList();
+}
+
+// ══════════════════════════════════════
+// 금주 현황 (술 먹은 날만 기록, 나머지는 자동 금주)
+// ══════════════════════════════════════
+function getDrinkDays() { return (spaceData && spaceData.drinkDays) || {}; }
+function isDrinkDay(key) { return !!getDrinkDays()[key]; }
+
+async function toggleDrinkDay(key) {
+  if (!spaceData) return;
+  const map = { ...getDrinkDays() };
+  if (map[key]) delete map[key]; else map[key] = true;
+  spaceData.drinkDays = map;
+  renderAll();
+  if (!spaceId) return;
+  try {
+    await db.collection('spaces').doc(spaceId).update({
+      drinkDays: map,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) { console.error('음주 기록 저장 실패:', e); toast('저장에 실패했어요.'); }
+}
+
+// 금주 연속 일수: 마지막(오늘 이전 포함) 음주일 이후 며칠째인지. 오늘이 음주일이면 0, 기록 없으면 null.
+function sobrietyStreak() {
+  const todayK = dateKey(new Date());
+  if (isDrinkDay(todayK)) return 0;
+  const past = Object.keys(getDrinkDays()).filter(k => getDrinkDays()[k] && k <= todayK).sort();
+  if (!past.length) return null;
+  return dayDiff(past[past.length - 1], todayK);
+}
+
+function monthDrinkStats(baseDate) {
+  const info = monthInfo(baseDate);
+  const map = getDrinkDays();
+  let drink = 0;
+  Object.keys(map).forEach(k => { if (map[k] && keyInMonth(k, info)) drink++; });
+  const todayK = dateKey(new Date());
+  let elapsed;
+  if (todayK < info.firstKey) elapsed = 0;
+  else if (todayK > info.lastKey) elapsed = info.days;
+  else elapsed = Number(todayK.split('-')[2]);
+  return { drink, sober: Math.max(0, elapsed - drink), label: info.label };
+}
+
+function renderSobriety() {
+  const streakEl = document.getElementById('sobrietyStreak');
+  if (!streakEl) return;
+  const streak = sobrietyStreak();
+  streakEl.textContent = streak === null ? '아직 음주 기록 없어요 🎉'
+    : streak === 0 ? '오늘은 음주일로 표시됨 🍺'
+    : `🔥 금주 ${streak}일째`;
+  streakEl.style.color = streak === 0 ? 'var(--gold)' : 'var(--green)';
+
+  const stats = monthDrinkStats(calMonth);
+  document.getElementById('sobrietyStats').textContent = `${stats.label} · 음주 ${stats.drink}일 · 금주 ${stats.sober}일`;
+
+  const selKey = dateKey(selectedDate);
+  const selDrink = isDrinkDay(selKey);
+  const isToday = selKey === dateKey(new Date());
+  const dateLabel = isToday ? '오늘' : shortDateLabel(selKey);
+  const btn = document.getElementById('sobrietyToggleBtn');
+  btn.textContent = selDrink ? `🍺 ${dateLabel} 음주 해제` : `🍺 ${dateLabel} 음주 표시`;
+  btn.classList.toggle('sel', selDrink);
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -2389,6 +2471,7 @@ function renderCalendarTags(key, dateObj) {
   if (calendarMoveMode) return renderCalendarMoveSummary(key, dateObj);
   const day = getDay(key);
   const tags = [];
+  if (isDrinkDay(key)) tags.push('<span class="mcal-drink-mark" title="음주일">🍺</span>');
 
   // 기간 일정 막대 — 시작일~종료일을 가로질러 표시
   (periodIndex[key] || []).forEach(b => {
