@@ -132,9 +132,12 @@
   .dashboard-grid { margin-bottom: 18px; }
   .calendar-card { margin-bottom: 18px; }
   .cat-grid { margin-bottom: 18px; }
-  /* 카드들을 높이에 맞춰 빈틈 없이 채우는 메이슨리 2단 */
-  .dash-cards { columns: 2; column-gap: 18px; }
-  .dash-cards > .card { break-inside: avoid; -webkit-column-break-inside: avoid; width: 100%; margin: 0 0 18px; }
+  /* 카드들을 가장 짧은 컬럼에 채우는 메이슨리(JS 배치) */
+  .dash-cards { display: flex; gap: 18px; align-items: flex-start; }
+  .dash-cards.single { flex-direction: column; }
+  .dash-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+  .dash-cards.single .dash-col { width: 100%; }
+  .dash-col > .card { margin: 0; }
 
   @keyframes fadeIn { from { opacity:0; transform: translateY(8px);} to {opacity:1; transform:translateY(0);} }
   .fade { animation: fadeIn 0.4s ease; }
@@ -608,7 +611,6 @@
     .date-nav { width: 100%; gap: 6px; }
     .date-nav input[type="date"] { flex: 1; min-width: 0; }
     .dashboard-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
-    .dash-cards { column-count: 1; }
     .content-col, .side-col { display: contents; }
     .calendar-card { order: 1; }
     .cat-grid { order: 2; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 0; }
@@ -1994,7 +1996,60 @@ function renderAll() {
   renderWeekOverview();
   renderSobriety();
   if (document.getElementById('recurPanel').style.display !== 'none') renderRecurList();
+  layoutDashCards();
 }
+
+// 대시보드 카드 메이슨리: 카드 순서는 유지하되 두 컬럼 높이 차가 최소가 되는 분할 지점을 찾아 배치
+function layoutDashCards() {
+  const container = document.querySelector('.dash-cards');
+  if (!container) return;
+  // 카드 안 입력 중이면 재배치 생략(포커스 보존) — 다음 렌더에서 정리됨
+  const ae = document.activeElement;
+  if (ae && container.contains(ae) && /^(INPUT|TEXTAREA)$/.test(ae.tagName)) return;
+
+  const cards = [...container.querySelectorAll('.card')];
+  cards.forEach((c, i) => { if (c.dataset.order === undefined) c.dataset.order = i; });
+  cards.sort((a, b) => (+a.dataset.order) - (+b.dataset.order));
+
+  const ncols = window.innerWidth <= 768 ? 1 : 2;
+  container.classList.toggle('single', ncols === 1);
+  container.innerHTML = '';
+
+  if (ncols === 1) {
+    const col = document.createElement('div');
+    col.className = 'dash-col';
+    cards.forEach(c => col.appendChild(c));
+    container.appendChild(col);
+    return;
+  }
+
+  const colA = document.createElement('div'); colA.className = 'dash-col';
+  const colB = document.createElement('div'); colB.className = 'dash-col';
+  container.appendChild(colA); container.appendChild(colB);
+  // 모든 카드를 한 컬럼에 넣어 컬럼 폭 기준 높이를 측정
+  cards.forEach(c => colA.appendChild(c));
+  const h = cards.map(c => c.offsetHeight);
+  const n = cards.length;
+  // 모든 분배 조합 중 두 컬럼 높이 차가 최소인 것 선택(카드 수가 적어 가벼움)
+  let bestMask = 1, bestDiff = Infinity;
+  for (let mask = 1; mask < (1 << n) - 1; mask++) {
+    let a = 0, b = 0;
+    for (let i = 0; i < n; i++) { if (mask & (1 << i)) a += h[i]; else b += h[i]; }
+    const diff = Math.abs(a - b);
+    if (diff < bestDiff) { bestDiff = diff; bestMask = mask; }
+  }
+  colA.innerHTML = ''; colB.innerHTML = '';
+  // 컬럼 내부는 원래 순서(data-order) 유지하며 분배
+  cards.forEach((c, i) => { ((bestMask & (1 << i)) ? colA : colB).appendChild(c); });
+}
+
+let dashResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(dashResizeTimer);
+  dashResizeTimer = setTimeout(layoutDashCards, 150);
+});
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', layoutDashCards);
+else layoutDashCards();
 
 // ══════════════════════════════════════
 // 금주 현황 (술 먹은 날만 기록, 나머지는 자동 금주)
