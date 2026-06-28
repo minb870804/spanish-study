@@ -280,7 +280,7 @@
     padding: 1px 5px; margin: 0 -3px; color: #fff; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; cursor: grab; touch-action: none; user-select: none;
   }
-  .mcal-bar.start { border-top-left-radius: 6px; border-bottom-left-radius: 6px; margin-left: 0; }
+  .mcal-bar.start { border-top-left-radius: 6px; border-bottom-left-radius: 6px; margin-left: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
   .mcal-bar.end { border-top-right-radius: 6px; border-bottom-right-radius: 6px; margin-right: 0; }
   .mcal-bar.done { opacity: 0.5; }
   .mcal-bar:active { cursor: grabbing; }
@@ -408,7 +408,7 @@
   .todo-item:last-child { border-bottom: none; }
   .todo-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
   .todo-content { min-width: 0; display: grid; gap: 4px; }
-  .todo-item .txt { min-width: 0; line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere; }
+  .todo-item .txt { min-width: 0; line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere; transition: color 0.25s ease, opacity 0.25s ease; }
   .todo-item.done .txt { text-decoration: line-through; color: var(--muted); }
   .todo-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
   .todo-meta-chip {
@@ -434,10 +434,45 @@
   }
   .quick-move-btn:hover { border-color: var(--blue); color: var(--blue); }
   .empty-msg { color: var(--muted); font-size: 13px; text-align: center; padding: 18px 0; }
+  .empty-state { text-align: center; padding: 26px 12px 22px; }
+  .empty-state .empty-emoji { font-size: 34px; line-height: 1; margin-bottom: 10px; filter: grayscale(0.1); }
+  .empty-state .empty-title { font-size: 14px; font-weight: 800; color: var(--text); }
+  .empty-state .empty-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
 
   .progress-pill {
     font-size: 12px; font-weight: 700; color: var(--green);
     background: var(--green-light); padding: 4px 12px; border-radius: 14px;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+  .progress-pill.complete { color: #fff; background: var(--green); animation: pillPop 0.45s ease; }
+  @keyframes pillPop { 0% { transform: scale(1); } 45% { transform: scale(1.14); } 100% { transform: scale(1); } }
+
+  /* 할 일 세부설정 토글 */
+  .todo-opts-toggle {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-family: inherit; font-size: 12px; font-weight: 800; padding: 2px 2px 0;
+    margin: -2px 0 12px; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .todo-opts-toggle:hover { color: var(--blue); }
+  .todo-adv[hidden] { display: none; }
+  .todo-adv { animation: fadeIn 0.2s ease; }
+
+  /* 할 일 항목 더보기(⋯) 메뉴 */
+  .todo-menu-btn {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 16px; font-weight: 900; line-height: 1; padding: 2px 7px; border-radius: 7px;
+  }
+  .todo-menu-btn:hover { color: var(--blue); background: var(--blue-light); }
+  .todo-btns { display: none; align-items: center; gap: 2px; flex-wrap: wrap; }
+  .todo-item.menu-open .todo-btns { display: inline-flex; }
+  .todo-item.menu-open .todo-menu-btn { color: var(--blue); background: var(--blue-light); }
+
+  /* 완료 플래시 */
+  .todo-item.just-done { animation: doneFlash 0.6s ease; }
+  @keyframes doneFlash {
+    0% { background: var(--green-light); }
+    60% { background: var(--green-light); }
+    100% { background: transparent; }
   }
 
   /* ── NOTE (오늘 한 일 메모) ── */
@@ -767,33 +802,36 @@
             onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();addTodo();}"></textarea>
           <button class="add-btn" onclick="addTodo()">추가</button>
         </div>
-        <div class="todo-detail-row">
-          <label class="todo-detail-field">
-            <span>🕐 시간</span>
-            <input type="time" id="todoTimeInput" aria-label="할 일 시간" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('todoLocationInput').focus();}">
-          </label>
-          <label class="todo-detail-field">
-            <span>📍 장소</span>
-            <input type="text" id="todoLocationInput" maxlength="80" placeholder="장소를 입력하세요" aria-label="할 일 장소" onkeydown="if(event.key==='Enter'){event.preventDefault();addTodo();}">
-          </label>
-        </div>
-        <div class="todo-detail-row">
-          <label class="todo-detail-field">
-            <span>📅 시작일</span>
-            <input type="date" id="todoStartInput" aria-label="기간 시작일">
-          </label>
-          <label class="todo-detail-field">
-            <span>🏁 종료일 (기간 일정)</span>
-            <input type="date" id="todoEndInput" aria-label="기간 종료일">
-          </label>
-        </div>
-        <div class="reminder-row">
-          <label class="reminder-field">
-            <span>🔔 알림</span>
-            <input type="time" id="reminderTimeInput" aria-label="할 일 알림 시간">
-          </label>
-          <button class="small-btn" id="pushEnableBtn" onclick="requestPushPermission()">알림 허용</button>
-          <span class="reminder-status" id="pushStatus">알림 꺼짐</span>
+        <button type="button" class="todo-opts-toggle" id="todoOptsToggle" onclick="toggleTodoOptions()" aria-expanded="false">＋ 세부설정 · 시간·장소·기간·알림</button>
+        <div id="todoAdvOptions" class="todo-adv" hidden>
+          <div class="todo-detail-row">
+            <label class="todo-detail-field">
+              <span>🕐 시간</span>
+              <input type="time" id="todoTimeInput" aria-label="할 일 시간" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('todoLocationInput').focus();}">
+            </label>
+            <label class="todo-detail-field">
+              <span>📍 장소</span>
+              <input type="text" id="todoLocationInput" maxlength="80" placeholder="장소를 입력하세요" aria-label="할 일 장소" onkeydown="if(event.key==='Enter'){event.preventDefault();addTodo();}">
+            </label>
+          </div>
+          <div class="todo-detail-row">
+            <label class="todo-detail-field">
+              <span>📅 시작일</span>
+              <input type="date" id="todoStartInput" aria-label="기간 시작일">
+            </label>
+            <label class="todo-detail-field">
+              <span>🏁 종료일 (기간 일정)</span>
+              <input type="date" id="todoEndInput" aria-label="기간 종료일">
+            </label>
+          </div>
+          <div class="reminder-row">
+            <label class="reminder-field">
+              <span>🔔 알림</span>
+              <input type="time" id="reminderTimeInput" aria-label="할 일 알림 시간">
+            </label>
+            <button class="small-btn" id="pushEnableBtn" onclick="requestPushPermission()">알림 허용</button>
+            <span class="reminder-status" id="pushStatus">알림 꺼짐</span>
+          </div>
         </div>
         <div class="tcat-row" id="tcatRow"></div>
 
@@ -1739,6 +1777,23 @@ function autoSizeTodoInput(el) {
   el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
 }
 
+// 할 일 세부설정(시간·장소·기간·알림) 펼치기/접기 — 기본은 접힘
+function toggleTodoOptions() {
+  const box = document.getElementById('todoAdvOptions');
+  const btn = document.getElementById('todoOptsToggle');
+  if (!box || !btn) return;
+  const willOpen = box.hasAttribute('hidden');
+  if (willOpen) box.removeAttribute('hidden'); else box.setAttribute('hidden', '');
+  btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  btn.textContent = willOpen ? '− 세부설정 접기' : '＋ 세부설정 · 시간·장소·기간·알림';
+}
+
+// 할 일 항목의 추가 액션(이동/수정/알림/삭제) 펼치기/접기
+function toggleRowActions(btn) {
+  const item = btn.closest('.todo-item');
+  if (item) item.classList.toggle('menu-open');
+}
+
 async function addTodo() {
   const input = document.getElementById('todoInput');
   const reminderInput = document.getElementById('reminderTimeInput');
@@ -1806,6 +1861,7 @@ async function toggleTodo(id, checked) {
   if (checked) {
     t.doneAt = Date.now();
     t.doneDate = dateKey(new Date());
+    justCompletedId = id; // 완료 플래시용
   } else {
     delete t.doneAt;
     delete t.doneDate;
@@ -2048,6 +2104,7 @@ function renderWeekOverview() {
   }).join('');
 }
 
+let justCompletedId = null; // 방금 완료한 할 일 id (한 번만 플래시)
 function renderTodos(day) {
   const list = document.getElementById('todoList');
   const todos = day.todos;
@@ -2055,10 +2112,17 @@ function renderTodos(day) {
   const currentKey = dateKey(selectedDate);
   const doneCount = todos.filter(t => t.done).length + recs.filter(r => day.recDone[r.id]).length;
   const total = todos.length + recs.length;
-  document.getElementById('todoProgress').textContent = `${doneCount} / ${total}`;
+  const allDone = total > 0 && doneCount === total;
+  const pill = document.getElementById('todoProgress');
+  pill.textContent = allDone ? `🎉 ${doneCount} / ${total}` : `${doneCount} / ${total}`;
+  pill.classList.toggle('complete', allDone);
 
   if (!total) {
-    list.innerHTML = '<div class="empty-msg">아직 할 일이 없어요. 첫 할 일을 추가해 보세요! ✍️</div>';
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-emoji">🗒️</div>
+      <div class="empty-title">아직 할 일이 없어요</div>
+      <div class="empty-sub">위에 첫 할 일을 적어 하루를 시작해 볼까요?</div>
+    </div>`;
     return;
   }
   const shared = isShared();
@@ -2082,7 +2146,7 @@ function renderTodos(day) {
   const todoHtml = todos.map(t => {
     const cat = catById(t.cat);
     const borderStyle = shared ? `border-left:3px solid ${memberColor(t.by)}; padding-left:9px;` : '';
-    return `<div class="todo-item swipeable ${t.done ? 'done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
+    return `<div class="todo-item swipeable ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
       <button class="del move-handle" onpointerdown="startTodoItemDrag(event, '${currentKey}', '${t.id}')" title="드래그해서 날짜 이동">↕</button>
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', this.checked)">
       <span class="todo-content"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
@@ -2090,17 +2154,21 @@ function renderTodos(day) {
         <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
         ${reminderChip(t)}
         ${authorChip(t.by)}${doneByChip(t)}
-        <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 1)" title="내일로 이동">내일</button>
-        <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
-        <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
-        <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
-        <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
-        <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
+        <button class="todo-menu-btn" onclick="toggleRowActions(this)" title="더보기" aria-label="더보기">⋯</button>
+        <span class="todo-btns">
+          <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 1)" title="내일로 이동">내일</button>
+          <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
+          <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
+          <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
+          <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
+          <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
+        </span>
       </span>
     </div>`;
   }).join('');
 
   list.innerHTML = recHtml + todoHtml;
+  justCompletedId = null; // 플래시는 한 번만
   attachTodoSwipeHandlers(list);
 }
 
