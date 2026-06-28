@@ -353,12 +353,12 @@
   .dm-txt { min-width: 0; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.55; }
   .dm-actions { display: flex; align-items: center; justify-content: flex-end; gap: 3px; flex-wrap: wrap; max-width: 160px; }
   .dm-note { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; line-height: 1.8; white-space: pre-wrap; word-break: break-all; }
-  #reportModal, #moveDateModal, #catEditModal {
+  #reportModal, #moveDateModal, #catEditModal, #sobrietyModal {
     position: fixed; inset: 0; background: rgba(18,18,20,0.55); z-index: 1500;
     display: none; align-items: center; justify-content: center; padding: 20px;
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
-  #reportModal.open, #moveDateModal.open, #catEditModal.open { display: flex; }
+  #reportModal.open, #moveDateModal.open, #catEditModal.open, #sobrietyModal.open { display: flex; }
   #catEditModal .move-date-card { max-height: 84vh; overflow-y: auto; }
   .cat-edit-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
   .cat-edit-row:last-child { border-bottom: none; }
@@ -757,6 +757,7 @@
         <div class="calendar-tools">
           <button class="small-btn" onclick="openMonthReport()">월 리포트</button>
           <button class="small-btn" id="moveModeBtn" onclick="toggleCalendarMoveMode()">이동 모드</button>
+          <button class="small-btn" onclick="openSobrietyModal()">금주 현황</button>
         </div>
         <div class="month-nav" aria-label="달력 월 이동">
           <button class="small-btn" onclick="moveCalMonth(-1)" aria-label="이전 달">‹</button>
@@ -900,13 +901,6 @@
         <div class="week-agenda-list" id="weekAgendaList"></div>
       </div>
 
-      <div class="card sobriety-card">
-        <div class="card-title"><span>🍺 금주 현황</span></div>
-        <div class="sobriety-streak" id="sobrietyStreak">—</div>
-        <div class="sobriety-stats" id="sobrietyStats"></div>
-        <button class="small-btn sobriety-toggle" id="sobrietyToggleBtn" onclick="toggleDrinkDay(dateKey(selectedDate))"></button>
-      </div>
-
       <div class="card share-card">
         <div class="card-title"><span>👥 함께 쓰는 사람</span></div>
         <div class="member-chips" id="memberChips"></div>
@@ -972,6 +966,19 @@
       <button class="small-btn" onclick="closeCatEditor()">취소</button>
       <button class="add-btn" onclick="saveCatEditor()">저장</button>
     </div>
+  </div>
+</div>
+
+<!-- 금주 현황 모달 -->
+<div id="sobrietyModal" onclick="if(event.target===this) closeSobrietyModal()">
+  <div class="move-date-card" style="max-width:360px;">
+    <div class="card-title">
+      <span>🍺 금주 현황</span>
+      <button class="small-btn" onclick="closeSobrietyModal()">✕ 닫기</button>
+    </div>
+    <div class="sobriety-streak" id="sobrietyStreak">—</div>
+    <div class="sobriety-stats" id="sobrietyStats"></div>
+    <button class="small-btn sobriety-toggle" id="sobrietyToggleBtn" onclick="toggleDrinkDay(dateKey(selectedDate))"></button>
   </div>
 </div>
 
@@ -2113,6 +2120,15 @@ function renderSobriety() {
   const btn = document.getElementById('sobrietyToggleBtn');
   btn.textContent = selDrink ? `🍺 ${dateLabel} 음주 해제` : `🍺 ${dateLabel} 음주 표시`;
   btn.classList.toggle('sel', selDrink);
+}
+
+function openSobrietyModal() {
+  if (!spaceData) { toast('데이터를 불러오는 중이에요.'); return; }
+  renderSobriety();
+  document.getElementById('sobrietyModal').classList.add('open');
+}
+function closeSobrietyModal() {
+  document.getElementById('sobrietyModal').classList.remove('open');
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
