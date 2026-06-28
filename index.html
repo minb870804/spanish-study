@@ -912,7 +912,7 @@
           <div class="todo-detail-row">
             <label class="todo-detail-field">
               <span>📅 시작일</span>
-              <input type="date" id="todoStartInput" aria-label="기간 시작일">
+              <input type="date" id="todoStartInput" aria-label="기간 시작일" oninput="todoStartDateEdited=true">
             </label>
             <label class="todo-detail-field">
               <span>🏁 종료일 (기간 일정)</span>
@@ -1124,6 +1124,7 @@ let unsubSpace = null;
 let unsubUser = null;
 let selectedDate = initialSelectedDate();
 let scheduleFilter = 'all'; // all | mine | shared
+let todoStartDateEdited = false;
 
 const DAYS_KO = ['일','월','화','수','목','금','토'];
 const MEMBER_SIGNATURES = [
@@ -2162,7 +2163,11 @@ async function addTodo() {
   const endInput = document.getElementById('todoEndInput');
   // 여러 줄 입력 지원: 줄마다 별도의 할 일로 추가
   const lines = input.value.split('\n').map(normalizeTodoText).filter(Boolean);
-  if (!lines.length || !spaceData || !userData) return;
+  if (!lines.length) return;
+  if (!currentUser || !spaceData || !userData) {
+    toast('일정 데이터를 불러오는 중이에요. 잠시 후 다시 눌러 주세요.');
+    return;
+  }
   // 기간 일정: 시작일(기본=선택한 날) ~ 종료일. 종료일이 더 뒤면 기간 일정으로 저장.
   const startKey = normalizeDateKey(startInput && startInput.value) || dateKey(selectedDate);
   const endKey = normalizeDateKey(endInput && endInput.value);
@@ -2184,6 +2189,7 @@ async function addTodo() {
   if (locationInput) locationInput.value = '';
   if (startInput) startInput.value = '';
   if (endInput) endInput.value = '';
+  todoStartDateEdited = false;
   document.getElementById('todoShareInput').checked = false;
   const day = getDay(key);
   const base = Date.now();
@@ -2207,6 +2213,8 @@ async function addTodo() {
     if (isPeriod) { todo.startDate = startKey; todo.endDate = endKey; }
     day.todos.push(todo);
   });
+  // 현재 필터에 새 일정이 가려지는 경우 전체 보기로 전환해 추가 결과를 바로 보여준다.
+  if (scheduleFilter === 'shared' && visibility !== 'shared') scheduleFilter = 'all';
   setDayLocal(key, day);
   renderAll(); // 낙관적 렌더링
   await saveDay(key, day);
@@ -2346,9 +2354,9 @@ function onNoteInput() {
 // ══════════════════════════════════════
 // DATE NAV
 // ══════════════════════════════════════
-function moveDate(delta) { selectedDate.setDate(selectedDate.getDate() + delta); calMonth = new Date(selectedDate); renderAll(); }
-function goToday() { selectedDate = new Date(); calMonth = new Date(); renderAll(); }
-function onDatePick(v) { if (v) { const [y,m,d] = v.split('-').map(Number); selectedDate = new Date(y, m-1, d); calMonth = new Date(selectedDate); renderAll(); } }
+function moveDate(delta) { selectedDate.setDate(selectedDate.getDate() + delta); calMonth = new Date(selectedDate); todoStartDateEdited = false; renderAll(); }
+function goToday() { selectedDate = new Date(); calMonth = new Date(); todoStartDateEdited = false; renderAll(); }
+function onDatePick(v) { if (v) { const [y,m,d] = v.split('-').map(Number); selectedDate = new Date(y, m-1, d); calMonth = new Date(selectedDate); todoStartDateEdited = false; renderAll(); } }
 
 // ══════════════════════════════════════
 // RENDER
@@ -2384,7 +2392,7 @@ function renderAll() {
 
   // 기간 일정 시작일 기본값 = 선택한 날 (사용자가 아직 안 건드렸을 때만)
   const startEl = document.getElementById('todoStartInput');
-  if (startEl && document.activeElement !== startEl && !startEl.value) startEl.value = key;
+  if (startEl && document.activeElement !== startEl && !todoStartDateEdited) startEl.value = key;
 
   // 메모: 카테고리별 칸 렌더 + 입력 중이 아닐 때만 값 덮어쓰기
   renderHomeMemo(day);
@@ -2624,6 +2632,7 @@ function openWeekAgendaDay(key) {
   const [y, m, d] = key.split('-').map(Number);
   selectedDate = new Date(y, m - 1, d);
   calMonth = new Date(selectedDate);
+  todoStartDateEdited = false;
   renderAll();
   openDayDetail(key);
 }
@@ -3463,6 +3472,7 @@ function resetTodoSwipe() {
 async function onCalDayClick(key) {
   const [y, m, d] = key.split('-').map(Number);
   selectedDate = new Date(y, m-1, d);
+  todoStartDateEdited = false;
   if (calendarMoveMode) {
     if (selectedMoveTask) {
       const task = selectedMoveTask;
