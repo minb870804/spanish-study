@@ -1162,11 +1162,20 @@ function initialSelectedDate() {
 // ══════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════
+// 환경 제약(웹뷰·홈화면 앱 등)에서 나오는, 사용자가 손쓸 수 없는 인증 에러 코드 — alert로 띄우지 않는다
+const SILENT_AUTH_CODES = new Set([
+  'auth/no-auth-event',
+  'auth/operation-not-supported-in-this-environment',
+  'auth/web-storage-unsupported'
+]);
+
 // 리다이렉트 로그인 복귀 시 에러 표면화 (정상 로그인은 onAuthStateChanged가 처리)
 auth.getRedirectResult().catch(e => {
-  if (e && e.code && e.code !== 'auth/no-auth-event') {
+  if (e && e.code && !SILENT_AUTH_CODES.has(e.code)) {
     console.error('리다이렉트 로그인 에러:', e);
     alert('구글 로그인 중 문제가 발생했습니다.\n코드: ' + e.code + '\n메시지: ' + e.message);
+  } else if (e && e.code) {
+    console.warn('인증(환경 제약, 무시):', e.code);
   }
 });
 
@@ -1220,6 +1229,12 @@ async function loginWithGoogle() {
     // 팝업이 차단되면 리다이렉트로 자동 전환
     if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment' || e.code === 'auth/cancelled-popup-request') {
       try { await auth.signInWithRedirect(provider); return; } catch (e2) { e = e2; }
+    }
+    if (e.code === 'auth/cancelled-popup-request' || e.code === 'auth/popup-closed-by-user') return; // 사용자가 닫음 — 조용히 무시
+    if (SILENT_AUTH_CODES.has(e.code)) {
+      console.warn('로그인(환경 제약):', e.code);
+      toast('이 환경에서는 구글 로그인이 제한돼요. Safari나 Chrome 브라우저에서 열어 주세요.');
+      return;
     }
     console.error('로그인 에러:', e);
     alert(`구글 로그인 중 문제가 발생했습니다.\n코드: ${e.code}\n메시지: ${e.message}`);
