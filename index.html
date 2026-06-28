@@ -203,6 +203,14 @@
     font-size: 10.5px; font-weight: 900; white-space: nowrap;
   }
   .scope-badge.shared { background: var(--blue-light); border-color: transparent; color: var(--blue); }
+  .scope-badge.scope-control { cursor: pointer; font-family: inherit; transition: var(--transition); }
+  .scope-badge.scope-control:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.14); }
+  .owner-badge {
+    display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+    background: var(--owner-bg); border: 1px solid var(--owner-color); color: var(--owner-color);
+    font-size: 10.5px; font-weight: 900; line-height: 1.35; white-space: nowrap;
+  }
+  .owner-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--owner-color); }
   .reminder-field {
     display: inline-flex; align-items: center; gap: 8px; background: var(--bg);
     border: 1.5px solid var(--border); border-radius: 12px; padding: 7px 10px;
@@ -400,6 +408,11 @@
   .cat-edit-name:focus { border-color: var(--blue); }
   .cat-edit-del { flex-shrink: 0; background: none; border: none; cursor: pointer; font-size: 16px; padding: 6px 8px; border-radius: 8px; opacity: 0.7; }
   .cat-edit-del:hover { background: var(--red-light); opacity: 1; }
+  .cat-signature-notice {
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin: 0 0 12px;
+    padding: 9px 11px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg); color: var(--muted); font-size: 11px; font-weight: 800;
+  }
   .report-modal-card, .move-date-card {
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
     width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.3); animation: fadeIn 0.25s ease;
@@ -615,6 +628,7 @@
   .week-agenda-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .week-agenda-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .week-agenda-meta { min-width: 0; color: var(--muted); font-size: 10.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .week-agenda-meta .owner-badge { margin-right: 2px; vertical-align: middle; }
   .week-status {
     padding: 2px 7px; border-radius: 999px; background: var(--bg); color: var(--muted);
     border: 1px solid var(--border); font-size: 9.5px; font-weight: 900; white-space: nowrap;
@@ -1112,6 +1126,11 @@ let selectedDate = initialSelectedDate();
 let scheduleFilter = 'all'; // all | mine | shared
 
 const DAYS_KO = ['일','월','화','수','목','금','토'];
+const MEMBER_SIGNATURES = [
+  { label: '민석', color: '#2563EB', aliases: ['민석', 'minseok', 'minseokkim'] },
+  { label: '단비', color: '#8B5CF6', aliases: ['단비', 'danbi'] }
+];
+const RESERVED_SIGNATURE_COLORS = MEMBER_SIGNATURES.map(member => member.color.toLowerCase());
 const dateKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const VAPID_PUBLIC_KEY = 'BCPdp5SbsCG0ovPsD6DSZmIpa3ZzMFpgoXIJ3T82a9UOZOp1mt-3LGsdC4UHnhhdsk7DV_rKxDFzp9gNOH7F7NA';
 
@@ -1688,7 +1707,7 @@ async function addMemoCategory() {
   if (!name) return;
   const cats = [...getMemoCats()];
   if (cats.some(c => c.name === name)) { toast('이미 있는 메모 카테고리예요!'); return; }
-  const color = CUSTOM_CAT_COLORS[(cats.length - DEFAULT_MEMO_CATS.length + CUSTOM_CAT_COLORS.length * 9) % CUSTOM_CAT_COLORS.length];
+  const color = nextCategoryColor(cats.length - DEFAULT_MEMO_CATS.length);
   cats.push({ id: 'm' + Date.now().toString(36), name, color, icon: '📝' });
   userData.personalMemoCategories = cats;
   homeMemoSig = ''; // 구조 재생성 강제
@@ -1706,10 +1725,27 @@ async function addMemoCategory() {
 function catEditRows(scope, cats) {
   return cats.map(c => `
     <div class="cat-edit-row" data-scope="${scope}">
-      <input type="color" class="cat-edit-color" value="${c.color}" data-scope="${scope}" data-id="${c.id}" aria-label="${esc(c.name)} 색상">
+      <input type="color" class="cat-edit-color" value="${c.color}" data-prev-color="${c.color}" data-scope="${scope}" data-id="${c.id}" aria-label="${esc(c.name)} 색상" onchange="guardCategoryColor(this)">
       <input type="text" class="cat-edit-name" value="${esc(c.name)}" maxlength="20" data-scope="${scope}" data-id="${c.id}" aria-label="${esc(c.name)} 이름">
       <button type="button" class="cat-edit-del" onclick="removeCatEditRow(this, '${scope}')" title="카테고리 삭제">🗑</button>
     </div>`).join('');
+}
+function isReservedSignatureColor(color) {
+  return RESERVED_SIGNATURE_COLORS.includes(String(color || '').toLowerCase());
+}
+function nextCategoryColor(offset = 0) {
+  const available = CUSTOM_CAT_COLORS.filter(color => !isReservedSignatureColor(color));
+  return available[((offset % available.length) + available.length) % available.length];
+}
+function guardCategoryColor(input) {
+  if (!isReservedSignatureColor(input.value)) {
+    input.dataset.prevColor = input.value;
+    return;
+  }
+  input.value = input.dataset.prevColor && !isReservedSignatureColor(input.dataset.prevColor)
+    ? input.dataset.prevColor
+    : nextCategoryColor(0);
+  toast('민석·단비 시그니처 컬러는 카테고리에 사용할 수 없어요.');
 }
 function removeCatEditRow(btn, scope) {
   const remaining = document.querySelectorAll(`#catEditBody .cat-edit-row[data-scope="${scope}"]`).length;
@@ -1720,6 +1756,11 @@ function removeCatEditRow(btn, scope) {
 function openCatEditor() {
   if (!userData) { toast('데이터를 불러오는 중이에요.'); return; }
   document.getElementById('catEditBody').innerHTML = `
+    <div class="cat-signature-notice">
+      <span>작성자 전용 컬러</span>
+      ${MEMBER_SIGNATURES.map(member => `<span class="owner-badge" style="--owner-color:${member.color}; --owner-bg:${hexToRgba(member.color, 0.14)};">${member.label}</span>`).join('')}
+      <span>카테고리 색상에서는 제외돼요.</span>
+    </div>
     <div class="dm-section-title">✅ 할 일 카테고리</div>
     ${catEditRows('todo', getCategories())}
     <div class="dm-section-title">🌙 하루 메모 카테고리</div>
@@ -1731,6 +1772,13 @@ function closeCatEditor() {
 }
 async function saveCatEditor() {
   if (!userData) return;
+  const reservedInput = [...document.querySelectorAll('#catEditBody .cat-edit-color')]
+    .find(input => isReservedSignatureColor(input.value));
+  if (reservedInput) {
+    toast('민석·단비 시그니처 컬러를 다른 카테고리 색상으로 바꿔 주세요.');
+    reservedInput.focus();
+    return;
+  }
   // DOM에 남은 행으로 목록을 재구성 → 삭제·색·이름 변경 모두 반영 (id/icon 등은 기존 값 유지)
   const prevTodo = getCategories(), prevMemo = getMemoCats();
   const todoCats = [], memoCats = [];
@@ -1877,13 +1925,14 @@ async function toggleRecurringSharing(id) {
     return;
   }
   const makeShared = todoScope(rule, 'private') !== 'shared';
+  if (!makeShared && !confirm('이 반복 일정의 공유를 취소할까요?\n상대방 달력에서는 사라지고 내 반복 일정에는 그대로 남아요.')) return;
   const cat = todoCategory(rule);
   rule.visibility = makeShared ? 'shared' : 'private';
   rule.catName = cat.name;
   rule.catColor = cat.color;
   await saveRecurring(arr);
   renderRecurList(); renderAll();
-  toast(makeShared ? '👫 반복 일정을 공유했어요.' : '🔒 반복 일정을 나만 보기로 바꿨어요.');
+  toast(makeShared ? '👫 반복 일정을 공유했어요.' : '🔒 공유를 취소했어요. 이제 나에게만 보여요.');
 }
 
 async function toggleRecurringDone(id, checked) {
@@ -1905,8 +1954,7 @@ function renderRecurList() {
     <div class="todo-item">
       <span class="txt">🔁 ${esc(r.text)}</span>
       <span class="by">${(r.days || []).length === 7 ? '매일' : (r.days || []).map(d => D[d]).join('·')}</span>
-      <span class="scope-badge ${todoScope(r, 'private') === 'shared' ? 'shared' : ''}">${todoScope(r, 'private') === 'shared' ? '👫 공유' : '🔒 나만'}</span>
-      ${!r.by || r.by === currentUser.uid ? `<button class="del" onclick="toggleRecurringSharing('${r.id}')" title="공유 범위 변경">${todoScope(r, 'private') === 'shared' ? '🔒' : '👫'}</button>` : ''}
+      ${scheduleScopeBadge(r, '', 'rec')}
       <button class="del" onclick="deleteRecurring('${r.id}')" title="삭제">✕</button>
     </div>`).join('')
     : '<div class="empty-msg" style="padding:8px 0;">아직 반복 할 일이 없어요. 위에서 추가해 보세요!</div>';
@@ -2003,7 +2051,7 @@ async function addCustomCategory() {
   cats.push({
     id: 'c' + Date.now().toString(36),
     name,
-    color: CUSTOM_CAT_COLORS[(cats.length - DEFAULT_CATS.length) % CUSTOM_CAT_COLORS.length]
+    color: nextCategoryColor(cats.length - DEFAULT_CATS.length)
   });
   userData.personalCategories = cats;
   selectedTodoCat = cats[cats.length - 1].id;
@@ -2253,6 +2301,7 @@ async function toggleTodoSharing(key, id) {
     return;
   }
   const makeShared = todoScope(todo, 'private') !== 'shared';
+  if (!makeShared && !confirm('이 일정의 공유를 취소할까요?\n상대방 달력에서는 사라지고 내 일정에는 그대로 남아요.')) return;
   const cat = todoCategory(todo);
   todo.visibility = makeShared ? 'shared' : 'private';
   todo.catName = cat.name;
@@ -2261,12 +2310,19 @@ async function toggleTodoSharing(key, id) {
   renderAll();
   if (modalKey === key) refreshModal(true);
   await saveDay(key, day);
-  toast(makeShared ? '👫 배우자와 공유했어요.' : '🔒 나만 보는 일정으로 바꿨어요.');
+  toast(makeShared ? '👫 배우자와 공유했어요.' : '🔒 공유를 취소했어요. 이제 나에게만 보여요.');
 }
 
-function scheduleScopeBadge(todo) {
+function scheduleScopeBadge(todo, key = '', kind = 'todo') {
   const shared = todoScope(todo, 'private') === 'shared';
-  return `<span class="scope-badge ${shared ? 'shared' : ''}">${shared ? '👫 공유' : '🔒 나만'}</span>`;
+  const mine = !todo.by || !!(currentUser && todo.by === currentUser.uid);
+  if (!mine) return `<span class="scope-badge shared">👫 공유</span>`;
+  const action = kind === 'rec'
+    ? `toggleRecurringSharing('${todo.id}')`
+    : `toggleTodoSharing('${key}', '${todo.id}')`;
+  const label = shared ? '👫 공유 중 · 취소' : '🔒 나만';
+  const title = shared ? '공유 취소 — 상대방 달력에서 숨기기' : '배우자와 공유';
+  return `<button type="button" class="scope-badge scope-control ${shared ? 'shared' : ''}" onclick="${action}" title="${title}">${label}</button>`;
 }
 
 // 메모: 입력 1초 후 자동 저장 (디바운스)
@@ -2610,12 +2666,14 @@ function renderWeekOverview() {
   listEl.innerHTML = items.map(item => {
     const todo = item.todo;
     const cat = todoCategory(todo);
+    const owner = todoOwnerSignature(todo);
     const isToday = item.key === todayKey;
     const dateLabel = isToday ? '오늘' : `${item.date.getMonth() + 1}/${item.date.getDate()}<br>${DAYS_KO[item.date.getDay()]}`;
     const meta = [];
     if (todo.time) meta.push(`🕐 ${esc(todo.time)}`);
     if (todo.location) meta.push(`📍 ${esc(todo.location)}`);
     if (item.recurring) meta.push('🔁 반복');
+    if (owner) meta.push(`<span class="owner-badge" style="--owner-color:${owner.color}; --owner-bg:${hexToRgba(owner.color, 0.14)};">${owner.label}</span>`);
     if (todoScope(todo, 'private') === 'shared') meta.push('👫 공유');
     if (!meta.length) meta.push(esc(cat.name));
     const statusClass = item.overdue ? 'week-status overdue' : 'week-status';
@@ -2666,21 +2724,18 @@ function renderTodos(day) {
     </div>`;
     return;
   }
-  const shared = isShared();
-
   // 반복 할 일 (요일 해당분) 먼저, 그 아래 일반 할 일
   const recHtml = recs.map(r => {
     const done = !!day.recDone[r.id];
     const cat = todoCategory(r);
-    const borderStyle = shared ? `border-left:3px solid ${memberColor(r.by)}; padding-left:9px;` : '';
+    const borderStyle = sharedOwnerBorderStyle(r);
     return `<div class="todo-item recurring ${done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleRecurringDone('${r.id}', this.checked)">
       <span class="todo-content"><span class="txt">${esc(r.text)}</span></span>
       <span class="todo-actions">
         <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-        ${scheduleScopeBadge(r)}
-        ${authorChip(r.by)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
-        ${!r.by || r.by === currentUser.uid ? `<button class="del" onclick="toggleRecurringSharing('${r.id}')" title="공유 범위 변경">${todoScope(r, 'private') === 'shared' ? '🔒' : '👫'}</button>` : ''}
+        ${scheduleScopeBadge(r, '', 'rec')}
+        ${authorChip(r)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
         <span class="by" title="반복 할 일">🔁</span>
       </span>
     </div>`;
@@ -2688,16 +2743,16 @@ function renderTodos(day) {
 
   const todoHtml = sortTodosByTime(todos).map(t => {
     const cat = todoCategory(t);
-    const borderStyle = shared ? `border-left:3px solid ${memberColor(t.by)}; padding-left:9px;` : '';
+    const borderStyle = sharedOwnerBorderStyle(t);
     return `<div class="todo-item swipeable ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
       <button class="del move-handle" onpointerdown="startTodoItemDrag(event, '${currentKey}', '${t.id}')" title="드래그해서 날짜 이동">↕</button>
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', this.checked)">
       <span class="todo-content"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
       <span class="todo-actions">
         <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-        ${scheduleScopeBadge(t)}
+        ${scheduleScopeBadge(t, currentKey)}
         ${reminderChip(t)}
-        ${authorChip(t.by)}${doneByChip(t)}
+        ${authorChip(t)}${doneByChip(t)}
         <button class="todo-menu-btn" onclick="toggleRowActions(this)" title="더보기" aria-label="더보기">⋯</button>
         <span class="todo-btns">
           <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 1)" title="내일로 이동">내일</button>
@@ -2705,7 +2760,6 @@ function renderTodos(day) {
           <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
           <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
           <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
-          ${!t.by || t.by === currentUser.uid ? `<button class="del" onclick="toggleTodoSharing('${currentKey}', '${t.id}')" title="${todoScope(t, 'private') === 'shared' ? '나만 보기로 변경' : '배우자와 공유'}">${todoScope(t, 'private') === 'shared' ? '🔒' : '👫'}</button>` : ''}
           <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
         </span>
       </span>
@@ -2720,25 +2774,35 @@ function renderTodos(day) {
 
 function isShared() { return spaceData && (spaceData.members || []).length > 1; }
 
-// ── 멤버별 색상 구분 ──
-const MEMBER_COLORS = ['#1565c0', '#c2185b', '#2e7d32', '#f57c00', '#6a4fb6', '#00838f'];
-function memberColor(uid) {
+// ── 부부 작성자 시그니처 ── Google 이름을 우선 인식하고, 없으면 스페이스 참여 순서를 사용한다.
+function memberSignature(uid) {
+  const profile = spaceData && spaceData.memberProfiles && spaceData.memberProfiles[uid];
+  const normalizedName = String(profile && profile.name || '').toLowerCase().replace(/[^a-z가-힣]/g, '');
+  const matched = MEMBER_SIGNATURES.find(member => member.aliases.some(alias => normalizedName.includes(alias)));
+  if (matched) return matched;
   const idx = ((spaceData && spaceData.members) || []).indexOf(uid);
-  return MEMBER_COLORS[(idx >= 0 ? idx : 0) % MEMBER_COLORS.length];
+  return MEMBER_SIGNATURES[(idx >= 0 ? idx : 0) % MEMBER_SIGNATURES.length];
 }
-function memberFirstName(uid) {
-  const p = spaceData && spaceData.memberProfiles && spaceData.memberProfiles[uid];
-  return p ? p.name.split(' ')[0] : '멤버';
+function memberColor(uid) { return memberSignature(uid).color; }
+function memberFirstName(uid) { return memberSignature(uid).label; }
+function todoOwnerSignature(todo) {
+  return isShared() && todo && todo.by && todoScope(todo, 'private') === 'shared'
+    ? memberSignature(todo.by)
+    : null;
 }
-// 작성자 표시 칩 (공유 중일 때만)
-function authorChip(uid) {
-  if (!isShared() || !uid) return '';
-  const c = memberColor(uid);
-  return `<span class="by" style="color:${c}; border-color:${c};">● ${esc(memberFirstName(uid))}</span>`;
+function sharedOwnerBorderStyle(todo) {
+  const owner = todoOwnerSignature(todo);
+  return owner ? `border-left:3px solid ${owner.color}; padding-left:9px;` : '';
+}
+// 작성자 표시 칩 (공유 일정에만)
+function authorChip(todo) {
+  const owner = todoOwnerSignature(todo);
+  if (!owner) return '';
+  return `<span class="owner-badge" style="--owner-color:${owner.color}; --owner-bg:${hexToRgba(owner.color, 0.14)};">${owner.label}</span>`;
 }
 // 완료자 표시 칩 (작성자와 다른 사람이 완료했을 때)
 function doneByChip(t) {
-  if (!isShared() || !t.done || !t.doneBy || t.doneBy === t.by) return '';
+  if (!isShared() || todoScope(t, 'private') !== 'shared' || !t.done || !t.doneBy || t.doneBy === t.by) return '';
   const c = memberColor(t.doneBy);
   return `<span class="by" style="color:${c}; border-color:${c};" title="완료한 사람">✓ ${esc(memberFirstName(t.doneBy))}</span>`;
 }
@@ -2753,8 +2817,9 @@ function renderMembers() {
     const p = profiles[uid] || { name: '멤버', photo: '' };
     const img = p.photo ? `<img src="${esc(p.photo)}" alt="" referrerpolicy="no-referrer">` : '👤';
     const me = currentUser && uid === currentUser.uid ? ' (나)' : '';
-    const dot = isShared() ? `<span style="width:9px; height:9px; border-radius:50%; background:${memberColor(uid)}; display:inline-block;"></span>` : '';
-    return `<span class="member-chip">${dot}${img} ${esc(p.name)}${me}</span>`;
+    const signature = memberSignature(uid);
+    const badge = isShared() ? `<span class="owner-badge" style="--owner-color:${signature.color}; --owner-bg:${hexToRgba(signature.color, 0.14)};">${signature.label}</span>` : '';
+    return `<span class="member-chip">${img} ${badge}${me}</span>`;
   }).join('');
 }
 
@@ -2887,6 +2952,7 @@ function renderMoveDeck() {
       <span class="move-grip" onpointerdown="startMoveDeckDrag(event, '${item.key}', '${item.id}')">↕</span>
       <span class="move-task-date">${shortDateLabel(item.key)}</span>
       <span class="move-task-text">${esc(item.text)}</span>
+      ${authorChip(item)}
       <span class="tcat-badge" style="background:${cat.color}; cursor:default;">${esc(cat.name)}</span>
     </div>`;
   }).join('') : '<div class="empty-msg" style="padding:10px 0;">옮길 할 일이 없어요.</div>';
@@ -2924,10 +2990,11 @@ function renderCalendarTags(key, dateObj) {
   // 기간 일정 막대 — 시작일~종료일을 가로질러 표시
   (periodIndex[key] || []).forEach(b => {
     const cat = todoCategory(b.todo);
+    const owner = todoOwnerSignature(b.todo);
     const showLabel = b.isStart || dateObj.getDay() === 0; // 시작일 또는 주 시작(일)에 제목 표시
     const cls = ['mcal-bar', b.isStart ? 'start' : '', b.isEnd ? 'end' : '', b.todo.done ? 'done' : ''].filter(Boolean).join(' ');
-    const label = showLabel ? esc((b.todo.done ? '✓ ' : '') + (todoScope(b.todo, 'private') === 'shared' ? '👫 ' : '') + b.todo.text) : '&nbsp;';
-    tags.push(`<span class="${cls}" style="background:${cat.color};" ${calendarDragAttrs('todo', b.startK, b.todo.id)} title="${esc(b.todo.text)} (${shortDateLabel(b.startK)}~${shortDateLabel(b.endK)})">${label}</span>`);
+    const label = showLabel ? esc((b.todo.done ? '✓ ' : '') + (owner ? `${owner.label} · ` : '') + b.todo.text) : '&nbsp;';
+    tags.push(`<span class="${cls}" style="background:${owner ? owner.color : cat.color};" ${calendarDragAttrs('todo', b.startK, b.todo.id)} title="${esc(b.todo.text)} (${shortDateLabel(b.startK)}~${shortDateLabel(b.endK)})">${label}</span>`);
   });
 
   // 기간 일정이 아닌 일반 할 일 (시간 순)
@@ -2935,13 +3002,18 @@ function renderCalendarTags(key, dateObj) {
   const previewTodos = regularTodos.slice(0, 2);
 
   previewTodos.forEach(t => {
-    const prefix = `${t.done ? '✓ ' : ''}${todoScope(t, 'private') === 'shared' ? '👫 ' : ''}${t.time ? `${t.time} · ` : ''}`;
+    const owner = todoOwnerSignature(t);
+    const prefix = `${t.done ? '✓ ' : ''}${owner ? `${owner.label} · ` : ''}${t.time ? `${t.time} · ` : ''}`;
+    const ownerStyle = owner
+      ? `background:${hexToRgba(owner.color, 0.16)}; color:${owner.color}; box-shadow:inset 3px 0 ${owner.color};`
+      : '';
     // 완료는 기존대로 녹색, 미완료는 카테고리 색으로 표시
     if (t.done) {
-      tags.push(`<span class="mcal-tag t-done" ${calendarDragAttrs('todo', key, t.id)}>${esc(prefix + t.text)}</span>`);
+      tags.push(`<span class="mcal-tag t-done" style="${ownerStyle}" ${calendarDragAttrs('todo', key, t.id)}>${esc(prefix + t.text)}</span>`);
     } else {
       const cat = todoCategory(t);
-      tags.push(`<span class="mcal-tag t-cat" style="background:${hexToRgba(cat.color, 0.16)}; color:${cat.color};" ${calendarDragAttrs('todo', key, t.id)}>${esc(prefix + t.text)}</span>`);
+      const style = ownerStyle || `background:${hexToRgba(cat.color, 0.16)}; color:${cat.color};`;
+      tags.push(`<span class="mcal-tag t-cat" style="${style}" ${calendarDragAttrs('todo', key, t.id)}>${esc(prefix + t.text)}</span>`);
     }
   });
 
@@ -2949,9 +3021,15 @@ function renderCalendarTags(key, dateObj) {
     tags.push(`<span class="mcal-more">+${regularTodos.length - previewTodos.length}</span>`);
   }
 
-  const recCount = getRecurringFor(dateObj).filter(isScheduleVisible).length;
-  if (!day.todos.filter(isScheduleVisible).length && !(periodIndex[key] || []).length && recCount) {
-    tags.push(`<span class="mcal-tag t-todo" title="반복 할 일">반복 ${recCount}</span>`);
+  const visibleRecs = getRecurringFor(dateObj).filter(isScheduleVisible);
+  if (!day.todos.filter(isScheduleVisible).length && !(periodIndex[key] || []).length && visibleRecs.length) {
+    visibleRecs.slice(0, 2).forEach(rec => {
+      const owner = todoOwnerSignature(rec);
+      const style = owner ? `background:${hexToRgba(owner.color, 0.16)}; color:${owner.color}; box-shadow:inset 3px 0 ${owner.color};` : '';
+      const label = `${owner ? `${owner.label} · ` : ''}반복 · ${rec.text}`;
+      tags.push(`<span class="mcal-tag t-todo" style="${style}" title="반복 할 일">${esc(label)}</span>`);
+    });
+    if (visibleRecs.length > 2) tags.push(`<span class="mcal-more">+${visibleRecs.length - 2}</span>`);
   }
 
   if (scheduleFilter !== 'shared' && notesHaveContent(day.notes)) {
@@ -3412,19 +3490,18 @@ function openDayDetail(key) {
   // 일반 할 일: 체크·수정·삭제 / 반복 할 일: 체크만 (규칙 관리는 🔁 반복 패널에서)
   const todoItem = t => {
     const cat = todoCategory(t);
-    const borderStyle = isShared() ? `border-left:3px solid ${memberColor(t.by)}; padding-left:9px;` : '';
+    const borderStyle = sharedOwnerBorderStyle(t);
     return `<div class="dm-item ${t.done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="mToggleTodo('${t.id}', this.checked)">
       <span class="dm-content"><span class="dm-txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
       <span class="dm-actions">
         <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-        ${scheduleScopeBadge(t)}
+        ${scheduleScopeBadge(t, key)}
         ${reminderChip(t, key, true)}
-        ${authorChip(t.by)}${doneByChip(t)}
+        ${authorChip(t)}${doneByChip(t)}
         <button class="del" onclick="moveTodoToDate('${t.id}')" title="다른 날짜로 이동">📅</button>
         <button class="del" onclick="mEditTodoReminder('${t.id}')" title="알림 설정">🔔</button>
         <button class="del" onclick="mEditTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
-        ${!t.by || t.by === currentUser.uid ? `<button class="del" onclick="toggleTodoSharing('${key}', '${t.id}')" title="${todoScope(t, 'private') === 'shared' ? '나만 보기로 변경' : '배우자와 공유'}">${todoScope(t, 'private') === 'shared' ? '🔒' : '👫'}</button>` : ''}
         <button class="del" onclick="mDeleteTodo('${t.id}')" title="삭제">✕</button>
       </span>
     </div>`;
@@ -3432,15 +3509,14 @@ function openDayDetail(key) {
   const recItem = r => {
     const done = !!day.recDone[r.id];
     const cat = todoCategory(r);
-    const borderStyle = isShared() ? `border-left:3px solid ${memberColor(r.by)}; padding-left:9px;` : '';
+    const borderStyle = sharedOwnerBorderStyle(r);
     return `<div class="dm-item ${done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${done ? 'checked' : ''} onchange="mToggleRec('${r.id}', this.checked)">
       <span class="dm-content"><span class="dm-txt">${esc(r.text)}</span></span>
       <span class="dm-actions">
         <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-        ${scheduleScopeBadge(r)}
-        ${authorChip(r.by)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
-        ${!r.by || r.by === currentUser.uid ? `<button class="del" onclick="toggleRecurringSharing('${r.id}')" title="공유 범위 변경">${todoScope(r, 'private') === 'shared' ? '🔒' : '👫'}</button>` : ''}
+        ${scheduleScopeBadge(r, '', 'rec')}
+        ${authorChip(r)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
         <span title="반복 할 일">🔁</span>
       </span>
     </div>`;
@@ -3727,7 +3803,7 @@ function buildMonthReport(baseDate) {
     (day.todos || []).filter(isScheduleVisible).forEach(todo => {
       total += 1;
       const cat = todoCategory(todo);
-      const item = { date: key, text: todo.text, cat: todo.cat, catName: cat.name, catColor: cat.color, type: 'todo', moved: !!(todo.moveCount || todo.lastMovedAt) };
+      const item = { date: key, text: todo.text, cat: todo.cat, catName: cat.name, catColor: cat.color, type: 'todo', moved: !!(todo.moveCount || todo.lastMovedAt), by: todo.by, visibility: todoScope(todo, 'private') };
       plannedItems.push(item);
       addCategoryStat(categoryMap, todo, 'planned');
       if (todo.done) {
@@ -3742,7 +3818,7 @@ function buildMonthReport(baseDate) {
     recs.forEach(rec => {
       total += 1;
       const cat = todoCategory(rec);
-      const item = { date: key, text: `반복 · ${rec.text}`, cat: rec.cat, catName: cat.name, catColor: cat.color, type: 'rec' };
+      const item = { date: key, text: `반복 · ${rec.text}`, cat: rec.cat, catName: cat.name, catColor: cat.color, type: 'rec', by: rec.by, visibility: todoScope(rec, 'private') };
       plannedItems.push(item);
       addCategoryStat(categoryMap, rec, 'planned');
       if (day.recDone && day.recDone[rec.id]) {
@@ -3824,9 +3900,10 @@ function reportRows(items, emptyText, limit = 8) {
     const cName = item.catName || (item.cat ? catById(item.cat).name : null);
     const cColor = item.catColor || (item.cat ? catById(item.cat).color : null);
     const badge = cName ? `<span class="tcat-badge" style="background:${cColor}; cursor:default;">${esc(cName)}</span>` : '';
+    const owner = authorChip(item);
     return `<div class="report-row">
       <span class="report-date">${shortDateLabel(item.date)}</span>
-      <span class="report-text">${esc(item.text)} ${badge}</span>
+      <span class="report-text">${esc(item.text)} ${owner} ${badge}</span>
     </div>`;
   }).join('');
   const rest = items.length > limit ? `<div class="report-muted">외 ${items.length - limit}개 더 있음</div>` : '';
