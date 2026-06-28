@@ -89,6 +89,8 @@
     top: 0;
     z-index: 100;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    /* 모바일 상태바(배터리·와이파이)와 겹치지 않도록 안전영역 확보 */
+    padding-top: env(safe-area-inset-top);
   }
   .header-top {
     display: flex; align-items: center; justify-content: space-between;
@@ -892,7 +894,7 @@
           </span>
         </div>
         <div class="todo-input-row">
-          <textarea id="todoInput" rows="1" placeholder="할 일을 입력하세요. 여러 줄은 각각 정리해 추가해요."
+          <textarea id="todoInput" rows="1" placeholder="할 일을 입력하세요. 한 번 추가하면 1건으로 등록돼요."
             oninput="autoSizeTodoInput(this)"
             onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();addTodo();}"></textarea>
           <button class="add-btn" onclick="addTodo()">추가</button>
@@ -1129,7 +1131,7 @@ let todoStartDateEdited = false;
 const DAYS_KO = ['일','월','화','수','목','금','토'];
 const MEMBER_SIGNATURES = [
   { label: '민석', color: '#2563EB', aliases: ['민석', 'minseok', 'minseokkim'] },
-  { label: '단비', color: '#8B5CF6', aliases: ['단비', 'danbi'] }
+  { label: '단비', color: '#F97316', aliases: ['단비', 'danbi'] }
 ];
 const RESERVED_SIGNATURE_COLORS = MEMBER_SIGNATURES.map(member => member.color.toLowerCase());
 const dateKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -2161,9 +2163,9 @@ async function addTodo() {
   const locationInput = document.getElementById('todoLocationInput');
   const startInput = document.getElementById('todoStartInput');
   const endInput = document.getElementById('todoEndInput');
-  // 여러 줄 입력 지원: 줄마다 별도의 할 일로 추가
-  const lines = input.value.split('\n').map(normalizeTodoText).filter(Boolean);
-  if (!lines.length) return;
+  // 한 번 추가 = 1건. 여러 줄을 적어도 하나의 할 일로 합쳐 등록한다.
+  const text = input.value.split('\n').map(normalizeTodoText).filter(Boolean).join(' ');
+  if (!text) return;
   if (!currentUser || !spaceData || !userData) {
     toast('일정 데이터를 불러오는 중이에요. 잠시 후 다시 눌러 주세요.');
     return;
@@ -2193,33 +2195,30 @@ async function addTodo() {
   document.getElementById('todoShareInput').checked = false;
   const day = getDay(key);
   const base = Date.now();
-  lines.forEach((text, i) => {
-    const todo = {
-      id: (base + i).toString(36),
-      text,
-      done: false,
-      by: currentUser.uid,
-      cat: selectedTodoCat,
-      catName: selectedCat.name,
-      catColor: selectedCat.color,
-      visibility,
-      createdAt: base + i,
-      createdDate: key,
-      moveCount: 0,
-      time: scheduleTime,
-      location: scheduleLocation,
-      ...reminderFields
-    };
-    if (isPeriod) { todo.startDate = startKey; todo.endDate = endKey; }
-    day.todos.push(todo);
-  });
+  const todo = {
+    id: base.toString(36),
+    text,
+    done: false,
+    by: currentUser.uid,
+    cat: selectedTodoCat,
+    catName: selectedCat.name,
+    catColor: selectedCat.color,
+    visibility,
+    createdAt: base,
+    createdDate: key,
+    moveCount: 0,
+    time: scheduleTime,
+    location: scheduleLocation,
+    ...reminderFields
+  };
+  if (isPeriod) { todo.startDate = startKey; todo.endDate = endKey; }
+  day.todos.push(todo);
   // 현재 필터에 새 일정이 가려지는 경우 전체 보기로 전환해 추가 결과를 바로 보여준다.
   if (scheduleFilter === 'shared' && visibility !== 'shared') scheduleFilter = 'all';
   setDayLocal(key, day);
   renderAll(); // 낙관적 렌더링
   await saveDay(key, day);
   if (isPeriod) toast(`✅ ${shortDateLabel(startKey)}~${shortDateLabel(endKey)} 기간 일정을 추가했어요!`);
-  else if (lines.length > 1) toast(`✅ 할 일 ${lines.length}개가 추가됐어요!`);
   else if (reminderFields.remindAtMs) toast('✅ 할 일과 알림이 추가됐어요!');
   else if (scheduleTime || scheduleLocation) toast('✅ 시간·장소와 함께 할 일을 추가했어요!');
 }
@@ -2753,15 +2752,15 @@ function renderTodos(day) {
   const todoHtml = sortTodosByTime(todos).map(t => {
     const cat = todoCategory(t);
     const borderStyle = sharedOwnerBorderStyle(t);
-    return `<div class="todo-item swipeable ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
-      <button class="del move-handle" onpointerdown="startTodoItemDrag(event, '${currentKey}', '${t.id}')" title="드래그해서 날짜 이동">↕</button>
-      <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', this.checked)">
-      <span class="todo-content"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
-      <span class="todo-actions">
-        <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-        ${scheduleScopeBadge(t, currentKey)}
-        ${reminderChip(t)}
-        ${authorChip(t)}${doneByChip(t)}
+    const mine = !t.by || !!(currentUser && t.by === currentUser.uid);
+    // 본인 일정만 편집 가능. 타인의 공유 일정은 읽기 전용(완료 체크는 가능).
+    const handle = mine
+      ? `<button class="del move-handle" onpointerdown="startTodoItemDrag(event, '${currentKey}', '${t.id}')" title="드래그해서 날짜 이동">↕</button>`
+      : `<span class="move-handle" style="visibility:hidden;">↕</span>`;
+    const badge = mine
+      ? `<button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>`
+      : `<span class="tcat-badge" style="background:${cat.color}; cursor:default;">${esc(cat.name)}</span>`;
+    const menu = mine ? `
         <button class="todo-menu-btn" onclick="toggleRowActions(this)" title="더보기" aria-label="더보기">⋯</button>
         <span class="todo-btns">
           <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 1)" title="내일로 이동">내일</button>
@@ -2770,7 +2769,17 @@ function renderTodos(day) {
           <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
           <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
           <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
-        </span>
+        </span>` : '';
+    return `<div class="todo-item ${mine ? 'swipeable' : ''} ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
+      ${handle}
+      <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', this.checked)">
+      <span class="todo-content"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
+      <span class="todo-actions">
+        ${badge}
+        ${scheduleScopeBadge(t, currentKey)}
+        ${reminderChip(t)}
+        ${authorChip(t)}${doneByChip(t)}
+        ${menu}
       </span>
     </div>`;
   }).join('');
@@ -2807,6 +2816,7 @@ function sharedOwnerBorderStyle(todo) {
 function authorChip(todo) {
   const owner = todoOwnerSignature(todo);
   if (!owner) return '';
+  if (currentUser && todo && todo.by === currentUser.uid) return ''; // 내 일정엔 내 이름 표기 안 함
   return `<span class="owner-badge" style="--owner-color:${owner.color}; --owner-bg:${hexToRgba(owner.color, 0.14)};">${owner.label}</span>`;
 }
 // 완료자 표시 칩 (작성자와 다른 사람이 완료했을 때)
