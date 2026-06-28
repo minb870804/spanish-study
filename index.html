@@ -366,6 +366,8 @@
     color: var(--text); font-family: inherit; font-size: 14px; font-weight: 700; padding: 9px 11px; outline: none;
   }
   .cat-edit-name:focus { border-color: var(--blue); }
+  .cat-edit-del { flex-shrink: 0; background: none; border: none; cursor: pointer; font-size: 16px; padding: 6px 8px; border-radius: 8px; opacity: 0.7; }
+  .cat-edit-del:hover { background: var(--red-light); opacity: 1; }
   .report-modal-card, .move-date-card {
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
     width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.3); animation: fadeIn 0.25s ease;
@@ -1448,10 +1450,17 @@ async function addMemoCategory() {
 // ── 카테고리 편집(색·이름) ── 할 일/메모 카테고리 모두
 function catEditRows(scope, cats) {
   return cats.map(c => `
-    <div class="cat-edit-row">
+    <div class="cat-edit-row" data-scope="${scope}">
       <input type="color" class="cat-edit-color" value="${c.color}" data-scope="${scope}" data-id="${c.id}" aria-label="${esc(c.name)} 색상">
       <input type="text" class="cat-edit-name" value="${esc(c.name)}" maxlength="20" data-scope="${scope}" data-id="${c.id}" aria-label="${esc(c.name)} 이름">
+      <button type="button" class="cat-edit-del" onclick="removeCatEditRow(this, '${scope}')" title="카테고리 삭제">🗑</button>
     </div>`).join('');
+}
+function removeCatEditRow(btn, scope) {
+  const remaining = document.querySelectorAll(`#catEditBody .cat-edit-row[data-scope="${scope}"]`).length;
+  if (remaining <= 1) { toast('카테고리는 최소 1개는 있어야 해요.'); return; }
+  if (!confirm('이 카테고리를 삭제할까요?\n이 카테고리로 적어둔 기존 기록은 더 이상 표시되지 않을 수 있어요.')) return;
+  btn.closest('.cat-edit-row').remove();
 }
 function openCatEditor() {
   if (!spaceData) { toast('데이터를 불러오는 중이에요.'); return; }
@@ -1467,17 +1476,20 @@ function closeCatEditor() {
 }
 async function saveCatEditor() {
   if (!spaceData) return;
-  const todoCats = getCategories().map(c => ({ ...c }));
-  const memoCats = getMemoCats().map(c => ({ ...c }));
+  // DOM에 남은 행으로 목록을 재구성 → 삭제·색·이름 변경 모두 반영 (id/icon 등은 기존 값 유지)
+  const prevTodo = getCategories(), prevMemo = getMemoCats();
+  const todoCats = [], memoCats = [];
   document.querySelectorAll('#catEditBody .cat-edit-row').forEach(row => {
     const colorEl = row.querySelector('.cat-edit-color');
     const nameEl = row.querySelector('.cat-edit-name');
-    const arr = colorEl.dataset.scope === 'todo' ? todoCats : memoCats;
-    const cat = arr.find(c => c.id === colorEl.dataset.id);
-    if (!cat) return;
-    cat.color = colorEl.value;
-    cat.name = nameEl.value.trim() || cat.name;
+    const scope = colorEl.dataset.scope, id = colorEl.dataset.id;
+    const prev = (scope === 'todo' ? prevTodo : prevMemo).find(c => c.id === id) || {};
+    const cat = { ...prev, id, color: colorEl.value, name: nameEl.value.trim() || prev.name || id };
+    (scope === 'todo' ? todoCats : memoCats).push(cat);
   });
+  if (!todoCats.length || !memoCats.length) { toast('카테고리는 최소 1개는 있어야 해요.'); return; }
+  // 선택된 할 일 카테고리가 삭제됐으면 첫 번째로 보정
+  if (!todoCats.some(c => c.id === selectedTodoCat)) selectedTodoCat = todoCats[0].id;
   spaceData.categories = todoCats;
   spaceData.memoCategories = memoCats;
   homeMemoSig = ''; // 메모 칸 라벨·색 갱신 위해 재생성
@@ -2745,8 +2757,8 @@ async function onCalDayClick(key) {
     }
     return;
   }
+  // 날짜만 선택 → 아래 할 일·메모 카드가 해당 날짜로 갱신 (상세 팝업은 띄우지 않음)
   renderAll();
-  openDayDetail(key);
 }
 
 let modalKey = null;
