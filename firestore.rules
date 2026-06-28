@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSpaceMember(spaceId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/spaces/$(spaceId)).data.members;
+    }
+
+    match /users/{userId} {
+      allow create: if signedIn() && request.auth.uid == userId;
+      allow read, update, delete: if signedIn() && request.auth.uid == userId;
+    }
+
+    match /spaces/{spaceId} {
+      allow create: if signedIn()
+        && request.resource.data.members is list
+        && request.resource.data.members.size() == 1
+        && request.resource.data.members[0] == request.auth.uid;
+
+      allow read: if isSpaceMember(spaceId);
+
+      // 멤버 명단은 callable function만 변경한다. 일반 일정·메모 갱신은 멤버에게 허용한다.
+      allow update: if isSpaceMember(spaceId)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['members', 'memberProfiles', 'createdAt']);
+
+      allow delete: if false;
+    }
+  }
+}

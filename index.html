@@ -20,6 +20,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-functions-compat.js"></script>
 
 <style>
   :root {
@@ -188,6 +189,20 @@
   .todo-input-row textarea { resize: vertical; min-height: 42px; line-height: 1.6; }
   .todo-input-row input:focus, .todo-input-row textarea:focus { border-color: var(--blue); }
   .reminder-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: -2px 0 12px; }
+  .todo-scope-row {
+    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+    margin: 0 0 12px; padding: 9px 11px; border: 1px solid var(--border);
+    border-radius: 10px; background: var(--bg);
+  }
+  .share-check { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12.5px; font-weight: 900; }
+  .share-check input { width: 17px; height: 17px; accent-color: var(--blue); }
+  .scope-hint { color: var(--muted); font-size: 10.5px; font-weight: 700; }
+  .scope-badge {
+    display: inline-flex; align-items: center; padding: 3px 7px; border-radius: 999px;
+    background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+    font-size: 10.5px; font-weight: 900; white-space: nowrap;
+  }
+  .scope-badge.shared { background: var(--blue-light); border-color: transparent; color: var(--blue); }
   .reminder-field {
     display: inline-flex; align-items: center; gap: 8px; background: var(--bg);
     border: 1.5px solid var(--border); border-radius: 12px; padding: 7px 10px;
@@ -303,6 +318,11 @@
     color: var(--muted); font-size: 10.5px; font-weight: 900; line-height: 1.2; white-space: nowrap;
   }
   .calendar-summary-chip.sober { background: var(--green-light); border-color: transparent; color: var(--green); }
+  .schedule-filter-bar {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    margin: -4px 0 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+  }
+  .schedule-filter-label { margin-right: 2px; color: var(--muted); font-size: 11px; font-weight: 800; }
   .calendar-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; min-width: 0; }
   .calendar-tools { display: flex; align-items: center; gap: 8px; }
   .month-nav {
@@ -792,6 +812,12 @@
         </div>
       </div>
     </div>
+    <div class="schedule-filter-bar" aria-label="일정 표시 범위">
+      <span class="schedule-filter-label">일정 보기</span>
+      <button class="small-btn sel" data-schedule-filter="all" onclick="setScheduleFilter('all')">전체</button>
+      <button class="small-btn" data-schedule-filter="mine" onclick="setScheduleFilter('mine')">내 일정</button>
+      <button class="small-btn" data-schedule-filter="shared" onclick="setScheduleFilter('shared')">공유 일정</button>
+    </div>
     <div id="moveDeck" class="move-deck"></div>
     <div id="monthCal"></div>
     <div class="calendar-legend" style="display:flex; gap:10px; margin-top:10px; font-size:11px; color:var(--muted); flex-wrap:wrap;">
@@ -873,6 +899,13 @@
             <span class="reminder-status" id="pushStatus">알림 꺼짐</span>
           </div>
         </div>
+        <div class="todo-scope-row">
+          <label class="share-check" for="todoShareInput">
+            <input type="checkbox" id="todoShareInput">
+            <span>👫 배우자와 공유</span>
+          </label>
+          <span class="scope-hint">체크하지 않으면 나에게만 보여요.</span>
+        </div>
         <div class="tcat-row" id="tcatRow"></div>
 
         <!-- 반복 할 일 관리 패널 -->
@@ -891,6 +924,13 @@
             <button class="small-btn" data-day="5" onclick="toggleRecurDay(5,this)">금</button>
             <button class="small-btn" data-day="6" onclick="toggleRecurDay(6,this)">토</button>
             <button class="small-btn" data-day="0" onclick="toggleRecurDay(0,this)">일</button>
+          </div>
+          <div class="todo-scope-row">
+            <label class="share-check" for="recurShareInput">
+              <input type="checkbox" id="recurShareInput">
+              <span>👫 반복 일정 공유</span>
+            </label>
+            <span class="scope-hint">공유하지 않으면 내 달력에만 표시돼요.</span>
           </div>
           <div id="recurList"></div>
         </div>
@@ -931,7 +971,7 @@
         <div class="card-title"><span>👥 함께 쓰는 사람</span></div>
         <div class="member-chips" id="memberChips"></div>
         <div class="share-desc">
-          타임트리처럼 <strong>초대 코드</strong>를 공유하면 같은 대시보드를 실시간으로 함께 쓸 수 있어요. 할 일과 메모가 즉시 동기화됩니다.
+          <strong>초대 코드</strong>로 부부 공간을 연결하면, 각자 <strong>배우자와 공유</strong>를 선택한 일정과 교환일기만 함께 보여요. 개인 일정·메모·카테고리는 서로 분리됩니다.
         </div>
         <div class="invite-code-box">
           <span class="code" id="inviteCode">······</span>
@@ -1045,12 +1085,16 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const cloudFunctions = firebase.app().functions('asia-northeast3');
 
 let currentUser = null;
+let userData = null;        // 개인 일정·카테고리·메모
 let spaceId = null;
 let spaceData = null;       // 실시간 스냅샷 데이터
 let unsubSpace = null;
+let unsubUser = null;
 let selectedDate = initialSelectedDate();
+let scheduleFilter = 'all'; // all | mine | shared
 
 const DAYS_KO = ['일','월','화','수','목','금','토'];
 const dateKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1104,9 +1148,11 @@ auth.onAuthStateChanged(async (user) => {
     updatePushStatus();
   } else {
     currentUser = null;
+    userData = null;
     document.getElementById('loginOverlay').style.display = 'flex';
     document.getElementById('userProfile').style.display = 'none';
     if (unsubSpace) { unsubSpace(); unsubSpace = null; }
+    if (unsubUser) { unsubUser(); unsubUser = null; }
     updatePushStatus();
   }
 });
@@ -1160,30 +1206,105 @@ function genCode() {
 async function ensureSpace() {
   const userRef = db.collection('users').doc(currentUser.uid);
   const snap = await userRef.get();
-  if (snap.exists) renderStudyStats(snap.data());
-  spaceId = snap.exists ? (snap.data().spaceId || null) : null;
+  userData = snap.exists ? snap.data() : {};
+  if (snap.exists) renderStudyStats(userData);
+  spaceId = userData.spaceId || null;
+  let currentSpace = null;
 
   if (spaceId) {
     // 스페이스가 삭제됐거나 접근 불가한 경우 새로 만든다
     try {
       const sp = await db.collection('spaces').doc(spaceId).get();
       if (!sp.exists || !(sp.data().members || []).includes(currentUser.uid)) spaceId = null;
+      else currentSpace = sp.data();
     } catch (e) { spaceId = null; }
   }
 
   if (!spaceId) {
     spaceId = genCode();
-    await db.collection('spaces').doc(spaceId).set({
+    currentSpace = {
       members: [currentUser.uid],
       memberProfiles: { [currentUser.uid]: profileEntry() },
       days: {},
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    };
+    await db.collection('spaces').doc(spaceId).set(currentSpace);
     await userRef.set({ spaceId }, { merge: true });
+    userData.spaceId = spaceId;
   }
 
+  userData = await initializePersonalData(userRef, userData, currentSpace || {});
+  subscribeUser();
   subscribeSpace();
+}
+
+// v2 전환: 혼자 쓰던 기존 일정은 개인 영역으로, 이미 공동 사용 중이던 일정은 공유 영역으로 보존한다.
+async function initializePersonalData(userRef, rawUser, currentSpace) {
+  if (Number(rawUser.dataModelVersion || 0) >= 2) return rawUser;
+  const members = currentSpace.members || [];
+  const ownerUid = members[0] || currentUser.uid;
+  const isOwner = ownerUid === currentUser.uid;
+  const migrateLegacyToPersonal = isOwner && members.length <= 1;
+  const legacyCategories = currentSpace.categories || DEFAULT_CATS;
+  const snapshotCategory = (todo, visibility) => {
+    const cat = legacyCategories.find(item => item.id === todo.cat) || DEFAULT_CATS[3];
+    return { ...todo, visibility, catName: todo.catName || cat.name, catColor: todo.catColor || cat.color };
+  };
+  const personalDays = {};
+
+  if (isOwner) {
+    Object.entries(currentSpace.days || {}).forEach(([key, day]) => {
+      if (!day) return;
+      const todos = migrateLegacyToPersonal ? (day.todos || []).map(todo => snapshotCategory(todo, 'private')) : [];
+      const notes = day.notes || {};
+      const recDone = migrateLegacyToPersonal ? (day.recDone || {}) : {};
+      if (!todos.length && !notesHaveContent(notes) && !day.note && !Object.keys(recDone).length) return;
+      personalDays[key] = { todos, notes, note: day.note || '', recDone };
+    });
+  }
+
+  const patch = {
+    dataModelVersion: 2,
+    personalDays,
+    personalCategories: isOwner && (currentSpace.categories || []).length ? currentSpace.categories : DEFAULT_CATS,
+    personalMemoCategories: isOwner && (currentSpace.memoCategories || []).length ? currentSpace.memoCategories : DEFAULT_MEMO_CATS,
+    personalRecurring: migrateLegacyToPersonal
+      ? (currentSpace.recurring || []).map(rule => snapshotCategory(rule, 'private'))
+      : [],
+    personalDrinkDays: isOwner ? (currentSpace.drinkDays || {}) : {},
+    personalMoveLog: migrateLegacyToPersonal ? (currentSpace.moveLog || []) : [],
+    personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  const batch = db.batch();
+  batch.set(userRef, patch, { merge: true });
+  if (isOwner && spaceId) {
+    const cleanup = {
+      privacyModelVersion: 2,
+      privacyMigrationOwnerUid: currentUser.uid,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      drinkDays: firebase.firestore.FieldValue.delete(),
+      categories: firebase.firestore.FieldValue.delete(),
+      memoCategories: firebase.firestore.FieldValue.delete(),
+      recurring: migrateLegacyToPersonal
+        ? []
+        : (currentSpace.recurring || []).map(rule => snapshotCategory(rule, 'shared'))
+    };
+    if (migrateLegacyToPersonal) cleanup.moveLog = firebase.firestore.FieldValue.delete();
+    Object.entries(currentSpace.days || {}).forEach(([key, day]) => {
+      cleanup[`days.${key}.todos`] = migrateLegacyToPersonal
+        ? []
+        : ((day && day.todos) || []).map(todo => snapshotCategory(todo, 'shared'));
+      if (migrateLegacyToPersonal) cleanup[`days.${key}.recDone`] = {};
+      if (!day || (!day.note && !notesHaveContent(day.notes))) return;
+      cleanup[`days.${key}.notes`] = firebase.firestore.FieldValue.delete();
+      cleanup[`days.${key}.note`] = firebase.firestore.FieldValue.delete();
+    });
+    batch.update(db.collection('spaces').doc(spaceId), cleanup);
+  }
+  await batch.commit();
+  return { ...rawUser, ...patch };
 }
 
 // 스터디 페이지가 동기화해 둔 stats 요약을 카테고리 카드에 표시
@@ -1215,22 +1336,26 @@ function subscribeSpace() {
   }, err => console.error('스페이스 구독 에러:', err));
 }
 
+function subscribeUser() {
+  if (unsubUser) unsubUser();
+  unsubUser = db.collection('users').doc(currentUser.uid).onSnapshot(doc => {
+    if (!doc.exists) return;
+    userData = doc.data();
+    renderStudyStats(userData);
+    if (spaceData) renderAll();
+  }, err => console.error('개인 데이터 구독 에러:', err));
+}
+
 async function joinSpace() {
   const code = document.getElementById('joinInput').value.trim().toUpperCase();
   if (!code) return;
   if (code === spaceId) { toast('이미 이 스페이스를 쓰고 있어요!'); return; }
   try {
-    const ref = db.collection('spaces').doc(code);
-    const sp = await ref.get();
-    if (!sp.exists) { toast('❌ 존재하지 않는 코드예요. 다시 확인해 주세요.'); return; }
-    if (!confirm(`'${code}' 스페이스에 참여할까요?\n참여하면 상대방과 할 일·메모가 실시간 공유됩니다.\n(기존 내 스페이스의 기록은 그대로 남아있어요)`)) return;
-    await ref.update({
-      members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
-      [`memberProfiles.${currentUser.uid}`]: profileEntry(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await db.collection('users').doc(currentUser.uid).set({ spaceId: code }, { merge: true });
+    if (!confirm(`'${code}' 스페이스에 참여할까요?\n참여하면 상대방과 공유한 일정·교환일기만 함께 볼 수 있어요.\n(내 개인 일정과 카테고리는 그대로 유지됩니다)`)) return;
+    const result = await cloudFunctions.httpsCallable('joinSpace')({ code });
+    if (!result.data || !result.data.ok) throw new Error('참여 결과를 확인하지 못했습니다.');
     spaceId = code;
+    userData.spaceId = code;
     document.getElementById('joinInput').value = '';
     subscribeSpace();
     toast('🎉 스페이스에 참여했어요!');
@@ -1242,16 +1367,12 @@ async function joinSpace() {
 
 async function leaveSpace() {
   if (!spaceData || (spaceData.members || []).length < 2) return;
-  if (!confirm('이 공유 스페이스에서 나갈까요?\n나가면 나만의 새 스페이스가 만들어집니다.')) return;
+  if (!confirm('이 공유 스페이스에서 나갈까요?\n개인 일정과 카테고리는 그대로 유지되고, 새로운 개인 스페이스가 만들어집니다.')) return;
   try {
-    await db.collection('spaces').doc(spaceId).update({
-      members: firebase.firestore.FieldValue.arrayRemove(currentUser.uid),
-      [`memberProfiles.${currentUser.uid}`]: firebase.firestore.FieldValue.delete(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await db.collection('users').doc(currentUser.uid).set({ spaceId: null }, { merge: true });
+    await cloudFunctions.httpsCallable('leaveSpace')({ spaceId });
     if (unsubSpace) { unsubSpace(); unsubSpace = null; }
     spaceId = null; spaceData = null;
+    userData.spaceId = null;
     await ensureSpace();
     toast('나만의 새 스페이스가 만들어졌어요.');
   } catch (e) { console.error('나가기 실패:', e); toast('나가기에 실패했어요.'); }
@@ -1462,13 +1583,45 @@ function editTodoReminder(id) {
 // ══════════════════════════════════════
 // DAY DATA (할 일 / 메모)
 // ══════════════════════════════════════
+function todoScope(todo, fallback = 'private') {
+  return todo && todo.visibility === 'shared' ? 'shared' : fallback;
+}
+
+function scopedTodo(todo, fallback) {
+  return { ...todo, visibility: todoScope(todo, fallback) };
+}
+
+function sharedDayRaw(key) {
+  return (spaceData && spaceData.days && spaceData.days[key]) || {};
+}
+
+function personalDayRaw(key) {
+  return (userData && userData.personalDays && userData.personalDays[key]) || {};
+}
+
+function allDayKeys() {
+  return [...new Set([
+    ...Object.keys((userData && userData.personalDays) || {}),
+    ...Object.keys((spaceData && spaceData.days) || {})
+  ])];
+}
+
 function getDay(key) {
-  const d = (spaceData && spaceData.days && spaceData.days[key]) || {};
-  return { todos: d.todos || [], note: d.note || '', notes: getDayNotes(d), recDone: d.recDone || {} };
+  const shared = sharedDayRaw(key);
+  const personal = personalDayRaw(key);
+  return {
+    todos: [
+      ...(personal.todos || []).map(todo => scopedTodo(todo, 'private')),
+      ...(shared.todos || []).map(todo => scopedTodo(todo, 'shared'))
+    ],
+    note: personal.note || '',
+    notes: getDayNotes(personal),
+    recDone: { ...(shared.recDone || {}), ...(personal.recDone || {}) }
+  };
 }
 
 // ── 카테고리별 하루 메모 ──
-// 기본 메모 카테고리. 사용자가 추가하면 spaceData.memoCategories로 저장(할 일 카테고리와는 독립).
+// 기본 메모 카테고리. 사용자별 personalMemoCategories로 저장(할 일 카테고리와는 독립).
 const DEFAULT_MEMO_CATS = [
   { id: 'ex',  name: '운동',     color: '#2e7d32', icon: '💪' },
   { id: 'st',  name: '자기계발', color: '#1565c0', icon: '📚' },
@@ -1476,8 +1629,8 @@ const DEFAULT_MEMO_CATS = [
   { id: 'etc', name: '기타',     color: '#70757f', icon: '🗂' }
 ];
 function getMemoCats() {
-  return (spaceData && spaceData.memoCategories && spaceData.memoCategories.length)
-    ? spaceData.memoCategories : DEFAULT_MEMO_CATS;
+  return (userData && userData.personalMemoCategories && userData.personalMemoCategories.length)
+    ? userData.personalMemoCategories : DEFAULT_MEMO_CATS;
 }
 function getMemoCatIds() { return getMemoCats().map(c => c.id); }
 
@@ -1515,21 +1668,20 @@ function memoBoxesHtml(prefix, notesObj, oninput) {
 }
 
 async function addMemoCategory() {
-  if (!spaceData) return;
+  if (!userData) return;
   const name = (prompt('메모에 추가할 카테고리 이름 (예: 독서, 취미)') || '').trim();
   if (!name) return;
   const cats = [...getMemoCats()];
   if (cats.some(c => c.name === name)) { toast('이미 있는 메모 카테고리예요!'); return; }
   const color = CUSTOM_CAT_COLORS[(cats.length - DEFAULT_MEMO_CATS.length + CUSTOM_CAT_COLORS.length * 9) % CUSTOM_CAT_COLORS.length];
   cats.push({ id: 'm' + Date.now().toString(36), name, color, icon: '📝' });
-  spaceData.memoCategories = cats;
+  userData.personalMemoCategories = cats;
   homeMemoSig = ''; // 구조 재생성 강제
   renderAll();
-  if (!spaceId) return;
   try {
-    await db.collection('spaces').doc(spaceId).update({
-      memoCategories: cats,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    await db.collection('users').doc(currentUser.uid).update({
+      personalMemoCategories: cats,
+      personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     toast(`🏷 메모 카테고리 '${name}'가 추가됐어요!`);
   } catch (e) { console.error('메모 카테고리 저장 실패:', e); toast('저장에 실패했어요.'); }
@@ -1551,7 +1703,7 @@ function removeCatEditRow(btn, scope) {
   btn.closest('.cat-edit-row').remove();
 }
 function openCatEditor() {
-  if (!spaceData) { toast('데이터를 불러오는 중이에요.'); return; }
+  if (!userData) { toast('데이터를 불러오는 중이에요.'); return; }
   document.getElementById('catEditBody').innerHTML = `
     <div class="dm-section-title">✅ 할 일 카테고리</div>
     ${catEditRows('todo', getCategories())}
@@ -1563,7 +1715,7 @@ function closeCatEditor() {
   document.getElementById('catEditModal').classList.remove('open');
 }
 async function saveCatEditor() {
-  if (!spaceData) return;
+  if (!userData) return;
   // DOM에 남은 행으로 목록을 재구성 → 삭제·색·이름 변경 모두 반영 (id/icon 등은 기존 값 유지)
   const prevTodo = getCategories(), prevMemo = getMemoCats();
   const todoCats = [], memoCats = [];
@@ -1578,17 +1730,16 @@ async function saveCatEditor() {
   if (!todoCats.length || !memoCats.length) { toast('카테고리는 최소 1개는 있어야 해요.'); return; }
   // 선택된 할 일 카테고리가 삭제됐으면 첫 번째로 보정
   if (!todoCats.some(c => c.id === selectedTodoCat)) selectedTodoCat = todoCats[0].id;
-  spaceData.categories = todoCats;
-  spaceData.memoCategories = memoCats;
+  userData.personalCategories = todoCats;
+  userData.personalMemoCategories = memoCats;
   homeMemoSig = ''; // 메모 칸 라벨·색 갱신 위해 재생성
   closeCatEditor();
   renderAll();
-  if (!spaceId) return;
   try {
-    await db.collection('spaces').doc(spaceId).update({
-      categories: todoCats,
-      memoCategories: memoCats,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    await db.collection('users').doc(currentUser.uid).update({
+      personalCategories: todoCats,
+      personalMemoCategories: memoCats,
+      personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     toast('🎨 카테고리를 수정했어요!');
   } catch (e) { console.error('카테고리 수정 저장 실패:', e); toast('저장에 실패했어요.'); }
@@ -1624,7 +1775,14 @@ function hexToRgba(hex, a) {
 let recurSelDays = [0,1,2,3,4,5,6]; // 기본: 매일
 
 function getRecurringFor(dateObj) {
-  return ((spaceData && spaceData.recurring) || []).filter(r => (r.days || []).includes(dateObj.getDay()));
+  return getAllRecurring().filter(r => (r.days || []).includes(dateObj.getDay()));
+}
+
+function getAllRecurring() {
+  return [
+    ...((userData && userData.personalRecurring) || []).map(rule => scopedTodo(rule, 'private')),
+    ...((spaceData && spaceData.recurring) || []).map(rule => scopedTodo(rule, 'shared'))
+  ];
 }
 
 function toggleRecurPanel() {
@@ -1646,39 +1804,71 @@ function toggleRecurDay(d, btn) {
 function setRecurEveryday() { recurSelDays = [0,1,2,3,4,5,6]; renderRecurDayBtns(); }
 
 async function saveRecurring(arr) {
-  if (!spaceId) return;
+  if (!spaceId || !currentUser) return;
+  const personal = arr.filter(rule => todoScope(rule, 'private') !== 'shared');
+  const shared = arr.filter(rule => todoScope(rule, 'private') === 'shared');
+  userData.personalRecurring = personal;
+  spaceData.recurring = shared;
   try {
-    await db.collection('spaces').doc(spaceId).update({
-      recurring: arr,
+    const batch = db.batch();
+    batch.update(db.collection('users').doc(currentUser.uid), {
+      personalRecurring: personal,
+      personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    batch.update(db.collection('spaces').doc(spaceId), {
+      recurring: shared,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+    await batch.commit();
   } catch (e) { console.error('반복 할 일 저장 실패:', e); toast('저장에 실패했어요.'); }
 }
 
 async function addRecurring() {
   const input = document.getElementById('recurInput');
   const text = input.value.trim();
-  if (!text || !spaceData) return;
+  if (!text || !spaceData || !userData) return;
   if (!recurSelDays.length) { toast('반복할 요일을 선택해 주세요!'); return; }
   input.value = '';
-  const arr = [...(spaceData.recurring || []), {
+  const cat = catById(selectedTodoCat);
+  const visibility = document.getElementById('recurShareInput').checked ? 'shared' : 'private';
+  const arr = [...getAllRecurring(), {
     id: 'r' + Date.now().toString(36),
     text,
     days: [...recurSelDays].sort(),
     by: currentUser.uid,
-    cat: selectedTodoCat
+    cat: selectedTodoCat,
+    catName: cat.name,
+    catColor: cat.color,
+    visibility
   }];
-  spaceData.recurring = arr;
-  renderRecurList(); renderAll();
+  document.getElementById('recurShareInput').checked = false;
   await saveRecurring(arr);
+  renderRecurList(); renderAll();
 }
 
 async function deleteRecurring(id) {
   if (!confirm('이 반복 할 일을 모든 요일에서 삭제할까요?')) return;
-  const arr = (spaceData.recurring || []).filter(r => r.id !== id);
-  spaceData.recurring = arr;
-  renderRecurList(); renderAll();
+  const arr = getAllRecurring().filter(r => r.id !== id);
   await saveRecurring(arr);
+  renderRecurList(); renderAll();
+}
+
+async function toggleRecurringSharing(id) {
+  const arr = getAllRecurring();
+  const rule = arr.find(item => item.id === id);
+  if (!rule) return;
+  if (rule.by && rule.by !== currentUser.uid) {
+    toast('공유 범위는 반복 일정을 만든 사람만 바꿀 수 있어요.');
+    return;
+  }
+  const makeShared = todoScope(rule, 'private') !== 'shared';
+  const cat = todoCategory(rule);
+  rule.visibility = makeShared ? 'shared' : 'private';
+  rule.catName = cat.name;
+  rule.catColor = cat.color;
+  await saveRecurring(arr);
+  renderRecurList(); renderAll();
+  toast(makeShared ? '👫 반복 일정을 공유했어요.' : '🔒 반복 일정을 나만 보기로 바꿨어요.');
 }
 
 async function toggleRecurringDone(id, checked) {
@@ -1686,6 +1876,7 @@ async function toggleRecurringDone(id, checked) {
   const day = getDay(key);
   // 완료 시 누가 완료했는지 uid를 기록 (truthy라 기존 로직과 호환)
   day.recDone = { ...day.recDone, [id]: checked ? currentUser.uid : false };
+  setDayLocal(key, day);
   renderTodos(day);
   await saveDay(key, day);
 }
@@ -1693,25 +1884,63 @@ async function toggleRecurringDone(id, checked) {
 function renderRecurList() {
   const box = document.getElementById('recurList');
   if (!box) return;
-  const arr = (spaceData && spaceData.recurring) || [];
+  const arr = getAllRecurring().filter(isScheduleVisible);
   const D = ['일','월','화','수','목','금','토'];
   box.innerHTML = arr.length ? arr.map(r => `
     <div class="todo-item">
       <span class="txt">🔁 ${esc(r.text)}</span>
       <span class="by">${(r.days || []).length === 7 ? '매일' : (r.days || []).map(d => D[d]).join('·')}</span>
+      <span class="scope-badge ${todoScope(r, 'private') === 'shared' ? 'shared' : ''}">${todoScope(r, 'private') === 'shared' ? '👫 공유' : '🔒 나만'}</span>
+      ${!r.by || r.by === currentUser.uid ? `<button class="del" onclick="toggleRecurringSharing('${r.id}')" title="공유 범위 변경">${todoScope(r, 'private') === 'shared' ? '🔒' : '👫'}</button>` : ''}
       <button class="del" onclick="deleteRecurring('${r.id}')" title="삭제">✕</button>
     </div>`).join('')
     : '<div class="empty-msg" style="padding:8px 0;">아직 반복 할 일이 없어요. 위에서 추가해 보세요!</div>';
 }
 
 async function saveDay(key, day) {
-  if (!spaceId) return;
+  if (!spaceId || !currentUser) return;
+  const split = splitDayForStorage(day);
+  applySplitDayLocal(key, split);
   try {
-    await db.collection('spaces').doc(spaceId).update({
-      [`days.${key}`]: day,
+    const batch = db.batch();
+    batch.update(db.collection('users').doc(currentUser.uid), {
+      [`personalDays.${key}`]: split.personal,
+      personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    batch.update(db.collection('spaces').doc(spaceId), {
+      [`days.${key}`]: split.shared,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+    await batch.commit();
   } catch (e) { console.error('저장 실패:', e); toast('저장에 실패했어요. 네트워크를 확인해 주세요.'); }
+}
+
+function splitDayForStorage(day) {
+  const recurringScopes = Object.fromEntries(getAllRecurring().map(rule => [rule.id, todoScope(rule, 'private')]));
+  const personalRecDone = {};
+  const sharedRecDone = {};
+  Object.entries(day.recDone || {}).forEach(([id, value]) => {
+    (recurringScopes[id] === 'shared' ? sharedRecDone : personalRecDone)[id] = value;
+  });
+  return {
+    personal: {
+      todos: (day.todos || []).filter(todo => todoScope(todo, 'private') !== 'shared'),
+      notes: normalizeNotes(day.notes),
+      note: day.note || combinedNoteText(day.notes || {}),
+      recDone: personalRecDone
+    },
+    shared: {
+      todos: (day.todos || []).filter(todo => todoScope(todo, 'private') === 'shared'),
+      recDone: sharedRecDone
+    }
+  };
+}
+
+function applySplitDayLocal(key, split) {
+  if (!userData.personalDays) userData.personalDays = {};
+  if (!spaceData.days) spaceData.days = {};
+  userData.personalDays[key] = split.personal;
+  spaceData.days[key] = split.shared;
 }
 
 // ── 할 일 카테고리 ──
@@ -1725,9 +1954,17 @@ const CUSTOM_CAT_COLORS = ['#c2185b', '#f57c00', '#00838f', '#5d4037', '#827717'
 let selectedTodoCat = 'etc';
 
 function getCategories() {
-  return (spaceData && spaceData.categories && spaceData.categories.length) ? spaceData.categories : DEFAULT_CATS;
+  return (userData && userData.personalCategories && userData.personalCategories.length) ? userData.personalCategories : DEFAULT_CATS;
 }
 function catById(id) { return getCategories().find(c => c.id === id) || DEFAULT_CATS[3]; }
+function todoCategory(todo) {
+  if (todoScope(todo, 'private') === 'shared') {
+    if (todo && todo.catName && todo.catColor) return { id: todo.cat, name: todo.catName, color: todo.catColor };
+    const legacy = ((spaceData && spaceData.categories) || []).find(c => c.id === todo.cat);
+    if (legacy) return legacy;
+  }
+  return catById(todo && todo.cat);
+}
 
 function renderCatChips() {
   const row = document.getElementById('tcatRow');
@@ -1744,7 +1981,7 @@ function pickTodoCat(id) { selectedTodoCat = id; renderCatChips(); }
 
 async function addCustomCategory() {
   const name = (prompt('새 카테고리 이름을 입력하세요 (예: 취미, 집안일)') || '').trim();
-  if (!name || !spaceData) return;
+  if (!name || !userData) return;
   const cats = [...getCategories()];
   if (cats.some(c => c.name === name)) { toast('이미 있는 카테고리예요!'); return; }
   cats.push({
@@ -1752,13 +1989,13 @@ async function addCustomCategory() {
     name,
     color: CUSTOM_CAT_COLORS[(cats.length - DEFAULT_CATS.length) % CUSTOM_CAT_COLORS.length]
   });
-  spaceData.categories = cats;
+  userData.personalCategories = cats;
   selectedTodoCat = cats[cats.length - 1].id;
   renderCatChips();
   try {
-    await db.collection('spaces').doc(spaceId).update({
-      categories: cats,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    await db.collection('users').doc(currentUser.uid).update({
+      personalCategories: cats,
+      personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     toast(`🏷 '${name}' 카테고리가 만들어졌어요!`);
   } catch (e) { console.error('카테고리 저장 실패:', e); toast('저장에 실패했어요.'); }
@@ -1796,18 +2033,26 @@ async function applyCatChange(catId) {
   closeCatPicker();
   if (kind === 'rec') {
     // 반복 할 일은 규칙 자체의 카테고리를 변경 (모든 요일에 적용)
-    const arr = [...(spaceData.recurring || [])];
+    const arr = [...getAllRecurring()];
     const r = arr.find(r => r.id === id);
     if (!r) return;
+    if (r.by && r.by !== currentUser.uid) { toast('카테고리는 일정을 만든 사람만 바꿀 수 있어요.'); return; }
+    const cat = catById(catId);
     r.cat = catId;
-    spaceData.recurring = arr;
-    renderAll(); if (modalKey) refreshModal(true);
+    r.catName = cat.name;
+    r.catColor = cat.color;
     await saveRecurring(arr);
+    renderAll(); if (modalKey) refreshModal(true);
   } else {
     const day = getDay(key);
     const t = day.todos.find(t => t.id === id);
     if (!t) return;
+    if (t.by && t.by !== currentUser.uid) { toast('카테고리는 일정을 만든 사람만 바꿀 수 있어요.'); return; }
+    const cat = catById(catId);
     t.cat = catId;
+    t.catName = cat.name;
+    t.catColor = cat.color;
+    setDayLocal(key, day);
     renderAll(); if (modalKey) refreshModal(true);
     await saveDay(key, day);
   }
@@ -1853,7 +2098,7 @@ async function addTodo() {
   const endInput = document.getElementById('todoEndInput');
   // 여러 줄 입력 지원: 줄마다 별도의 할 일로 추가
   const lines = input.value.split('\n').map(normalizeTodoText).filter(Boolean);
-  if (!lines.length || !spaceData) return;
+  if (!lines.length || !spaceData || !userData) return;
   // 기간 일정: 시작일(기본=선택한 날) ~ 종료일. 종료일이 더 뒤면 기간 일정으로 저장.
   const startKey = normalizeDateKey(startInput && startInput.value) || dateKey(selectedDate);
   const endKey = normalizeDateKey(endInput && endInput.value);
@@ -1865,6 +2110,8 @@ async function addTodo() {
   if (reminderFields.remindAtMs) await requestPushPermission();
   const scheduleTime = timeInput ? timeInput.value : '';
   const scheduleLocation = normalizeTodoText(locationInput ? locationInput.value : '');
+  const visibility = document.getElementById('todoShareInput').checked ? 'shared' : 'private';
+  const selectedCat = catById(selectedTodoCat);
 
   input.value = '';
   autoSizeTodoInput(input);
@@ -1873,6 +2120,7 @@ async function addTodo() {
   if (locationInput) locationInput.value = '';
   if (startInput) startInput.value = '';
   if (endInput) endInput.value = '';
+  document.getElementById('todoShareInput').checked = false;
   const day = getDay(key);
   const base = Date.now();
   lines.forEach((text, i) => {
@@ -1882,6 +2130,9 @@ async function addTodo() {
       done: false,
       by: currentUser.uid,
       cat: selectedTodoCat,
+      catName: selectedCat.name,
+      catColor: selectedCat.color,
+      visibility,
       createdAt: base + i,
       createdDate: key,
       moveCount: 0,
@@ -1916,6 +2167,7 @@ async function toggleTodo(id, checked) {
     delete t.doneAt;
     delete t.doneDate;
   }
+  setDayLocal(key, day);
   renderTodos(day);
   renderMoveDeck();
   await saveDay(key, day);
@@ -1961,6 +2213,7 @@ async function editTodo(id) {
   const edits = promptTodoEdits(t, key);
   if (!edits) return;
   Object.assign(t, edits);
+  setDayLocal(key, day);
   renderAll();
   await saveDay(key, day);
 }
@@ -1969,9 +2222,35 @@ async function deleteTodo(id) {
   const key = dateKey(selectedDate);
   const day = getDay(key);
   day.todos = day.todos.filter(t => t.id !== id);
+  setDayLocal(key, day);
   renderTodos(day);
   renderMoveDeck();
   await saveDay(key, day);
+}
+
+async function toggleTodoSharing(key, id) {
+  const day = getDay(key);
+  const todo = day.todos.find(item => item.id === id);
+  if (!todo) return;
+  if (todo.by && todo.by !== currentUser.uid) {
+    toast('공유 범위는 일정을 만든 사람만 바꿀 수 있어요.');
+    return;
+  }
+  const makeShared = todoScope(todo, 'private') !== 'shared';
+  const cat = todoCategory(todo);
+  todo.visibility = makeShared ? 'shared' : 'private';
+  todo.catName = cat.name;
+  todo.catColor = cat.color;
+  setDayLocal(key, day);
+  renderAll();
+  if (modalKey === key) refreshModal(true);
+  await saveDay(key, day);
+  toast(makeShared ? '👫 배우자와 공유했어요.' : '🔒 나만 보는 일정으로 바꿨어요.');
+}
+
+function scheduleScopeBadge(todo) {
+  const shared = todoScope(todo, 'private') === 'shared';
+  return `<span class="scope-badge ${shared ? 'shared' : ''}">${shared ? '👫 공유' : '🔒 나만'}</span>`;
 }
 
 // 메모: 입력 1초 후 자동 저장 (디바운스)
@@ -2002,6 +2281,19 @@ function onDatePick(v) { if (v) { const [y,m,d] = v.split('-').map(Number); sele
 // ══════════════════════════════════════
 // RENDER
 // ══════════════════════════════════════
+function isScheduleVisible(item) {
+  if (!item) return false;
+  if (scheduleFilter === 'mine') return !item.by || !!(currentUser && item.by === currentUser.uid);
+  if (scheduleFilter === 'shared') return todoScope(item, 'private') === 'shared';
+  return true;
+}
+
+function setScheduleFilter(filter) {
+  if (!['all', 'mine', 'shared'].includes(filter)) return;
+  scheduleFilter = filter;
+  renderAll();
+}
+
 function renderAll() {
   const now = new Date();
   const key = dateKey(selectedDate);
@@ -2011,6 +2303,9 @@ function renderAll() {
     `${selectedDate.getMonth()+1}월 ${selectedDate.getDate()}일 (${DAYS_KO[selectedDate.getDay()]})${isToday ? ' · 오늘' : ''}`;
   document.getElementById('datePicker').value = key;
   document.getElementById('todoDateLabel').textContent = isToday ? '오늘' : `${selectedDate.getMonth()+1}/${selectedDate.getDate()}`;
+  document.querySelectorAll('[data-schedule-filter]').forEach(btn => {
+    btn.classList.toggle('sel', btn.dataset.scheduleFilter === scheduleFilter);
+  });
 
   const day = getDay(key);
   renderTodos(day);
@@ -2087,20 +2382,19 @@ else layoutDashCards();
 // ══════════════════════════════════════
 // 금주 현황 (술 먹은 날만 기록, 나머지는 자동 금주)
 // ══════════════════════════════════════
-function getDrinkDays() { return (spaceData && spaceData.drinkDays) || {}; }
+function getDrinkDays() { return (userData && userData.personalDrinkDays) || {}; }
 function isDrinkDay(key) { return !!getDrinkDays()[key]; }
 
 async function toggleDrinkDay(key) {
-  if (!spaceData) return;
+  if (!userData || !currentUser) return;
   const map = { ...getDrinkDays() };
   if (map[key]) delete map[key]; else map[key] = true;
-  spaceData.drinkDays = map;
+  userData.personalDrinkDays = map;
   renderAll();
-  if (!spaceId) return;
   try {
-    await db.collection('spaces').doc(spaceId).update({
-      drinkDays: map,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    await db.collection('users').doc(currentUser.uid).update({
+      personalDrinkDays: map,
+      personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch (e) { console.error('음주 기록 저장 실패:', e); toast('저장에 실패했어요.'); }
 }
@@ -2213,7 +2507,7 @@ function collectWeekAgenda(today) {
   for (let offset = -7; offset < 0; offset++) {
     const d = dayOffset(today, offset);
     const key = dateKey(d);
-    getDay(key).todos.filter(todo => !todo.done).forEach(todo => overdue.push({
+    getDay(key).todos.filter(isScheduleVisible).filter(todo => !todo.done).forEach(todo => overdue.push({
       key, date: d, todo, overdue: true, recurring: false
     }));
   }
@@ -2222,10 +2516,10 @@ function collectWeekAgenda(today) {
     const d = dayOffset(today, offset);
     const key = dateKey(d);
     const day = getDay(key);
-    day.todos.filter(todo => !todo.done).forEach(todo => upcoming.push({
+    day.todos.filter(isScheduleVisible).filter(todo => !todo.done).forEach(todo => upcoming.push({
       key, date: d, todo, overdue: false, recurring: false
     }));
-    getRecurringFor(d).filter(rule => !day.recDone[rule.id]).forEach(rule => upcoming.push({
+    getRecurringFor(d).filter(isScheduleVisible).filter(rule => !day.recDone[rule.id]).forEach(rule => upcoming.push({
       key, date: d, todo: rule, overdue: false, recurring: true
     }));
   }
@@ -2264,9 +2558,10 @@ function renderWeekOverview() {
   for (let offset = 0; offset < 7; offset++) {
     const d = dayOffset(weekStart, offset);
     const day = getDay(dateKey(d));
-    const recs = getRecurringFor(d);
-    total += day.todos.length + recs.length;
-    done += day.todos.filter(todo => todo.done).length;
+    const todos = day.todos.filter(isScheduleVisible);
+    const recs = getRecurringFor(d).filter(isScheduleVisible);
+    total += todos.length + recs.length;
+    done += todos.filter(todo => todo.done).length;
     done += recs.filter(rule => day.recDone[rule.id]).length;
   }
 
@@ -2283,13 +2578,14 @@ function renderWeekOverview() {
 
   listEl.innerHTML = items.map(item => {
     const todo = item.todo;
-    const cat = catById(todo.cat);
+    const cat = todoCategory(todo);
     const isToday = item.key === todayKey;
     const dateLabel = isToday ? '오늘' : `${item.date.getMonth() + 1}/${item.date.getDate()}<br>${DAYS_KO[item.date.getDay()]}`;
     const meta = [];
     if (todo.time) meta.push(`🕐 ${esc(todo.time)}`);
     if (todo.location) meta.push(`📍 ${esc(todo.location)}`);
     if (item.recurring) meta.push('🔁 반복');
+    if (todoScope(todo, 'private') === 'shared') meta.push('👫 공유');
     if (!meta.length) meta.push(esc(cat.name));
     const statusClass = item.overdue ? 'week-status overdue' : 'week-status';
     const statusText = item.overdue ? '지연' : (item.recurring ? '반복' : '예정');
@@ -2321,8 +2617,8 @@ function sortTodosByTime(arr) {
 let justCompletedId = null; // 방금 완료한 할 일 id (한 번만 플래시)
 function renderTodos(day) {
   const list = document.getElementById('todoList');
-  const todos = day.todos;
-  const recs = getRecurringFor(selectedDate);
+  const todos = day.todos.filter(isScheduleVisible);
+  const recs = getRecurringFor(selectedDate).filter(isScheduleVisible);
   const currentKey = dateKey(selectedDate);
   const doneCount = todos.filter(t => t.done).length + recs.filter(r => day.recDone[r.id]).length;
   const total = todos.length + recs.length;
@@ -2344,21 +2640,23 @@ function renderTodos(day) {
   // 반복 할 일 (요일 해당분) 먼저, 그 아래 일반 할 일
   const recHtml = recs.map(r => {
     const done = !!day.recDone[r.id];
-    const cat = catById(r.cat);
+    const cat = todoCategory(r);
     const borderStyle = shared ? `border-left:3px solid ${memberColor(r.by)}; padding-left:9px;` : '';
     return `<div class="todo-item recurring ${done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleRecurringDone('${r.id}', this.checked)">
       <span class="todo-content"><span class="txt">${esc(r.text)}</span></span>
       <span class="todo-actions">
         <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+        ${scheduleScopeBadge(r)}
         ${authorChip(r.by)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
+        ${!r.by || r.by === currentUser.uid ? `<button class="del" onclick="toggleRecurringSharing('${r.id}')" title="공유 범위 변경">${todoScope(r, 'private') === 'shared' ? '🔒' : '👫'}</button>` : ''}
         <span class="by" title="반복 할 일">🔁</span>
       </span>
     </div>`;
   }).join('');
 
   const todoHtml = sortTodosByTime(todos).map(t => {
-    const cat = catById(t.cat);
+    const cat = todoCategory(t);
     const borderStyle = shared ? `border-left:3px solid ${memberColor(t.by)}; padding-left:9px;` : '';
     return `<div class="todo-item swipeable ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
       <button class="del move-handle" onpointerdown="startTodoItemDrag(event, '${currentKey}', '${t.id}')" title="드래그해서 날짜 이동">↕</button>
@@ -2366,6 +2664,7 @@ function renderTodos(day) {
       <span class="todo-content"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
       <span class="todo-actions">
         <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+        ${scheduleScopeBadge(t)}
         ${reminderChip(t)}
         ${authorChip(t.by)}${doneByChip(t)}
         <button class="todo-menu-btn" onclick="toggleRowActions(this)" title="더보기" aria-label="더보기">⋯</button>
@@ -2375,6 +2674,7 @@ function renderTodos(day) {
           <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
           <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
           <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
+          ${!t.by || t.by === currentUser.uid ? `<button class="del" onclick="toggleTodoSharing('${currentKey}', '${t.id}')" title="${todoScope(t, 'private') === 'shared' ? '나만 보기로 변경' : '배우자와 공유'}">${todoScope(t, 'private') === 'shared' ? '🔒' : '👫'}</button>` : ''}
           <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
         </span>
       </span>
@@ -2447,9 +2747,8 @@ function setMoveDeckFilter(filter) {
 }
 
 function findTodoLocationById(id) {
-  const days = (spaceData && spaceData.days) || {};
-  for (const key of Object.keys(days)) {
-    const todo = (days[key].todos || []).find(t => t.id === id);
+  for (const key of allDayKeys()) {
+    const todo = getDay(key).todos.find(t => t.id === id);
     if (todo) return { key, todo };
   }
   return null;
@@ -2462,6 +2761,9 @@ function todoMoveItem(key, todo) {
     text: todo.text,
     done: !!todo.done,
     cat: todo.cat,
+    catName: todo.catName,
+    catColor: todo.catColor,
+    visibility: todoScope(todo, 'private'),
     by: todo.by,
     movedAt: todo.lastMovedAt || 0
   };
@@ -2481,7 +2783,7 @@ function collectMoveDeckTasks() {
   const items = [];
 
   if (moveDeckFilter === 'selected') {
-    (getDay(selectedKey).todos || []).forEach(todo => addUnique(items, todoMoveItem(selectedKey, todo)));
+    (getDay(selectedKey).todos || []).filter(isScheduleVisible).forEach(todo => addUnique(items, todoMoveItem(selectedKey, todo)));
     return items;
   }
 
@@ -2489,16 +2791,17 @@ function collectMoveDeckTasks() {
     collectMoveEvents().slice().reverse().forEach(ev => {
       if (!ev.todoId) return;
       const found = findTodoLocationById(ev.todoId);
-      if (found) addUnique(items, todoMoveItem(found.key, found.todo));
+      if (found && isScheduleVisible(found.todo)) addUnique(items, todoMoveItem(found.key, found.todo));
     });
     return items.slice(0, 24);
   }
 
-  Object.entries((spaceData && spaceData.days) || {})
-    .filter(([key]) => keyInMonth(key, month))
-    .sort(([a], [b]) => a.localeCompare(b))
-    .forEach(([key, day]) => {
-      (day.todos || [])
+  allDayKeys()
+    .filter(key => keyInMonth(key, month))
+    .sort((a, b) => a.localeCompare(b))
+    .forEach(key => {
+      getDay(key).todos
+        .filter(isScheduleVisible)
         .filter(todo => !todo.done)
         .forEach(todo => addUnique(items, todoMoveItem(key, todo)));
     });
@@ -2546,7 +2849,7 @@ function renderMoveDeck() {
   ).join('');
 
   const rows = tasks.length ? tasks.map(item => {
-    const cat = catById(item.cat);
+    const cat = todoCategory(item);
     const sel = selectedSig === moveTaskSig(item.key, item.id);
     return `<div class="move-task ${sel ? 'sel' : ''} ${item.done ? 'done' : ''}" onclick="pickMoveTask('${item.key}', '${item.id}')">
       <span class="move-grip" onpointerdown="startMoveDeckDrag(event, '${item.key}', '${item.id}')">↕</span>
@@ -2567,10 +2870,11 @@ function renderMoveDeck() {
 
 function dayCounts(d) {
   const day = getDay(dateKey(d));
-  const recs = getRecurringFor(d);
-  const done = day.todos.filter(t => t.done).length + recs.filter(r => day.recDone[r.id]).length;
-  const total = day.todos.length + recs.length;
-  return { total, done, remain: total - done, hasNote: notesHaveContent(day.notes) };
+  const todos = day.todos.filter(isScheduleVisible);
+  const recs = getRecurringFor(d).filter(isScheduleVisible);
+  const done = todos.filter(t => t.done).length + recs.filter(r => day.recDone[r.id]).length;
+  const total = todos.length + recs.length;
+  return { total, done, remain: total - done, hasNote: scheduleFilter !== 'shared' && notesHaveContent(day.notes) };
 }
 
 function moveCalMonth(delta) { calMonth.setMonth(calMonth.getMonth() + delta); renderMoveDeck(); renderMonthCal(); }
@@ -2587,24 +2891,24 @@ function renderCalendarTags(key, dateObj) {
 
   // 기간 일정 막대 — 시작일~종료일을 가로질러 표시
   (periodIndex[key] || []).forEach(b => {
-    const cat = catById(b.todo.cat);
+    const cat = todoCategory(b.todo);
     const showLabel = b.isStart || dateObj.getDay() === 0; // 시작일 또는 주 시작(일)에 제목 표시
     const cls = ['mcal-bar', b.isStart ? 'start' : '', b.isEnd ? 'end' : '', b.todo.done ? 'done' : ''].filter(Boolean).join(' ');
-    const label = showLabel ? esc((b.todo.done ? '✓ ' : '') + b.todo.text) : '&nbsp;';
+    const label = showLabel ? esc((b.todo.done ? '✓ ' : '') + (todoScope(b.todo, 'private') === 'shared' ? '👫 ' : '') + b.todo.text) : '&nbsp;';
     tags.push(`<span class="${cls}" style="background:${cat.color};" ${calendarDragAttrs('todo', b.startK, b.todo.id)} title="${esc(b.todo.text)} (${shortDateLabel(b.startK)}~${shortDateLabel(b.endK)})">${label}</span>`);
   });
 
   // 기간 일정이 아닌 일반 할 일 (시간 순)
-  const regularTodos = sortTodosByTime(day.todos.filter(t => !isPeriodTodo(t)));
+  const regularTodos = sortTodosByTime(day.todos.filter(isScheduleVisible).filter(t => !isPeriodTodo(t)));
   const previewTodos = regularTodos.slice(0, 2);
 
   previewTodos.forEach(t => {
-    const prefix = `${t.done ? '✓ ' : ''}${t.time ? `${t.time} · ` : ''}`;
+    const prefix = `${t.done ? '✓ ' : ''}${todoScope(t, 'private') === 'shared' ? '👫 ' : ''}${t.time ? `${t.time} · ` : ''}`;
     // 완료는 기존대로 녹색, 미완료는 카테고리 색으로 표시
     if (t.done) {
       tags.push(`<span class="mcal-tag t-done" ${calendarDragAttrs('todo', key, t.id)}>${esc(prefix + t.text)}</span>`);
     } else {
-      const cat = catById(t.cat);
+      const cat = todoCategory(t);
       tags.push(`<span class="mcal-tag t-cat" style="background:${hexToRgba(cat.color, 0.16)}; color:${cat.color};" ${calendarDragAttrs('todo', key, t.id)}>${esc(prefix + t.text)}</span>`);
     }
   });
@@ -2613,12 +2917,12 @@ function renderCalendarTags(key, dateObj) {
     tags.push(`<span class="mcal-more">+${regularTodos.length - previewTodos.length}</span>`);
   }
 
-  const recCount = getRecurringFor(dateObj).length;
-  if (!day.todos.length && !(periodIndex[key] || []).length && recCount) {
+  const recCount = getRecurringFor(dateObj).filter(isScheduleVisible).length;
+  if (!day.todos.filter(isScheduleVisible).length && !(periodIndex[key] || []).length && recCount) {
     tags.push(`<span class="mcal-tag t-todo" title="반복 할 일">반복 ${recCount}</span>`);
   }
 
-  if (notesHaveContent(day.notes)) {
+  if (scheduleFilter !== 'shared' && notesHaveContent(day.notes)) {
     tags.push(`<span class="mcal-tag t-note" ${calendarDragAttrs('note', key)}>메모</span>`);
   }
 
@@ -2627,13 +2931,14 @@ function renderCalendarTags(key, dateObj) {
 
 function renderCalendarMoveSummary(key, dateObj) {
   const day = getDay(key);
-  const recs = getRecurringFor(dateObj);
-  const remain = day.todos.filter(t => !t.done).length + recs.filter(r => !(day.recDone || {})[r.id]).length;
-  const done = day.todos.filter(t => t.done).length + recs.filter(r => (day.recDone || {})[r.id]).length;
+  const todos = day.todos.filter(isScheduleVisible);
+  const recs = getRecurringFor(dateObj).filter(isScheduleVisible);
+  const remain = todos.filter(t => !t.done).length + recs.filter(r => !(day.recDone || {})[r.id]).length;
+  const done = todos.filter(t => t.done).length + recs.filter(r => (day.recDone || {})[r.id]).length;
   const tags = [];
   if (remain) tags.push(`<span class="mcal-count todo">할 ${remain}</span>`);
   if (done) tags.push(`<span class="mcal-count done">완 ${done}</span>`);
-  if (notesHaveContent(day.notes)) tags.push('<span class="mcal-count note">메모</span>');
+  if (scheduleFilter !== 'shared' && notesHaveContent(day.notes)) tags.push('<span class="mcal-count note">메모</span>');
   const summary = tags.length ? `<div class="mcal-summary">${tags.join('')}</div>` : '<div class="mcal-summary"><span class="mcal-count">비어있음</span></div>';
   if (!selectedMoveTask) return summary;
   if (selectedMoveTask.sourceKey === key) return `${summary}<div class="mcal-drop-label">출발</div>`;
@@ -2647,9 +2952,8 @@ function isPeriodTodo(t) { return !!(t && t.startDate && t.endDate && t.endDate 
 let periodIndex = {};
 function buildPeriodIndex() {
   const idx = {};
-  const days = (spaceData && spaceData.days) || {};
-  Object.keys(days).forEach(startK => {
-    (days[startK].todos || []).forEach(t => {
+  allDayKeys().forEach(startK => {
+    getDay(startK).todos.filter(isScheduleVisible).forEach(t => {
       if (!isPeriodTodo(t)) return;
       const s = t.startDate, e = t.endDate;
       let cur = s, guard = 0;
@@ -2709,9 +3013,8 @@ function renderCalendarLegend() {
 }
 
 function setDayLocal(key, day) {
-  if (!spaceData) return;
-  if (!spaceData.days) spaceData.days = {};
-  spaceData.days[key] = day;
+  if (!spaceData || !userData) return;
+  applySplitDayLocal(key, splitDayForStorage(day));
 }
 
 function createTodoMoveEvent(todo, sourceKey, targetKey) {
@@ -2723,7 +3026,8 @@ function createTodoMoveEvent(todo, sourceKey, targetKey) {
     from: sourceKey,
     to: targetKey,
     at,
-    by: currentUser ? currentUser.uid : ''
+    by: currentUser ? currentUser.uid : '',
+    visibility: todoScope(todo, 'private')
   };
 }
 
@@ -2739,21 +3043,39 @@ function applyMoveMeta(todo, sourceKey, targetKey, moveEvent) {
 }
 
 function addMoveEventLocal(moveEvent) {
-  if (!spaceData || !moveEvent) return;
-  const arr = [...(spaceData.moveLog || []), moveEvent];
-  spaceData.moveLog = arr.slice(-500);
+  if (!spaceData || !userData || !moveEvent) return;
+  if (moveEvent.visibility === 'shared') {
+    spaceData.moveLog = [...(spaceData.moveLog || []), moveEvent].slice(-500);
+  } else {
+    userData.personalMoveLog = [...(userData.personalMoveLog || []), moveEvent].slice(-500);
+  }
 }
 
 async function saveMovedDays(sourceKey, sourceDay, targetKey, targetDay, moveEvent = null) {
-  if (!spaceId) return;
+  if (!spaceId || !currentUser) return;
+  const sourceSplit = splitDayForStorage(sourceDay);
+  const targetSplit = splitDayForStorage(targetDay);
+  applySplitDayLocal(sourceKey, sourceSplit);
+  applySplitDayLocal(targetKey, targetSplit);
   try {
-    const updates = {
-      [`days.${sourceKey}`]: sourceDay,
-      [`days.${targetKey}`]: targetDay,
+    const userUpdates = {
+      [`personalDays.${sourceKey}`]: sourceSplit.personal,
+      [`personalDays.${targetKey}`]: targetSplit.personal,
+      personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    const spaceUpdates = {
+      [`days.${sourceKey}`]: sourceSplit.shared,
+      [`days.${targetKey}`]: targetSplit.shared,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
-    if (moveEvent) updates.moveLog = firebase.firestore.FieldValue.arrayUnion(moveEvent);
-    await db.collection('spaces').doc(spaceId).update(updates);
+    if (moveEvent) {
+      if (moveEvent.visibility === 'shared') spaceUpdates.moveLog = firebase.firestore.FieldValue.arrayUnion(moveEvent);
+      else userUpdates.personalMoveLog = firebase.firestore.FieldValue.arrayUnion(moveEvent);
+    }
+    const batch = db.batch();
+    batch.update(db.collection('users').doc(currentUser.uid), userUpdates);
+    batch.update(db.collection('spaces').doc(spaceId), spaceUpdates);
+    await batch.commit();
     return true;
   } catch (e) {
     console.error('날짜 이동 저장 실패:', e);
@@ -3057,43 +3379,47 @@ function openDayDetail(key) {
 
   // 일반 할 일: 체크·수정·삭제 / 반복 할 일: 체크만 (규칙 관리는 🔁 반복 패널에서)
   const todoItem = t => {
-    const cat = catById(t.cat);
+    const cat = todoCategory(t);
     const borderStyle = isShared() ? `border-left:3px solid ${memberColor(t.by)}; padding-left:9px;` : '';
     return `<div class="dm-item ${t.done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="mToggleTodo('${t.id}', this.checked)">
       <span class="dm-content"><span class="dm-txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
       <span class="dm-actions">
         <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+        ${scheduleScopeBadge(t)}
         ${reminderChip(t, key, true)}
         ${authorChip(t.by)}${doneByChip(t)}
         <button class="del" onclick="moveTodoToDate('${t.id}')" title="다른 날짜로 이동">📅</button>
         <button class="del" onclick="mEditTodoReminder('${t.id}')" title="알림 설정">🔔</button>
         <button class="del" onclick="mEditTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
+        ${!t.by || t.by === currentUser.uid ? `<button class="del" onclick="toggleTodoSharing('${key}', '${t.id}')" title="${todoScope(t, 'private') === 'shared' ? '나만 보기로 변경' : '배우자와 공유'}">${todoScope(t, 'private') === 'shared' ? '🔒' : '👫'}</button>` : ''}
         <button class="del" onclick="mDeleteTodo('${t.id}')" title="삭제">✕</button>
       </span>
     </div>`;
   };
   const recItem = r => {
     const done = !!day.recDone[r.id];
-    const cat = catById(r.cat);
+    const cat = todoCategory(r);
     const borderStyle = isShared() ? `border-left:3px solid ${memberColor(r.by)}; padding-left:9px;` : '';
     return `<div class="dm-item ${done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${done ? 'checked' : ''} onchange="mToggleRec('${r.id}', this.checked)">
       <span class="dm-content"><span class="dm-txt">${esc(r.text)}</span></span>
       <span class="dm-actions">
         <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+        ${scheduleScopeBadge(r)}
         ${authorChip(r.by)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
+        ${!r.by || r.by === currentUser.uid ? `<button class="del" onclick="toggleRecurringSharing('${r.id}')" title="공유 범위 변경">${todoScope(r, 'private') === 'shared' ? '🔒' : '👫'}</button>` : ''}
         <span title="반복 할 일">🔁</span>
       </span>
     </div>`;
   };
 
   const remainHtml =
-    recs.filter(r => !day.recDone[r.id]).map(recItem).join('') +
-    sortTodosByTime(day.todos.filter(t => !t.done)).map(todoItem).join('');
+    recs.filter(isScheduleVisible).filter(r => !day.recDone[r.id]).map(recItem).join('') +
+    sortTodosByTime(day.todos.filter(isScheduleVisible).filter(t => !t.done)).map(todoItem).join('');
   const doneHtml =
-    recs.filter(r => day.recDone[r.id]).map(recItem).join('') +
-    sortTodosByTime(day.todos.filter(t => t.done)).map(todoItem).join('');
+    recs.filter(isScheduleVisible).filter(r => day.recDone[r.id]).map(recItem).join('') +
+    sortTodosByTime(day.todos.filter(isScheduleVisible).filter(t => t.done)).map(todoItem).join('');
 
   let body = '';
   body += `<div class="dm-section-title">📋 할 일 (남은 일)</div>`;
@@ -3141,6 +3467,7 @@ async function mToggleTodo(id, checked) {
     delete t.doneAt;
     delete t.doneDate;
   }
+  setDayLocal(modalKey, day);
   refreshModal(true); renderAll();
   await saveDay(modalKey, day);
 }
@@ -3152,6 +3479,7 @@ async function mEditTodo(id) {
   const edits = promptTodoEdits(t, modalKey);
   if (!edits) return;
   Object.assign(t, edits);
+  setDayLocal(modalKey, day);
   refreshModal(true); renderAll();
   await saveDay(modalKey, day);
 }
@@ -3203,8 +3531,7 @@ async function mDeleteTodo(id) {
   if (!confirm('이 할 일을 삭제할까요?')) return;
   const day = getDay(modalKey);
   day.todos = day.todos.filter(t => t.id !== id);
-  // getDay가 반환한 복사 필드를 원본에도 반영
-  if (spaceData.days && spaceData.days[modalKey]) spaceData.days[modalKey].todos = day.todos;
+  setDayLocal(modalKey, day);
   refreshModal(true); renderAll();
   await saveDay(modalKey, day);
 }
@@ -3212,7 +3539,7 @@ async function mDeleteTodo(id) {
 async function mToggleRec(id, checked) {
   const day = getDay(modalKey);
   day.recDone = { ...day.recDone, [id]: checked ? currentUser.uid : false };
-  if (spaceData.days && spaceData.days[modalKey]) spaceData.days[modalKey].recDone = day.recDone;
+  setDayLocal(modalKey, day);
   refreshModal(true); renderAll();
   await saveDay(modalKey, day);
 }
@@ -3223,10 +3550,7 @@ async function mSaveNote() {
   getMemoCatIds().forEach(id => { notes[id] = (document.getElementById('dmNote_' + id) || {}).value || ''; });
   day.notes = normalizeNotes(notes);
   day.note = combinedNoteText(day.notes);
-  if (spaceData.days && spaceData.days[modalKey]) {
-    spaceData.days[modalKey].notes = day.notes;
-    spaceData.days[modalKey].note = day.note;
-  }
+  setDayLocal(modalKey, day);
   renderAll();
   await saveDay(modalKey, day);
   toast('💾 메모가 저장됐어요!');
@@ -3299,10 +3623,11 @@ function noteItemsForDay(key, day) {
   return items;
 }
 
-function addCategoryStat(map, catId, field) {
-  const cat = catById(catId);
-  if (!map[cat.id]) map[cat.id] = { id: cat.id, name: cat.name, color: cat.color, planned: 0, done: 0 };
-  map[cat.id][field] += 1;
+function addCategoryStat(map, item, field) {
+  const cat = todoCategory(item);
+  const key = `${cat.id || 'etc'}|${cat.name}|${cat.color}`;
+  if (!map[key]) map[key] = { id: cat.id, name: cat.name, color: cat.color, planned: 0, done: 0 };
+  map[key][field] += 1;
 }
 
 function collectMoveEvents() {
@@ -3324,20 +3649,23 @@ function collectMoveEvents() {
       from,
       to,
       at,
-      by: raw.by || ''
+      by: raw.by || '',
+      visibility: raw.visibility || 'shared'
     });
   };
 
   (spaceData && spaceData.moveLog || []).forEach(add);
-  Object.entries((spaceData && spaceData.days) || {}).forEach(([, day]) => {
-    (day.todos || []).forEach(todo => {
+  (userData && userData.personalMoveLog || []).forEach(add);
+  allDayKeys().forEach(key => {
+    getDay(key).todos.forEach(todo => {
       (todo.moveHistory || []).forEach(hist => add({
         todoId: todo.id,
         text: todo.text,
         from: hist.from,
         to: hist.to,
         at: hist.at,
-        by: hist.by || todo.by
+        by: hist.by || todo.by,
+        visibility: todoScope(todo, 'private')
       }));
     });
   });
@@ -3358,20 +3686,21 @@ function buildMonthReport(baseDate) {
     const d = new Date(info.y, info.m, dd);
     const key = dateKey(d);
     const day = getDay(key);
-    const recs = getRecurringFor(d);
-    const notes = noteItemsForDay(key, day);
+    const recs = getRecurringFor(d).filter(isScheduleVisible);
+    const notes = scheduleFilter === 'shared' ? [] : noteItemsForDay(key, day);
     let done = 0;
     let total = 0;
 
-    (day.todos || []).forEach(todo => {
+    (day.todos || []).filter(isScheduleVisible).forEach(todo => {
       total += 1;
-      const item = { date: key, text: todo.text, cat: todo.cat, type: 'todo', moved: !!(todo.moveCount || todo.lastMovedAt) };
+      const cat = todoCategory(todo);
+      const item = { date: key, text: todo.text, cat: todo.cat, catName: cat.name, catColor: cat.color, type: 'todo', moved: !!(todo.moveCount || todo.lastMovedAt) };
       plannedItems.push(item);
-      addCategoryStat(categoryMap, todo.cat, 'planned');
+      addCategoryStat(categoryMap, todo, 'planned');
       if (todo.done) {
         done += 1;
         completedItems.push(item);
-        addCategoryStat(categoryMap, todo.cat, 'done');
+        addCategoryStat(categoryMap, todo, 'done');
       } else {
         remainingItems.push(item);
       }
@@ -3379,13 +3708,14 @@ function buildMonthReport(baseDate) {
 
     recs.forEach(rec => {
       total += 1;
-      const item = { date: key, text: `반복 · ${rec.text}`, cat: rec.cat, type: 'rec' };
+      const cat = todoCategory(rec);
+      const item = { date: key, text: `반복 · ${rec.text}`, cat: rec.cat, catName: cat.name, catColor: cat.color, type: 'rec' };
       plannedItems.push(item);
-      addCategoryStat(categoryMap, rec.cat, 'planned');
+      addCategoryStat(categoryMap, rec, 'planned');
       if (day.recDone && day.recDone[rec.id]) {
         done += 1;
         completedItems.push(item);
-        addCategoryStat(categoryMap, rec.cat, 'done');
+        addCategoryStat(categoryMap, rec, 'done');
       } else {
         remainingItems.push(item);
       }
@@ -3402,7 +3732,9 @@ function buildMonthReport(baseDate) {
     });
   }
 
-  const moveEvents = collectMoveEvents().filter(ev => keyInMonth(ev.from, info) || keyInMonth(ev.to, info));
+  const moveEvents = collectMoveEvents()
+    .filter(isScheduleVisible)
+    .filter(ev => keyInMonth(ev.from, info) || keyInMonth(ev.to, info));
   const movedTodoIds = new Set(moveEvents.map(ev => ev.todoId || `${ev.text}|${ev.from}|${ev.to}`));
   const normalPlannedCount = plannedItems.filter(item => item.type === 'todo').length;
   const moveDenominator = Math.max(normalPlannedCount, movedTodoIds.size);
