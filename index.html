@@ -129,18 +129,12 @@
     transition: var(--transition);
   }
   .card-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .dashboard-grid {
-    display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 18px; margin-bottom: 18px;
-    grid-template-areas:
-      "calendar calendar"
-      "quick quick"
-      "content side";
-  }
-  .calendar-card { grid-area: calendar; }
-  .cat-grid { grid-area: quick; }
-  .content-col { grid-area: content; }
-  .side-col { grid-area: side; }
-  .content-col > .card + .card, .side-col > .card + .card { margin-top: 18px; }
+  .dashboard-grid { margin-bottom: 18px; }
+  .calendar-card { margin-bottom: 18px; }
+  .cat-grid { margin-bottom: 18px; }
+  /* 카드들을 높이에 맞춰 빈틈 없이 채우는 메이슨리 2단 */
+  .dash-cards { columns: 2; column-gap: 18px; }
+  .dash-cards > .card { break-inside: avoid; -webkit-column-break-inside: avoid; width: 100%; margin: 0 0 18px; }
 
   @keyframes fadeIn { from { opacity:0; transform: translateY(8px);} to {opacity:1; transform:translateY(0);} }
   .fade { animation: fadeIn 0.4s ease; }
@@ -614,6 +608,7 @@
     .date-nav { width: 100%; gap: 6px; }
     .date-nav input[type="date"] { flex: 1; min-width: 0; }
     .dashboard-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+    .dash-cards { column-count: 1; }
     .content-col, .side-col { display: contents; }
     .calendar-card { order: 1; }
     .cat-grid { order: 2; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 0; }
@@ -802,8 +797,8 @@
     </div>
   </div>
 
-    <!-- 할 일 / 한 일 -->
-    <div class="content-col">
+    <!-- 대시보드 카드 (높이에 맞춰 자동 배치) -->
+    <div class="dash-cards">
       <div class="card todo-card">
         <div class="card-title">
           <span>✅ <span id="todoDateLabel">오늘</span>의 할 일</span>
@@ -883,10 +878,7 @@
         <div id="homeMemoGrid" class="memo-grid"></div>
         <div class="save-hint" id="noteSaveHint">&nbsp;</div>
       </div>
-    </div>
 
-    <!-- 주간 요약 / 공유 -->
-    <div class="side-col">
       <div class="card week-card">
         <div class="card-title">
           <span>🗓 이번 주 한눈에</span>
