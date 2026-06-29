@@ -134,7 +134,7 @@
   .card-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .dashboard-grid { margin-bottom: 18px; }
   .calendar-card { margin-bottom: 18px; }
-  .cat-grid { margin-bottom: 18px; }
+  .category-section { margin-bottom: 18px; }
   /* 카드들을 가장 짧은 컬럼에 채우는 메이슨리(JS 배치) */
   .dash-cards { display: flex; gap: 18px; align-items: flex-start; }
   .dash-cards.single { flex-direction: column; }
@@ -169,17 +169,43 @@
   }
 
   /* ── CATEGORY CARDS ── */
-  .cat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .category-section-head { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 7px; }
+  .category-section-head strong { font-size: 12px; color: var(--muted); }
+  .cat-grid { display: flex; flex-wrap: wrap; gap: 8px; }
   .cat-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 12px 10px; cursor: pointer; text-decoration: none; color: var(--text);
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    flex: 0 1 138px; min-height: 38px; padding: 6px 12px; cursor: pointer; text-decoration: none; color: var(--text);
     box-shadow: var(--shadow); transition: var(--transition);
-    display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center;
+    display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center;
   }
-  .cat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--blue); }
-  .cat-card .icon { font-size: 22px; flex-shrink: 0; }
-  .cat-card .name { font-size: 13px; font-weight: 800; line-height: 1.35; word-break: keep-all; }
+  .cat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); border-color: var(--blue); }
+  .cat-card .icon { font-size: 15px; flex-shrink: 0; }
+  .cat-card .name { font-size: 11.5px; font-weight: 800; line-height: 1.3; word-break: keep-all; }
   .cat-card .desc { display: none !important; }
+  .cat-grid-empty { color: var(--muted); font-size: 11.5px; font-weight: 700; padding: 9px 2px; }
+  .dash-cat-edit-row { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .dash-cat-edit-row:last-child { border-bottom: none; }
+  .dash-cat-icon, .dash-cat-name { background: var(--bg); border: 1.5px solid var(--border); border-radius: 9px; padding: 8px 9px; color: var(--text); font-family: inherit; font-size: 13px; outline: none; }
+  .dash-cat-icon { text-align: center; }
+  .dash-cat-icon:focus, .dash-cat-name:focus { border-color: var(--blue); }
+
+  .upcoming-todos { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .upcoming-todos-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+  .upcoming-todos-head strong { font-size: 12.5px; }
+  .upcoming-todos-head span { color: var(--muted); font-size: 10.5px; font-weight: 700; }
+  .upcoming-todo-list { display: grid; }
+  .upcoming-todo {
+    width: 100%; display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center;
+    gap: 8px; padding: 8px 2px; border: none; border-bottom: 1px solid var(--border);
+    background: transparent; color: var(--text); text-align: left; cursor: pointer; font-family: inherit;
+  }
+  .upcoming-todo:last-child { border-bottom: none; }
+  .upcoming-todo:hover { background: var(--blue-light); border-radius: 8px; padding-left: 7px; padding-right: 7px; }
+  .upcoming-todo-date { color: var(--blue); font-size: 10.5px; font-weight: 900; text-align: center; white-space: nowrap; }
+  .upcoming-todo-main { min-width: 0; display: grid; gap: 3px; }
+  .upcoming-todo-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 800; }
+  .upcoming-todo-meta { color: var(--muted); font-size: 10.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .upcoming-more { display: flex; justify-content: center; padding-top: 7px; }
 
   /* ── TODO ── */
   .todo-input-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-end; }
@@ -391,13 +417,13 @@
   .dm-txt { min-width: 0; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.55; }
   .dm-actions { display: flex; align-items: center; justify-content: flex-end; gap: 3px; flex-wrap: wrap; max-width: 160px; }
   .dm-note { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; line-height: 1.8; white-space: pre-wrap; word-break: break-all; }
-  #reportModal, #moveDateModal, #catEditModal, #sobrietyModal {
+  #reportModal, #moveDateModal, #catEditModal, #dashCatEditModal, #sobrietyModal {
     position: fixed; inset: 0; background: rgba(18,18,20,0.55); z-index: 1500;
     display: none; align-items: center; justify-content: center; padding: 20px;
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
-  #reportModal.open, #moveDateModal.open, #catEditModal.open, #sobrietyModal.open { display: flex; }
-  #catEditModal .move-date-card { max-height: 84vh; overflow-y: auto; }
+  #reportModal.open, #moveDateModal.open, #catEditModal.open, #dashCatEditModal.open, #sobrietyModal.open { display: flex; }
+  #catEditModal .move-date-card, #dashCatEditModal .move-date-card { max-height: 84vh; overflow-y: auto; }
   .cat-edit-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
   .cat-edit-row:last-child { border-bottom: none; }
   .cat-edit-color { width: 38px; height: 34px; flex-shrink: 0; padding: 0; border: 1.5px solid var(--border); border-radius: 9px; background: var(--bg); cursor: pointer; }
@@ -563,6 +589,19 @@
   .memo-box-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
   .memo-area { min-height: 72px; }
   .save-hint { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: right; }
+  .memo-entry-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 9px; }
+  .memo-entry-row .note-area { min-height: 46px; max-height: 110px; padding: 10px 12px; resize: vertical; }
+  .memo-cat-row { margin-bottom: 10px; }
+  .memo-entry-list { display: grid; }
+  .memo-entry-item {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
+    gap: 8px; padding: 9px 2px; border-bottom: 1px solid var(--border);
+  }
+  .memo-entry-item:last-child { border-bottom: none; }
+  .memo-entry-text { min-width: 0; color: var(--text); font-size: 13px; font-weight: 700; line-height: 1.5; word-break: break-word; }
+  .memo-entry-actions { display: inline-flex; align-items: center; gap: 2px; }
+  .memo-entry-actions button { background: none; border: none; color: var(--muted); cursor: pointer; padding: 3px 5px; border-radius: 6px; }
+  .memo-entry-actions button:hover { color: var(--blue); background: var(--blue-light); }
 
   /* ── SHARE ── */
   .member-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -685,7 +724,8 @@
     .dashboard-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
     .content-col, .side-col { display: contents; }
     .calendar-card { order: 1; margin-bottom: 0; }
-    .cat-grid { order: 2; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 0; }
+    .category-section { order: 2; margin-bottom: 0; }
+    .cat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
     .dash-cards { order: 3; }
     .todo-card { order: 3; }
     .note-card { order: 4; }
@@ -701,9 +741,9 @@
     .calendar-tools { gap: 6px; }
     .month-nav { grid-template-columns: 34px minmax(92px, auto) 34px; gap: 4px; }
     .month-nav .small-btn { width: 34px; }
-    .cat-card { padding: 10px 6px; gap: 4px; min-height: 76px; border-radius: 12px; align-items: center; text-align: center; justify-content: center; }
-    .cat-card .icon { font-size: 22px; }
-    .cat-card .name { font-size: 11.5px; line-height: 1.25; word-break: keep-all; overflow-wrap: anywhere; }
+    .cat-card { padding: 6px 5px; gap: 4px; min-height: 44px; border-radius: 10px; align-items: center; text-align: center; justify-content: center; }
+    .cat-card .icon { font-size: 15px; }
+    .cat-card .name { font-size: 10.5px; line-height: 1.2; word-break: keep-all; overflow-wrap: anywhere; }
     .cat-card .desc { display: none !important; }
     .todo-input-row { gap: 6px; align-items: stretch; }
     .todo-input-row textarea { min-height: 38px; max-height: 78px; padding: 9px 10px; font-size: 13px; }
@@ -740,6 +780,10 @@
     .note-area { min-height: 86px; font-size: 13.5px; }
     .memo-grid { grid-template-columns: 1fr; gap: 8px; }
     .memo-area { min-height: 64px; }
+    .memo-entry-row { align-items: stretch; gap: 6px; }
+    .memo-entry-row .note-area { min-height: 42px; }
+    .memo-entry-item { grid-template-columns: auto minmax(0, 1fr); }
+    .memo-entry-actions { grid-column: 2; justify-self: end; }
     .mcal-grid { gap: 3px; }
     .mcal-dow { font-size: 10px; padding: 2px 0; }
     .mcal-day { min-height: 72px; padding: 4px; border-radius: 7px; gap: 2px; }
@@ -756,11 +800,13 @@
     .report-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .report-date { flex-basis: 46px; }
     .week-agenda-item { grid-template-columns: 44px minmax(0, 1fr) auto; }
+    .upcoming-todo { grid-template-columns: 50px minmax(0, 1fr); }
+    .upcoming-todo > .tcat-badge { display: none; }
   }
 
   @media (max-width: 380px) {
     .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .cat-card { min-height: 62px; }
+    .cat-card { min-height: 44px; }
     .calendar-actions { justify-content: center; }
     .calendar-tools { width: 100%; justify-content: center; }
   }
@@ -858,29 +904,13 @@
     </div>
   </div>
 
-  <!-- 카테고리 -->
-  <div class="cat-grid">
-    <a class="cat-card" href="study.html">
-      <div class="icon">🇪🇸</div>
-      <div class="name">스페인어 스터디</div>
-      <div class="desc">넥서스 Día 01~16 · 단어장 · 퀴즈 · 진도 체크</div>
-      <div class="desc" id="studyStats" style="display:none; font-weight:700; color: var(--blue);"></div>
-    </a>
-    <a class="cat-card" href="diary.html">
-      <div class="icon">📔</div>
-      <div class="name">일기장</div>
-      <div class="desc">하루를 마무리하는 나만의 기록 공간</div>
-    </a>
-    <a class="cat-card" href="shared-diary.html">
-      <div class="icon">💌</div>
-      <div class="name">교환일기</div>
-      <div class="desc">스페이스 멤버와 함께 쓰는 날짜별 교환일기</div>
-    </a>
-    <div class="cat-card" onclick="toast('새 카테고리는 곧 만나요! 🚧')">
-      <div class="icon">➕</div>
-      <div class="name">카테고리 추가 예정</div>
-      <div class="desc">취미, 운동, 가계부… 원하는 공간을 늘려가요</div>
+  <!-- 사용자별 홈 바로가기 카테고리 -->
+  <div class="category-section">
+    <div class="category-section-head">
+      <strong>카테고리</strong>
+      <button class="small-btn" onclick="openDashboardCategoryEditor()">편집</button>
     </div>
+    <div class="cat-grid" id="dashboardCategoryGrid"></div>
   </div>
 
     <!-- 대시보드 카드 (높이에 맞춰 자동 배치) -->
@@ -967,6 +997,13 @@
         </div>
 
         <div id="todoList"></div>
+        <div class="upcoming-todos" id="upcomingTodos">
+          <div class="upcoming-todos-head">
+            <strong>📌 이번 주 이후 할 일</strong>
+            <span>마감일·시간 순</span>
+          </div>
+          <div class="upcoming-todo-list" id="upcomingTodoList"></div>
+        </div>
       </div>
 
       <div class="card note-card">
@@ -975,27 +1012,15 @@
           <button class="small-btn" onclick="addMemoCategory()" title="메모 카테고리 추가">＋ 카테고리</button>
           <button class="small-btn" onclick="openCatEditor()" title="카테고리 색·이름 편집">🎨</button>
         </div>
-        <div id="homeMemoGrid" class="memo-grid"></div>
+        <div class="memo-entry-row">
+          <textarea id="memoEntryInput" class="note-area" rows="1" placeholder="오늘 한 일이나 메모를 입력하세요."
+            oninput="autoSizeTodoInput(this)"
+            onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();addMemoEntry();}"></textarea>
+          <button class="add-btn" onclick="addMemoEntry()">추가</button>
+        </div>
+        <div class="tcat-row memo-cat-row" id="memoCatRow"></div>
+        <div class="memo-entry-list" id="homeMemoEntries"></div>
         <div class="save-hint" id="noteSaveHint">&nbsp;</div>
-      </div>
-
-      <div class="card week-card">
-        <div class="card-title">
-          <span>🗓 이번 주 한눈에</span>
-          <span class="week-range" id="weekRange"></span>
-        </div>
-        <div class="week-summary">
-          <div class="week-summary-row">
-            <span class="week-summary-label">이번 주 할 일 완료율</span>
-            <span class="week-summary-value" id="weekProgressText">0 / 0 · 0%</span>
-          </div>
-          <div class="week-meter" aria-hidden="true"><span id="weekMeterFill"></span></div>
-        </div>
-        <div class="week-agenda-head">
-          <strong>다가오는 일정</strong>
-          <span>최근 미완료 포함 · 최대 5개</span>
-        </div>
-        <div class="week-agenda-list" id="weekAgendaList"></div>
       </div>
 
       <div class="card share-card">
@@ -1033,6 +1058,25 @@
       <button class="small-btn" onclick="closeDayModal()">✕ 닫기</button>
     </div>
     <div id="dmBody"></div>
+  </div>
+</div>
+
+<!-- 달력 아래 홈 바로가기 카테고리 편집 모달 -->
+<div id="dashCatEditModal" onclick="if(event.target===this) closeDashboardCategoryEditor()">
+  <div class="move-date-card" style="max-width:440px;">
+    <div class="card-title">
+      <span>🧩 홈 카테고리 편집</span>
+      <button class="small-btn" onclick="closeDashboardCategoryEditor()">✕ 닫기</button>
+    </div>
+    <div class="scope-hint" style="margin-bottom:10px;">이 설정은 내 홈에만 적용돼요. 삭제해도 기존 기록은 지워지지 않습니다.</div>
+    <div id="dashCatEditBody"></div>
+    <div style="display:flex; justify-content:space-between; gap:8px; margin-top:14px;">
+      <button class="small-btn" onclick="resetDashboardCategoryEditor()">기본값 복원</button>
+      <span style="display:flex; gap:8px;">
+        <button class="small-btn" onclick="closeDashboardCategoryEditor()">취소</button>
+        <button class="add-btn" onclick="saveDashboardCategoryEditor()">저장</button>
+      </span>
+    </div>
   </div>
 </div>
 
@@ -1132,6 +1176,11 @@ const DAYS_KO = ['일','월','화','수','목','금','토'];
 const MEMBER_SIGNATURES = [
   { label: '민석', color: '#2563EB', aliases: ['민석', 'minseok', 'minseokkim'] },
   { label: '단비', color: '#F97316', aliases: ['단비', 'danbi'] }
+];
+const DEFAULT_DASHBOARD_CATEGORIES = [
+  { id: 'study', icon: '🇪🇸', name: '스페인어 스터디', href: 'study.html' },
+  { id: 'diary', icon: '📔', name: '일기장', href: 'diary.html' },
+  { id: 'sharedDiary', icon: '💌', name: '교환일기', href: 'shared-diary.html' }
 ];
 const RESERVED_SIGNATURE_COLORS = MEMBER_SIGNATURES.map(member => member.color.toLowerCase());
 const dateKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1372,6 +1421,87 @@ function renderStudyStats(data) {
     const words = Object.keys(data.words || {}).filter(w => data.words[w]).length;
     el.innerHTML = `📚 공부한 날 ${(data.studiedDates || []).length} · 단어 ${words}`;
     el.style.display = 'block';
+  }
+}
+
+// 달력 아래 홈 바로가기 카테고리 — 사용자 문서에만 저장되어 부부 간 설정이 섞이지 않는다.
+function dashboardCategoryBase(id) {
+  return DEFAULT_DASHBOARD_CATEGORIES.find(item => item.id === id);
+}
+function normalizeDashboardCategories(raw) {
+  if (!Array.isArray(raw)) return DEFAULT_DASHBOARD_CATEGORIES.map(item => ({ ...item }));
+  return raw.map(item => {
+    const base = dashboardCategoryBase(item && item.id);
+    if (!base) return null;
+    return {
+      ...base,
+      icon: String(item.icon || base.icon).trim().slice(0, 8) || base.icon,
+      name: String(item.name || base.name).trim().slice(0, 24) || base.name
+    };
+  }).filter(Boolean);
+}
+function getDashboardCategories() {
+  return normalizeDashboardCategories(userData && userData.dashboardCategories);
+}
+function renderDashboardCategories() {
+  const grid = document.getElementById('dashboardCategoryGrid');
+  if (!grid) return;
+  const items = getDashboardCategories();
+  grid.innerHTML = items.length ? items.map(item => `
+    <a class="cat-card" href="${item.href}">
+      <span class="icon">${esc(item.icon)}</span>
+      <span class="name">${esc(item.name)}</span>
+      ${item.id === 'study' ? '<span class="desc" id="studyStats"></span>' : ''}
+    </a>`).join('') : '<div class="cat-grid-empty">표시 중인 카테고리가 없어요. 편집에서 기본값을 복원할 수 있어요.</div>';
+  if (items.some(item => item.id === 'study') && userData) renderStudyStats(userData);
+}
+function dashboardCategoryEditorRows(items) {
+  return items.map(item => `
+    <div class="dash-cat-edit-row" data-id="${item.id}">
+      <input class="dash-cat-icon" value="${escAttr(item.icon)}" maxlength="8" aria-label="${escAttr(item.name)} 아이콘">
+      <input class="dash-cat-name" value="${escAttr(item.name)}" maxlength="24" aria-label="${escAttr(item.name)} 이름">
+      <button type="button" class="cat-edit-del" onclick="removeDashboardCategoryRow(this)" title="홈에서 삭제">🗑</button>
+    </div>`).join('');
+}
+function openDashboardCategoryEditor() {
+  if (!userData) { toast('데이터를 불러오는 중이에요.'); return; }
+  document.getElementById('dashCatEditBody').innerHTML = dashboardCategoryEditorRows(getDashboardCategories());
+  document.getElementById('dashCatEditModal').classList.add('open');
+}
+function closeDashboardCategoryEditor() {
+  document.getElementById('dashCatEditModal').classList.remove('open');
+}
+function removeDashboardCategoryRow(btn) {
+  const row = btn.closest('.dash-cat-edit-row');
+  const name = row && row.querySelector('.dash-cat-name');
+  if (!row || !confirm(`'${name ? name.value : '이 카테고리'}'를 내 홈에서 삭제할까요?\n기존 기록과 원래 기능은 삭제되지 않아요.`)) return;
+  row.remove();
+}
+function resetDashboardCategoryEditor() {
+  document.getElementById('dashCatEditBody').innerHTML = dashboardCategoryEditorRows(DEFAULT_DASHBOARD_CATEGORIES);
+  toast('기본 카테고리로 복원했어요. 저장을 눌러 적용해 주세요.');
+}
+async function saveDashboardCategoryEditor() {
+  if (!userData) return;
+  const items = [...document.querySelectorAll('#dashCatEditBody .dash-cat-edit-row')].map(row => {
+    const base = dashboardCategoryBase(row.dataset.id);
+    if (!base) return null;
+    const icon = row.querySelector('.dash-cat-icon').value.trim().slice(0, 8) || base.icon;
+    const name = row.querySelector('.dash-cat-name').value.trim().slice(0, 24) || base.name;
+    return { id: base.id, icon, name, href: base.href };
+  }).filter(Boolean);
+  userData.dashboardCategories = items;
+  closeDashboardCategoryEditor();
+  renderDashboardCategories();
+  try {
+    await db.collection('users').doc(currentUser.uid).update({
+      dashboardCategories: items,
+      personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('🧩 내 홈 카테고리를 저장했어요!');
+  } catch (e) {
+    console.error('홈 카테고리 저장 실패:', e);
+    toast('카테고리 저장에 실패했어요.');
   }
 }
 
@@ -1728,7 +1858,7 @@ async function addMemoCategory() {
   const color = nextCategoryColor(cats.length - DEFAULT_MEMO_CATS.length);
   cats.push({ id: 'm' + Date.now().toString(36), name, color, icon: '📝' });
   userData.personalMemoCategories = cats;
-  homeMemoSig = ''; // 구조 재생성 강제
+  selectedMemoCat = cats[cats.length - 1].id;
   renderAll();
   try {
     await db.collection('users').doc(currentUser.uid).update({
@@ -1811,9 +1941,9 @@ async function saveCatEditor() {
   if (!todoCats.length || !memoCats.length) { toast('카테고리는 최소 1개는 있어야 해요.'); return; }
   // 선택된 할 일 카테고리가 삭제됐으면 첫 번째로 보정
   if (!todoCats.some(c => c.id === selectedTodoCat)) selectedTodoCat = todoCats[0].id;
+  if (!memoCats.some(c => c.id === selectedMemoCat)) selectedMemoCat = memoCats[0].id;
   userData.personalCategories = todoCats;
   userData.personalMemoCategories = memoCats;
-  homeMemoSig = ''; // 메모 칸 라벨·색 갱신 위해 재생성
   closeCatEditor();
   renderAll();
   try {
@@ -1826,22 +1956,94 @@ async function saveCatEditor() {
   } catch (e) { console.error('카테고리 수정 저장 실패:', e); toast('저장에 실패했어요.'); }
 }
 
-// 홈 카드 메모: 카테고리 목록이 바뀔 때만 구조를 다시 그리고, 그 외엔 값만 갱신(포커스 보존)
-let homeMemoSig = '';
-function renderHomeMemo(day) {
-  const grid = document.getElementById('homeMemoGrid');
-  if (!grid) return;
+// 홈 카드 메모: 한 입력칸에서 카테고리를 고른 뒤 항목 단위로 추가한다.
+let selectedMemoCat = 'etc';
+function memoLines(notes, catId) {
+  return String(notes && notes[catId] || '').split(/\n+/).map(line => line.trim()).filter(Boolean);
+}
+function renderMemoCatChips() {
+  const row = document.getElementById('memoCatRow');
+  if (!row) return;
   const cats = getMemoCats();
-  const sig = cats.map(c => `${c.id}:${c.name}:${c.color}`).join('|');
+  if (!cats.some(cat => cat.id === selectedMemoCat)) selectedMemoCat = cats[0].id;
+  row.innerHTML = cats.map(cat => `
+    <button class="tcat-chip ${cat.id === selectedMemoCat ? 'sel' : ''}"
+      style="${cat.id === selectedMemoCat ? `background:${cat.color};` : ''}"
+      onclick="pickMemoCat('${cat.id}')">${cat.icon ? `${esc(cat.icon)} ` : ''}${esc(cat.name)}</button>`).join('');
+}
+function pickMemoCat(id) {
+  selectedMemoCat = id;
+  renderMemoCatChips();
+  const input = document.getElementById('memoEntryInput');
+  if (input) input.focus();
+}
+function memoEntryItems(notes) {
+  const items = [];
+  getMemoCats().forEach(cat => memoLines(notes, cat.id).forEach((text, index) => items.push({ cat, text, index })));
+  return items;
+}
+function renderHomeMemo(day) {
+  const list = document.getElementById('homeMemoEntries');
+  if (!list) return;
   const dnotes = getDayNotes(day);
-  if (sig !== homeMemoSig) {
-    grid.innerHTML = memoBoxesHtml('homeNote', dnotes, 'onNoteInput()');
-    homeMemoSig = sig;
-  }
-  cats.forEach(c => {
-    const el = document.getElementById('homeNote_' + c.id);
-    if (el && document.activeElement !== el) el.value = dnotes[c.id] || '';
-  });
+  renderMemoCatChips();
+  const items = memoEntryItems(dnotes);
+  list.innerHTML = items.length ? items.map(({ cat, text, index }) => `
+    <div class="memo-entry-item">
+      <span class="tcat-badge" style="background:${cat.color}; cursor:default;">${cat.icon ? `${esc(cat.icon)} ` : ''}${esc(cat.name)}</span>
+      <span class="memo-entry-text">${esc(text)}</span>
+      <span class="memo-entry-actions">
+        <button onclick="editMemoEntry('${cat.id}', ${index})" title="메모 수정">✏️</button>
+        <button onclick="deleteMemoEntry('${cat.id}', ${index})" title="메모 삭제">✕</button>
+      </span>
+    </div>`).join('') : '<div class="empty-msg" style="padding:12px 0 4px;">아직 추가한 메모가 없어요.</div>';
+}
+async function persistMemoEntries(notes, message) {
+  const key = dateKey(selectedDate);
+  const day = getDay(key);
+  day.notes = normalizeNotes(notes);
+  day.note = combinedNoteText(day.notes);
+  setDayLocal(key, day);
+  renderHomeMemo(day);
+  renderMonthCal();
+  document.getElementById('noteSaveHint').textContent = '저장 중…';
+  await saveDay(key, day);
+  document.getElementById('noteSaveHint').textContent = '✅ 저장됨';
+  if (message) toast(message);
+}
+async function addMemoEntry() {
+  const input = document.getElementById('memoEntryInput');
+  const text = String(input && input.value || '').trim().replace(/\s+/g, ' ');
+  if (!text) return;
+  if (!currentUser || !userData) { toast('메모 데이터를 불러오는 중이에요.'); return; }
+  const notes = getDayNotes(getDay(dateKey(selectedDate)));
+  const lines = memoLines(notes, selectedMemoCat);
+  lines.push(text);
+  notes[selectedMemoCat] = lines.join('\n');
+  input.value = '';
+  autoSizeTodoInput(input);
+  await persistMemoEntries(notes, '📝 메모를 추가했어요!');
+}
+async function editMemoEntry(catId, index) {
+  const notes = getDayNotes(getDay(dateKey(selectedDate)));
+  const lines = memoLines(notes, catId);
+  if (index < 0 || index >= lines.length) return;
+  const next = prompt('메모를 수정하세요.', lines[index]);
+  if (next === null) return;
+  const text = next.trim().replace(/\s+/g, ' ');
+  if (!text) { await deleteMemoEntry(catId, index); return; }
+  lines[index] = text;
+  notes[catId] = lines.join('\n');
+  await persistMemoEntries(notes, '✏️ 메모를 수정했어요!');
+}
+async function deleteMemoEntry(catId, index) {
+  const notes = getDayNotes(getDay(dateKey(selectedDate)));
+  const lines = memoLines(notes, catId);
+  if (index < 0 || index >= lines.length) return;
+  if (!confirm(`'${lines[index]}' 메모를 삭제할까요?`)) return;
+  lines.splice(index, 1);
+  notes[catId] = lines.join('\n');
+  await persistMemoEntries(notes, '🗑 메모를 삭제했어요.');
 }
 
 // hex 색을 옅은 배경 rgba로 (달력 카테고리 태그용)
@@ -2347,30 +2549,12 @@ function scheduleScopeBadge(todo, key = '', kind = 'todo') {
   return `<button type="button" class="scope-badge scope-control ${shared ? 'shared' : ''}" onclick="${action}" title="${title}">${label}</button>`;
 }
 
-// 메모: 입력 1초 후 자동 저장 (디바운스)
-// 날짜와 내용은 입력 시점에 캡처한다 — 저장 전에 날짜를 이동해도 원래 날짜에 저장되도록
-let noteTimer = null;
-function onNoteInput() {
-  document.getElementById('noteSaveHint').textContent = '입력 중…';
-  const key = dateKey(selectedDate);
-  const notes = {};
-  getMemoCatIds().forEach(id => { const el = document.getElementById('homeNote_' + id); if (el) notes[id] = el.value; });
-  clearTimeout(noteTimer);
-  noteTimer = setTimeout(async () => {
-    const day = getDay(key);
-    day.notes = normalizeNotes(notes);
-    day.note = combinedNoteText(day.notes);
-    await saveDay(key, day);
-    document.getElementById('noteSaveHint').textContent = '✅ 자동 저장됨';
-  }, 1000);
-}
-
 // ══════════════════════════════════════
 // DATE NAV
 // ══════════════════════════════════════
-function moveDate(delta) { selectedDate.setDate(selectedDate.getDate() + delta); calMonth = new Date(selectedDate); todoStartDateEdited = false; renderAll(); }
-function goToday() { selectedDate = new Date(); calMonth = new Date(); todoStartDateEdited = false; renderAll(); }
-function onDatePick(v) { if (v) { const [y,m,d] = v.split('-').map(Number); selectedDate = new Date(y, m-1, d); calMonth = new Date(selectedDate); todoStartDateEdited = false; renderAll(); } }
+function moveDate(delta) { selectedDate.setDate(selectedDate.getDate() + delta); calMonth = new Date(selectedDate); todoStartDateEdited = false; showAllUpcomingTodos = false; renderAll(); }
+function goToday() { selectedDate = new Date(); calMonth = new Date(); todoStartDateEdited = false; showAllUpcomingTodos = false; renderAll(); }
+function onDatePick(v) { if (v) { const [y,m,d] = v.split('-').map(Number); selectedDate = new Date(y, m-1, d); calMonth = new Date(selectedDate); todoStartDateEdited = false; showAllUpcomingTodos = false; renderAll(); } }
 
 // ══════════════════════════════════════
 // RENDER
@@ -2403,6 +2587,7 @@ function renderAll() {
 
   const day = getDay(key);
   renderTodos(day);
+  renderUpcomingTodos();
 
   // 기간 일정 시작일 기본값 = 선택한 날 (사용자가 아직 안 건드렸을 때만)
   const startEl = document.getElementById('todoStartInput');
@@ -2412,10 +2597,10 @@ function renderAll() {
   renderHomeMemo(day);
 
   renderMembers();
+  renderDashboardCategories();
   renderCatChips();
   renderMoveDeck();
   renderMonthCal();
-  renderWeekOverview();
   renderSobriety();
   if (document.getElementById('recurPanel').style.display !== 'none') renderRecurList();
   layoutDashCards();
@@ -2573,6 +2758,7 @@ function closeSobrietyModal() {
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
 function activateActionTooltips(root) {
   if (!root) return;
@@ -2612,6 +2798,8 @@ function shortMonthDay(dateObj) {
 function collectWeekAgenda(today) {
   const overdue = [];
   const upcoming = [];
+  const weekEnd = dayOffset(mondayFor(today), 6);
+  const remainingWeekDays = Math.max(1, Math.round((weekEnd - today) / 86400000) + 1);
 
   for (let offset = -7; offset < 0; offset++) {
     const d = dayOffset(today, offset);
@@ -2621,7 +2809,7 @@ function collectWeekAgenda(today) {
     }));
   }
 
-  for (let offset = 0; offset < 7; offset++) {
+  for (let offset = 0; offset < remainingWeekDays; offset++) {
     const d = dayOffset(today, offset);
     const key = dateKey(d);
     const day = getDay(key);
@@ -2647,6 +2835,7 @@ function openWeekAgendaDay(key) {
   selectedDate = new Date(y, m - 1, d);
   calMonth = new Date(selectedDate);
   todoStartDateEdited = false;
+  showAllUpcomingTodos = false;
   renderAll();
   openDayDetail(key);
 }
@@ -2724,6 +2913,72 @@ function sortTodosByTime(arr) {
       return a[1] - b[1];
     })
     .map(pair => pair[0]);
+}
+
+function collectUpcomingTodos(baseKey) {
+  const items = [];
+  const seen = new Set();
+  allDayKeys().forEach(sourceKey => {
+    getDay(sourceKey).todos.filter(isScheduleVisible).forEach(todo => {
+      if (!todo || todo.done) return;
+      const dueKey = normalizeDateKey(todo.endDate) || sourceKey;
+      if (dueKey <= baseKey) return;
+      const sig = `${sourceKey}|${todo.id}`;
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      items.push({ sourceKey, dueKey, todo });
+    });
+  });
+  return items.sort((a, b) =>
+    a.dueKey.localeCompare(b.dueKey) ||
+    (a.todo.time || '99:99').localeCompare(b.todo.time || '99:99') ||
+    Number(a.todo.createdAt || 0) - Number(b.todo.createdAt || 0)
+  );
+}
+
+let showAllUpcomingTodos = false;
+function toggleUpcomingTodos() {
+  showAllUpcomingTodos = !showAllUpcomingTodos;
+  renderUpcomingTodos();
+}
+function renderUpcomingTodos() {
+  const list = document.getElementById('upcomingTodoList');
+  const section = document.getElementById('upcomingTodos');
+  if (!list || !section) return;
+  const selectedKey = dateKey(selectedDate);
+  const thisWeekEndKey = dateKey(dayOffset(mondayFor(new Date()), 6));
+  const cutoffKey = selectedKey > thisWeekEndKey ? selectedKey : thisWeekEndKey;
+  const allItems = collectUpcomingTodos(cutoffKey);
+  const items = showAllUpcomingTodos ? allItems : allItems.slice(0, 8);
+  section.style.display = '';
+  if (!allItems.length) {
+    list.innerHTML = '<div class="empty-msg" style="padding:9px 2px 2px;">이번 주 이후 예정된 미완료 일정이 없어요.</div>';
+    return;
+  }
+  const rows = items.map(({ sourceKey, dueKey, todo }) => {
+    const cat = todoCategory(todo);
+    const owner = todoOwnerSignature(todo);
+    const [, month, day] = dueKey.split('-').map(Number);
+    const dueDate = new Date(+dueKey.slice(0, 4), month - 1, day);
+    const meta = [];
+    if (todo.time) meta.push(`🕐 ${esc(todo.time)}`);
+    if (todo.location) meta.push(`📍 ${esc(todo.location)}`);
+    if (owner) meta.push(owner.label);
+    if (isPeriodTodo(todo)) meta.push(`기간 ${shortDateLabel(todo.startDate || sourceKey)}–${shortDateLabel(todo.endDate)}`);
+    if (!meta.length) meta.push(esc(cat.name));
+    return `<button class="upcoming-todo" onclick="openWeekAgendaDay('${sourceKey}')" aria-label="${escAttr(todo.text)} 일정 열기">
+      <span class="upcoming-todo-date">${month}/${day}<br>${DAYS_KO[dueDate.getDay()]}</span>
+      <span class="upcoming-todo-main">
+        <span class="upcoming-todo-title">${esc(todo.text)}</span>
+        <span class="upcoming-todo-meta">${meta.join(' · ')}</span>
+      </span>
+      <span class="tcat-badge" style="background:${cat.color}; cursor:default;">${esc(cat.name)}</span>
+    </button>`;
+  }).join('');
+  const more = allItems.length > 8
+    ? `<div class="upcoming-more"><button class="small-btn" onclick="toggleUpcomingTodos()">${showAllUpcomingTodos ? '접기' : `+${allItems.length - 8}개 더 보기`}</button></div>`
+    : '';
+  list.innerHTML = rows + more;
 }
 
 let justCompletedId = null; // 방금 완료한 할 일 id (한 번만 플래시)
@@ -3498,6 +3753,7 @@ async function onCalDayClick(key) {
   const [y, m, d] = key.split('-').map(Number);
   selectedDate = new Date(y, m-1, d);
   todoStartDateEdited = false;
+  showAllUpcomingTodos = false;
   if (calendarMoveMode) {
     if (selectedMoveTask) {
       const task = selectedMoveTask;
