@@ -406,9 +406,12 @@
   #dayModal.open { display: flex; }
   .day-modal-card {
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-    max-width: 480px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px;
+    max-width: 560px; width: 100%; max-height: 86vh; overflow-y: auto; padding: 22px;
     box-shadow: 0 12px 40px rgba(0,0,0,0.3); animation: fadeIn 0.25s ease;
   }
+  /* 팝업 안으로 옮긴 할 일·메모 카드는 카드 테두리를 없애 모달에 녹아들게 */
+  #dmBody > .card { box-shadow: none; border: none; background: transparent; padding: 0; }
+  #dmBody > .card + .card { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 16px; }
   .dm-section-title { font-size: 13px; font-weight: 800; margin: 16px 0 8px; color: var(--muted); }
   .dm-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 9px 4px; font-size: 13.5px; border-bottom: 1px solid var(--border); }
   .dm-item:last-child { border-bottom: none; }
@@ -1021,8 +1024,8 @@
       <div class="dash-col">
       <div class="card upcoming-card">
         <div class="card-title">
-          <span>📌 향후 할 일</span>
-          <span class="week-range">마감일·시간 순</span>
+          <span>📌 할 일 (오늘부터)</span>
+          <span class="week-range">마감일·시간 순 · 날짜를 누르면 편집</span>
         </div>
         <div id="upcomingTodos">
           <div class="upcoming-todo-list" id="upcomingTodoList"></div>
@@ -2904,8 +2907,8 @@ function renderUpcomingTodos() {
   const list = document.getElementById('upcomingTodoList');
   const section = document.getElementById('upcomingTodos');
   if (!list || !section) return;
-  // 오늘 이후(내일부터)의 모든 미완료 일정을 마감일 순으로. 오늘 분은 위 '오늘의 할 일'에 있으니 제외.
-  const cutoffKey = dateKey(new Date());
+  // 오늘 포함 앞으로의 모든 미완료 일정을 마감일 순으로 (어제 이전만 제외)
+  const cutoffKey = keyPlusDays(dateKey(new Date()), -1);
   const allItems = collectUpcomingTodos(cutoffKey);
   const items = showAllUpcomingTodos ? allItems : allItems.slice(0, 8);
   section.style.display = '';
@@ -3751,8 +3754,8 @@ async function onCalDayClick(key) {
     }
     return;
   }
-  // 날짜만 선택 → 아래 할 일·메모 카드가 해당 날짜로 갱신 (상세 팝업은 띄우지 않음)
-  renderAll();
+  // 날짜 클릭 → 해당 날짜 할 일·메모 편집 팝업 열기
+  openDayDetail(key);
 }
 
 let modalKey = null;
@@ -3761,85 +3764,35 @@ function openDayDetail(key) {
   modalKey = key;
   const [y, m, d] = key.split('-').map(Number);
   const dateObj = new Date(y, m-1, d);
-  const day = getDay(key);
-  const recs = getRecurringFor(dateObj);
+  selectedDate = new Date(y, m-1, d); // 팝업 안 할 일·메모 카드는 selectedDate 기준으로 동작
+  todoStartDateEdited = false;
+  showAllUpcomingTodos = false;
   document.getElementById('dmDate').textContent = `📅 ${m}월 ${d}일 (${DAYS_KO[dateObj.getDay()]})`;
-
-  // 일반 할 일: 체크·수정·삭제 / 반복 할 일: 체크만 (규칙 관리는 🔁 반복 패널에서)
-  const todoItem = t => {
-    const cat = todoCategory(t);
-    const borderStyle = sharedOwnerBorderStyle(t);
-    return `<div class="dm-item ${t.done ? 'done' : ''}" style="${borderStyle}">
-      <input type="checkbox" ${t.done ? 'checked' : ''} onchange="mToggleTodo('${t.id}', this.checked)">
-      <span class="dm-content"><span class="dm-txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
-      <span class="dm-actions">
-        <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-        ${scheduleScopeBadge(t, key)}
-        ${reminderChip(t, key, true)}
-        ${authorChip(t)}${doneByChip(t)}
-        <button class="del" onclick="moveTodoToDate('${t.id}')" title="다른 날짜로 이동">📅</button>
-        <button class="del" onclick="mEditTodoReminder('${t.id}')" title="알림 설정">🔔</button>
-        <button class="del" onclick="mEditTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
-        <button class="del" onclick="mDeleteTodo('${t.id}')" title="삭제">✕</button>
-      </span>
-    </div>`;
-  };
-  const recItem = r => {
-    const done = !!day.recDone[r.id];
-    const cat = todoCategory(r);
-    const borderStyle = sharedOwnerBorderStyle(r);
-    return `<div class="dm-item ${done ? 'done' : ''}" style="${borderStyle}">
-      <input type="checkbox" ${done ? 'checked' : ''} onchange="mToggleRec('${r.id}', this.checked)">
-      <span class="dm-content"><span class="dm-txt">${esc(r.text)}</span></span>
-      <span class="dm-actions">
-        <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${key}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
-        ${scheduleScopeBadge(r, '', 'rec')}
-        ${authorChip(r)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
-        <span title="반복 할 일">🔁</span>
-      </span>
-    </div>`;
-  };
-
-  const remainHtml =
-    recs.filter(isScheduleVisible).filter(r => !day.recDone[r.id]).map(recItem).join('') +
-    sortTodosByTime(day.todos.filter(isScheduleVisible).filter(t => !t.done)).map(todoItem).join('');
-  const doneHtml =
-    recs.filter(isScheduleVisible).filter(r => day.recDone[r.id]).map(recItem).join('') +
-    sortTodosByTime(day.todos.filter(isScheduleVisible).filter(t => t.done)).map(todoItem).join('');
-
-  let body = '';
-  body += `<div class="dm-section-title">📋 할 일 (남은 일)</div>`;
-  body += remainHtml || '<div style="font-size:12.5px; color:var(--muted); padding:4px;">남은 할 일이 없어요!</div>';
-  body += `<div class="dm-section-title">🌟 한 일 (완료)</div>`;
-  body += doneHtml || '<div style="font-size:12.5px; color:var(--muted); padding:4px;">완료한 일이 아직 없어요.</div>';
-  body += `<div class="dm-section-title">🌙 하루 메모</div>`;
-  body += `<div class="memo-grid">${memoBoxesHtml('dmNote', getDayNotes(day))}</div>
-    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
-      <button class="small-btn" onclick="mSaveNote()">💾 메모 저장</button>
-    </div>`;
-
-  document.getElementById('dmBody').innerHTML = body;
-  activateActionTooltips(document.getElementById('dmBody'));
+  renderAll(); // 팝업으로 옮긴 할 일·메모 카드를 해당 날짜로 채움
   document.getElementById('dayModal').classList.add('open');
 }
 
 function closeDayModal() { document.getElementById('dayModal').classList.remove('open'); modalKey = null; }
 
-// 모달을 데이터 변경 후 다시 그리되, 작성 중인 메모는 보존한다
-function refreshModal(keepNote) {
-  if (!modalKey) return;
-  // 작성 중인 카테고리별 메모 보존
-  const pending = keepNote ? {} : null;
-  if (pending) getMemoCatIds().forEach(id => {
-    const el = document.getElementById('dmNote_' + id);
-    if (el) pending[id] = el.value;
-  });
-  openDayDetail(modalKey);
-  if (pending) getMemoCatIds().forEach(id => {
-    const el = document.getElementById('dmNote_' + id);
-    if (el && pending[id] !== undefined) el.value = pending[id];
-  });
+// 팝업 안 할 일·메모 카드는 selectedDate 기준 라이브 렌더이므로 renderAll로 갱신한다
+function refreshModal() {
+  if (modalKey) renderAll();
 }
+
+// 할 일·메모 입력 카드를 날짜 팝업(dmBody) 안으로 이동 → 메인에선 제거. 비워진 좌측 컬럼엔 '할 일 목록' 카드 배치.
+function relocateEntryCards() {
+  const dmBody = document.getElementById('dmBody');
+  const todoCard = document.querySelector('.todo-card');
+  const noteCard = document.querySelector('.note-card');
+  if (!dmBody || !todoCard || !noteCard || dmBody.contains(todoCard)) return;
+  const cols = document.querySelectorAll('.dash-cards > .dash-col');
+  const upcoming = document.querySelector('.upcoming-card');
+  dmBody.appendChild(todoCard);
+  dmBody.appendChild(noteCard);
+  if (cols[0] && upcoming && !cols[0].contains(upcoming)) cols[0].appendChild(upcoming);
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', relocateEntryCards);
+else relocateEntryCards();
 
 async function mToggleTodo(id, checked) {
   const day = getDay(modalKey);
