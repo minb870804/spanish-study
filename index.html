@@ -2945,14 +2945,13 @@ function renderUpcomingTodos() {
   const list = document.getElementById('upcomingTodoList');
   const section = document.getElementById('upcomingTodos');
   if (!list || !section) return;
-  const selectedKey = dateKey(selectedDate);
-  const thisWeekEndKey = dateKey(dayOffset(mondayFor(new Date()), 6));
-  const cutoffKey = selectedKey > thisWeekEndKey ? selectedKey : thisWeekEndKey;
+  // 오늘 이후(내일부터)의 모든 미완료 일정을 마감일 순으로. 오늘 분은 위 '오늘의 할 일'에 있으니 제외.
+  const cutoffKey = dateKey(new Date());
   const allItems = collectUpcomingTodos(cutoffKey);
   const items = showAllUpcomingTodos ? allItems : allItems.slice(0, 8);
   section.style.display = '';
   if (!allItems.length) {
-    list.innerHTML = '<div class="empty-msg" style="padding:9px 2px 2px;">이번 주 이후 예정된 미완료 일정이 없어요.</div>';
+    list.innerHTML = '<div class="empty-msg" style="padding:9px 2px 2px;">앞으로 예정된 미완료 일정이 없어요.</div>';
     return;
   }
   const rows = items.map(({ sourceKey, dueKey, todo }) => {
