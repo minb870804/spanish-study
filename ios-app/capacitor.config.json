@@ -14,7 +14,8 @@
     ]
   },
   "ios": {
-    "contentInset": "always"
+    "contentInset": "always",
+    "zoomEnabled": false
   },
   "plugins": {
     "FirebaseAuthentication": {

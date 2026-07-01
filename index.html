@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <!-- PWA: 홈 화면에 추가하면 전체화면 앱으로 실행 -->
 <link rel="manifest" href="/manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -70,13 +70,18 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html {
+    width: 100%; min-height: 100%;
+    -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+  }
   body {
     font-family: 'Outfit', 'Noto Sans KR', sans-serif;
     background: var(--bg);
     color: var(--text);
-    min-height: 100vh;
+    width: 100%; min-height: 100vh; min-height: 100dvh;
     line-height: 1.5;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
     overflow-wrap: anywhere;
     transition: var(--transition);
   }
@@ -723,6 +728,10 @@
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   @media (max-width: 760px) {
+    /* iOS는 16px 미만 입력창에 포커스하면 화면을 자동 확대한다. */
+    @supports (-webkit-touch-callout: none) {
+      input, textarea, select { font-size: 16px !important; }
+    }
     header { position: sticky; }
     .header-top { padding: 10px 14px; gap: 8px; }
     .logo { gap: 8px; }
