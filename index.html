@@ -132,6 +132,9 @@
     transition: var(--transition);
   }
   .card-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .push-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    background: var(--yellow); color: #3c2f00; border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; font-weight: 800; }
+  .push-banner .small-btn { background: rgba(255,255,255,0.92); border-color: transparent; color: #3c2f00; flex-shrink: 0; }
   .dashboard-grid { margin-bottom: 18px; }
   .calendar-card { margin-bottom: 18px; }
   .category-section { margin-bottom: 18px; }
@@ -869,6 +872,11 @@
       <button onclick="moveDate(1)" title="다음 날">›</button>
       <button class="today-btn" onclick="goToday()">오늘</button>
     </div>
+  </div>
+
+  <div id="pushBanner" class="push-banner" style="display:none;">
+    <span>🔔 알림을 켜면 할 일 시간(기본 오전 8시)에 알려드려요</span>
+    <button class="small-btn" onclick="requestPushPermission()">알림 켜기</button>
   </div>
 
   <div class="dashboard-grid">
@@ -1659,6 +1667,7 @@ async function requestPushPermission() {
     }
     await savePushSubscription(sub);
     updatePushStatus('알림 켜짐');
+    renderPushBanner();
     toast('🔔 할 일 알림이 켜졌어요!');
     return true;
   } catch (e) {
@@ -2640,7 +2649,15 @@ function setScheduleFilter(filter) {
   renderAll();
 }
 
+function renderPushBanner() {
+  const b = document.getElementById('pushBanner');
+  if (!b) return;
+  const canAsk = !!currentUser && pushSupported() && typeof Notification !== 'undefined' && Notification.permission === 'default';
+  b.style.display = canAsk ? 'flex' : 'none';
+}
+
 function renderAll() {
+  renderPushBanner();
   const now = new Date();
   const key = dateKey(selectedDate);
   const isToday = key === dateKey(now);
