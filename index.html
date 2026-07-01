@@ -412,9 +412,17 @@
     max-width: 560px; width: 100%; max-height: 86vh; overflow-y: auto; padding: 22px;
     box-shadow: 0 12px 40px rgba(0,0,0,0.3); animation: fadeIn 0.25s ease;
   }
-  /* 팝업 안으로 옮긴 할 일·메모 카드는 카드 테두리를 없애 모달에 녹아들게 */
-  .dm-drink { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; color: var(--text); margin: 6px 0 2px; cursor: pointer; }
-  .dm-drink input { width: 17px; height: 17px; accent-color: var(--gold); cursor: pointer; }
+  /* 날짜별 음주 상태는 헤더에서 바로 확인·변경 */
+  .dm-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+  .dm-drink-toggle {
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    min-height: 34px; padding: 6px 12px; border: 1.5px solid var(--gold); border-radius: 10px;
+    background: rgba(245,124,0,0.10); color: var(--gold); cursor: pointer;
+    font-family: inherit; font-size: 12px; font-weight: 900; white-space: nowrap;
+    transition: var(--transition);
+  }
+  .dm-drink-toggle:hover { background: rgba(245,124,0,0.18); transform: translateY(-1px); }
+  .dm-drink-toggle.sel { background: var(--gold); color: #fff; box-shadow: 0 3px 10px rgba(245,124,0,0.28); }
   #dmBody > .card { box-shadow: none; border: none; background: transparent; padding: 0; }
   #dmBody > .card + .card { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 16px; }
   .dm-section-title { font-size: 13px; font-weight: 800; margin: 16px 0 8px; color: var(--muted); }
@@ -783,6 +791,9 @@
     .dm-item > .dm-content { grid-column: 2; grid-row: 1; }
     .dm-item > .dm-actions { grid-column: 2; grid-row: 2; justify-content: flex-start; max-width: none; }
     .day-modal-card { padding: 16px; }
+    .day-modal-card > .card-title { flex-wrap: wrap; }
+    .dm-header-actions { gap: 6px; margin-left: auto; }
+    .dm-drink-toggle { min-height: 32px; padding: 5px 9px; font-size: 11.5px; }
     .todo-item .by { display: none; }
     .quick-move-btn { display: none; }
     .note-area { min-height: 86px; font-size: 13.5px; }
@@ -1069,9 +1080,11 @@
   <div class="day-modal-card">
     <div class="card-title" style="margin-bottom:4px;">
       <span id="dmDate">날짜</span>
-      <button class="small-btn" onclick="closeDayModal()">✕ 닫기</button>
+      <span class="dm-header-actions">
+        <button type="button" class="dm-drink-toggle" id="dmDrinkToggle" onclick="toggleDrinkDay(modalKey)" aria-pressed="false">🍺 음주 표시</button>
+        <button class="small-btn" onclick="closeDayModal()">✕ 닫기</button>
+      </span>
     </div>
-    <label class="dm-drink"><input type="checkbox" id="dmDrinkCheck" onchange="toggleDrinkDay(modalKey)"> 🍺 음주</label>
     <div id="dmBody"></div>
   </div>
 </div>
@@ -2685,6 +2698,7 @@ function renderAll() {
   renderMoveDeck();
   renderMonthCal();
   renderSobriety();
+  renderDayDrinkToggle();
   if (document.getElementById('recurPanel').style.display !== 'none') renderRecurList();
 }
 
@@ -2695,6 +2709,16 @@ function renderAll() {
 // ══════════════════════════════════════
 function getDrinkDays() { return (userData && userData.personalDrinkDays) || {}; }
 function isDrinkDay(key) { return !!getDrinkDays()[key]; }
+
+function renderDayDrinkToggle() {
+  const btn = document.getElementById('dmDrinkToggle');
+  if (!btn || !modalKey) return;
+  const selected = isDrinkDay(modalKey);
+  btn.textContent = selected ? '✓ 🍺 음주 기록됨' : '🍺 음주 표시';
+  btn.classList.toggle('sel', selected);
+  btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+  btn.setAttribute('aria-label', selected ? '이 날짜의 음주 기록 해제' : '이 날짜를 음주일로 표시');
+}
 
 async function toggleDrinkDay(key) {
   if (!userData || !currentUser) return;
@@ -3834,8 +3858,6 @@ function openDayDetail(key) {
   todoStartDateEdited = false;
   showAllUpcomingTodos = false;
   document.getElementById('dmDate').textContent = `📅 ${m}월 ${d}일 (${DAYS_KO[dateObj.getDay()]})`;
-  const drinkEl = document.getElementById('dmDrinkCheck');
-  if (drinkEl) drinkEl.checked = isDrinkDay(key);
   renderAll(); // 팝업으로 옮긴 할 일·메모 카드를 해당 날짜로 채움
   document.getElementById('dayModal').classList.add('open');
 }
