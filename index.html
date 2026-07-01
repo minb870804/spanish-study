@@ -413,6 +413,8 @@
     box-shadow: 0 12px 40px rgba(0,0,0,0.3); animation: fadeIn 0.25s ease;
   }
   /* 팝업 안으로 옮긴 할 일·메모 카드는 카드 테두리를 없애 모달에 녹아들게 */
+  .dm-drink { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; color: var(--text); margin: 6px 0 2px; cursor: pointer; }
+  .dm-drink input { width: 17px; height: 17px; accent-color: var(--gold); cursor: pointer; }
   #dmBody > .card { box-shadow: none; border: none; background: transparent; padding: 0; }
   #dmBody > .card + .card { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 16px; }
   .dm-section-title { font-size: 13px; font-weight: 800; margin: 16px 0 8px; color: var(--muted); }
@@ -864,13 +866,7 @@
   <div class="hero">
     <div>
       <h2 id="heroDate">오늘</h2>
-      <div class="sub" id="heroSub">¡Hola! 오늘 하루도 차곡차곡 기록해요 ✨</div>
-    </div>
-    <div class="date-nav">
-      <button onclick="moveDate(-1)" title="이전 날">‹</button>
-      <input type="date" id="datePicker" onchange="onDatePick(this.value)">
-      <button onclick="moveDate(1)" title="다음 날">›</button>
-      <button class="today-btn" onclick="goToday()">오늘</button>
+      <div class="sub" id="heroSub">오늘 하루도 차곡차곡 기록해요 ✨</div>
     </div>
   </div>
 
@@ -1075,6 +1071,7 @@
       <span id="dmDate">날짜</span>
       <button class="small-btn" onclick="closeDayModal()">✕ 닫기</button>
     </div>
+    <label class="dm-drink"><input type="checkbox" id="dmDrinkCheck" onchange="toggleDrinkDay(modalKey)"> 🍺 이 날 술 마심</label>
     <div id="dmBody"></div>
   </div>
 </div>
@@ -2664,7 +2661,8 @@ function renderAll() {
 
   document.getElementById('heroDate').textContent =
     `${selectedDate.getMonth()+1}월 ${selectedDate.getDate()}일 (${DAYS_KO[selectedDate.getDay()]})${isToday ? ' · 오늘' : ''}`;
-  document.getElementById('datePicker').value = key;
+  const datePickerEl = document.getElementById('datePicker');
+  if (datePickerEl) datePickerEl.value = key;
   document.getElementById('todoDateLabel').textContent = isToday ? '오늘' : `${selectedDate.getMonth()+1}/${selectedDate.getDate()}`;
   document.querySelectorAll('[data-schedule-filter]').forEach(btn => {
     btn.classList.toggle('sel', btn.dataset.scheduleFilter === scheduleFilter);
@@ -3836,6 +3834,8 @@ function openDayDetail(key) {
   todoStartDateEdited = false;
   showAllUpcomingTodos = false;
   document.getElementById('dmDate').textContent = `📅 ${m}월 ${d}일 (${DAYS_KO[dateObj.getDay()]})`;
+  const drinkEl = document.getElementById('dmDrinkCheck');
+  if (drinkEl) drinkEl.checked = isDrinkDay(key);
   renderAll(); // 팝업으로 옮긴 할 일·메모 카드를 해당 날짜로 채움
   document.getElementById('dayModal').classList.add('open');
 }
