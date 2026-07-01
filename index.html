@@ -1669,6 +1669,53 @@ async function requestPushPermission() {
   }
 }
 
+// ── 네이티브 앱(Capacitor) 로컬 알림 ──
+// 아이폰 네이티브 앱 WebView는 웹푸시가 안 되므로, 기기 자체에 로컬 알림을 예약한다.
+function capIsNative() {
+  const cap = window.Capacitor;
+  return !!(cap && cap.isNativePlatform && cap.isNativePlatform());
+}
+function capLocalNotifications() {
+  const cap = window.Capacitor;
+  return cap && cap.Plugins && cap.Plugins.LocalNotifications;
+}
+function localNotifId(todoId) {
+  let h = 0; const s = String(todoId || '');
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0;
+  return Math.abs(h) % 2000000000 || 1; // 양수 안정 id
+}
+async function ensureLocalNotifPermission() {
+  const LN = capLocalNotifications();
+  if (!LN) return false;
+  try {
+    let perm = await LN.checkPermissions();
+    if (perm.display !== 'granted') perm = await LN.requestPermissions();
+    return perm.display === 'granted';
+  } catch (e) { console.warn('로컬 알림 권한 확인 실패:', e); return false; }
+}
+async function scheduleLocalReminder(todo) {
+  if (!capIsNative() || !todo || !todo.remindAtMs) return;
+  const LN = capLocalNotifications();
+  if (!LN || todo.remindAtMs <= Date.now()) return;
+  if (!(await ensureLocalNotifPermission())) return;
+  try {
+    await LN.schedule({
+      notifications: [{
+        id: localNotifId(todo.id),
+        title: 'Minb 할 일 알림',
+        body: todo.text || '확인할 할 일이 있어요.',
+        schedule: { at: new Date(todo.remindAtMs) }
+      }]
+    });
+  } catch (e) { console.warn('로컬 알림 예약 실패:', e); }
+}
+async function cancelLocalReminder(todoId) {
+  if (!capIsNative()) return;
+  const LN = capLocalNotifications();
+  if (!LN) return;
+  try { await LN.cancel({ notifications: [{ id: localNotifId(todoId) }] }); } catch (e) {}
+}
+
 function updatePushStatus(text) {
   const status = document.getElementById('pushStatus');
   const btn = document.getElementById('pushEnableBtn');
@@ -1766,6 +1813,7 @@ async function setTodoReminderForKey(key, id, refreshModalAfter = false) {
   renderAll();
   if (refreshModalAfter) refreshModal(true);
   await saveDay(key, day);
+  if (t.remindAtMs) scheduleLocalReminder(t); else cancelLocalReminder(id); // 네이티브 앱 알람 갱신
 }
 
 function editTodoReminder(id) {
@@ -2452,6 +2500,7 @@ async function addTodo() {
   setDayLocal(key, day);
   renderAll(); // 낙관적 렌더링
   await saveDay(key, day);
+  scheduleLocalReminder(todo); // 네이티브 앱: 기기에 알람 예약(웹은 no-op)
   if (isPeriod) toast(`✅ ${shortDateLabel(startKey)}~${shortDateLabel(endKey)} 기간 일정을 추가했어요!`);
   else if (reminderFields.remindAtMs) toast('✅ 할 일과 알림이 추가됐어요!');
   else if (scheduleTime || scheduleLocation) toast('✅ 시간·장소와 함께 할 일을 추가했어요!');
@@ -2476,6 +2525,7 @@ async function toggleTodo(id, checked) {
   renderTodos(day);
   renderMoveDeck();
   await saveDay(key, day);
+  if (checked) cancelLocalReminder(id); else if (t.remindAtMs) scheduleLocalReminder(t); // 완료 시 알람 취소
 }
 
 function promptTodoEdits(todo, startKey) {
@@ -2531,6 +2581,7 @@ async function deleteTodo(id) {
   renderTodos(day);
   renderMoveDeck();
   await saveDay(key, day);
+  cancelLocalReminder(id); // 네이티브 앱 예약 알람 취소
 }
 
 async function toggleTodoSharing(key, id) {
