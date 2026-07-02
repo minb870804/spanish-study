@@ -16,6 +16,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 
+<!-- Twemoji: 기본 이모지를 일관된 고해상도 SVG 이모지로 교체 -->
+<script src="https://cdn.jsdelivr.net/npm/@twemoji/api@15.1.0/dist/twemoji.min.js" defer></script>
+
 <!-- Firebase 10.8.0 Compat SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -70,6 +73,8 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Twemoji 이미지 이모지: 텍스트 크기에 맞춰 자연스럽게 */
+  img.emoji { height: 1.05em; width: 1.05em; margin: 0 0.06em 0 0.08em; vertical-align: -0.18em; display: inline-block; }
   html {
     width: 100%; min-height: 100%;
     -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
@@ -1004,6 +1009,11 @@
             <input id="recurInput" placeholder="예: 스페인어 단어 10개 외우기" onkeydown="if(event.key==='Enter') addRecurring()">
             <button class="add-btn" onclick="addRecurring()">추가</button>
           </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; align-items:center;">
+            <span style="font-size:12px; font-weight:800; color:var(--muted);">반복 주기</span>
+            <button class="small-btn" id="recurModeWeekly" onclick="setRecurMode('weekly')">매주 (요일)</button>
+            <button class="small-btn" id="recurModeMonthly" onclick="setRecurMode('monthly')">매월 (날짜)</button>
+          </div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; align-items:center;" id="recurDayBtns">
             <button class="small-btn" onclick="setRecurEveryday()">매일</button>
             <button class="small-btn" data-day="1" onclick="toggleRecurDay(1,this)">월</button>
@@ -1013,6 +1023,13 @@
             <button class="small-btn" data-day="5" onclick="toggleRecurDay(5,this)">금</button>
             <button class="small-btn" data-day="6" onclick="toggleRecurDay(6,this)">토</button>
             <button class="small-btn" data-day="0" onclick="toggleRecurDay(0,this)">일</button>
+          </div>
+          <div style="display:none; gap:8px; margin-bottom:12px; align-items:center;" id="recurMonthRow">
+            <span style="font-size:12.5px; font-weight:800;">매월</span>
+            <input type="number" id="recurMonthDay" min="1" max="31" value="1"
+              style="width:70px; background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; color:var(--text); font-family:inherit; font-size:14px; font-weight:800; outline:none; text-align:center;">
+            <span style="font-size:12.5px; font-weight:800;">일에 반복</span>
+            <span class="scope-hint">31일처럼 없는 달은 말일에 표시돼요.</span>
           </div>
           <div class="todo-scope-row">
             <label class="share-check" for="recurShareInput">
@@ -2142,9 +2159,18 @@ function hexToRgba(hex, a) {
 
 // ── 반복 할 일 ──
 let recurSelDays = [0,1,2,3,4,5,6]; // 기본: 매일
+let recurMode = 'weekly'; // weekly(요일 반복) | monthly(매월 N일)
 
 function getRecurringFor(dateObj) {
-  return getAllRecurring().filter(r => (r.days || []).includes(dateObj.getDay()));
+  const lastDay = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0).getDate();
+  return getAllRecurring().filter(r => {
+    if (r.freq === 'monthly') {
+      // 매월 N일. 짧은 달(예: 31일 없는 달)은 말일에 표시
+      const target = Math.min(Number(r.monthDay) || 1, lastDay);
+      return dateObj.getDate() === target;
+    }
+    return (r.days || []).includes(dateObj.getDay());
+  });
 }
 
 function getAllRecurring() {
@@ -2165,6 +2191,19 @@ function toggleRecurPanel() {
 function renderRecurDayBtns() {
   document.querySelectorAll('#recurDayBtns [data-day]').forEach(b =>
     b.classList.toggle('sel', recurSelDays.includes(Number(b.dataset.day))));
+  // 주기 모드 표시: 매주 ↔ 매월
+  const wBtn = document.getElementById('recurModeWeekly');
+  const mBtn = document.getElementById('recurModeMonthly');
+  const dayRow = document.getElementById('recurDayBtns');
+  const monthRow = document.getElementById('recurMonthRow');
+  if (wBtn) wBtn.classList.toggle('sel', recurMode === 'weekly');
+  if (mBtn) mBtn.classList.toggle('sel', recurMode === 'monthly');
+  if (dayRow) dayRow.style.display = recurMode === 'weekly' ? 'flex' : 'none';
+  if (monthRow) monthRow.style.display = recurMode === 'monthly' ? 'flex' : 'none';
+}
+function setRecurMode(mode) {
+  recurMode = mode === 'monthly' ? 'monthly' : 'weekly';
+  renderRecurDayBtns();
 }
 function toggleRecurDay(d, btn) {
   recurSelDays = recurSelDays.includes(d) ? recurSelDays.filter(x => x !== d) : [...recurSelDays, d];
@@ -2196,27 +2235,36 @@ async function addRecurring() {
   const input = document.getElementById('recurInput');
   const text = input.value.trim();
   if (!text || !spaceData || !userData) return;
-  if (!recurSelDays.length) { toast('반복할 요일을 선택해 주세요!'); return; }
+  const isMonthly = recurMode === 'monthly';
+  let monthDay = 1;
+  if (isMonthly) {
+    monthDay = Math.min(31, Math.max(1, Number(document.getElementById('recurMonthDay').value) || 0));
+    if (!monthDay) { toast('매월 반복할 날짜(1~31)를 입력해 주세요!'); return; }
+  } else if (!recurSelDays.length) {
+    toast('반복할 요일을 선택해 주세요!'); return;
+  }
   input.value = '';
   const cat = catById(selectedTodoCat);
   const visibility = document.getElementById('recurShareInput').checked ? 'shared' : 'private';
-  const arr = [...getAllRecurring(), {
+  const rule = {
     id: 'r' + Date.now().toString(36),
     text,
-    days: [...recurSelDays].sort(),
     by: currentUser.uid,
     cat: selectedTodoCat,
     catName: cat.name,
     catColor: cat.color,
     visibility
-  }];
+  };
+  if (isMonthly) { rule.freq = 'monthly'; rule.monthDay = monthDay; rule.days = []; }
+  else { rule.days = [...recurSelDays].sort(); }
+  const arr = [...getAllRecurring(), rule];
   document.getElementById('recurShareInput').checked = false;
   await saveRecurring(arr);
   renderRecurList(); renderAll();
 }
 
 async function deleteRecurring(id) {
-  if (!confirm('이 반복 할 일을 모든 요일에서 삭제할까요?')) return;
+  if (!confirm('이 반복 할 일을 삭제할까요?')) return;
   const arr = getAllRecurring().filter(r => r.id !== id);
   await saveRecurring(arr);
   renderRecurList(); renderAll();
@@ -2259,7 +2307,7 @@ function renderRecurList() {
   box.innerHTML = arr.length ? arr.map(r => `
     <div class="todo-item">
       <span class="txt">🔁 ${esc(r.text)}</span>
-      <span class="by">${(r.days || []).length === 7 ? '매일' : (r.days || []).map(d => D[d]).join('·')}</span>
+      <span class="by">${r.freq === 'monthly' ? `매월 ${r.monthDay}일` : ((r.days || []).length === 7 ? '매일' : (r.days || []).map(d => D[d]).join('·'))}</span>
       ${scheduleScopeBadge(r, '', 'rec')}
       <button class="del" onclick="deleteRecurring('${r.id}')" title="삭제">✕</button>
     </div>`).join('')
@@ -2709,7 +2757,17 @@ function renderAll() {
   renderSobriety();
   renderDayDrinkToggle();
   if (document.getElementById('recurPanel').style.display !== 'none') renderRecurList();
+  applyTwemoji();
 }
+
+// 기본 이모지를 Twemoji SVG로 교체해 모든 기기에서 동일한 고품질 디자인으로 표시
+function applyTwemoji(root) {
+  if (!window.twemoji) return;
+  try { twemoji.parse(root || document.body, { folder: 'svg', ext: '.svg' }); } catch (e) {}
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => applyTwemoji());
+else applyTwemoji();
+window.addEventListener('load', () => applyTwemoji()); // defer 스크립트 로드 후 한 번 더
 
 // 대시보드 카드는 HTML에서 고정 2단(좌: 할 일·메모 / 우: 향후 할 일·함께 쓰는 사람)으로 배치한다.
 
@@ -3577,6 +3635,10 @@ async function moveCalendarItem(sourceKey, targetKey, kind, id) {
     toast('이미 이 날짜에 있어요.');
     return;
   }
+  // 실수 이동 방지: 옮기기 전에 한 번 확인
+  const [, tm, td] = targetKey.split('-').map(Number);
+  const targetDow = DAYS_KO[new Date(targetKey.slice(0, 4), tm - 1, td).getDay()];
+  if (!confirm(`📆 ${tm}/${td}(${targetDow})로 이동하시겠습니까?`)) return;
   const sourceDay = getDay(sourceKey);
   const targetDay = getDay(targetKey);
 
@@ -4396,6 +4458,7 @@ let toastTimer = null;
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;
+  applyTwemoji(el);
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
