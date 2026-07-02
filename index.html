@@ -374,8 +374,8 @@
     margin: -4px 0 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
   }
   .schedule-filter-label { margin-right: 2px; color: var(--muted); font-size: 11px; font-weight: 800; }
-  .calendar-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; min-width: 0; }
-  .calendar-tools { display: flex; align-items: center; gap: 8px; }
+  .calendar-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; min-width: 0; flex-wrap: wrap; }
+  .calendar-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .month-nav {
     display: grid; grid-template-columns: 36px minmax(96px, auto) 36px;
     align-items: center; gap: 6px; white-space: nowrap;
@@ -1005,7 +1005,7 @@
           </span>
         </div>
         <div class="todo-input-row">
-          <textarea id="todoInput" rows="1" placeholder="할 일을 입력하세요. 한 번 추가하면 1건으로 등록돼요."
+          <textarea id="todoInput" rows="1" placeholder="할 일을 입력하세요."
             oninput="autoSizeTodoInput(this)"
             onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();addTodo();}"></textarea>
           <button class="add-btn" onclick="addTodo()">추가</button>
