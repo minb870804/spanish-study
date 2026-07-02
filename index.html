@@ -156,6 +156,7 @@
   .dash-col > .card { margin: 0; }
 
   @keyframes fadeIn { from { opacity:0; transform: translateY(8px);} to {opacity:1; transform:translateY(0);} }
+  @keyframes sheetUp { from { transform: translateY(48px); opacity: 0.5; } to { transform: translateY(0); opacity: 1; } }
   .fade { animation: fadeIn 0.4s ease; }
 
   /* ── HERO / DATE ── */
@@ -208,10 +209,11 @@
   .upcoming-todos-head span { color: var(--muted); font-size: 10.5px; font-weight: 700; }
   .upcoming-todo-list { display: grid; }
   .upcoming-todo {
-    width: 100%; display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center;
+    width: 100%; display: grid; grid-template-columns: auto 58px minmax(0, 1fr) auto; align-items: center;
     gap: 8px; padding: 8px 2px; border: none; border-bottom: 1px solid var(--border);
     background: transparent; color: var(--text); text-align: left; cursor: pointer; font-family: inherit;
   }
+  .upcoming-todo input[type="checkbox"] { width: 19px; height: 19px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
   .upcoming-todo:last-child { border-bottom: none; }
   .upcoming-todo:hover { background: var(--blue-light); border-radius: 8px; padding-left: 7px; padding-right: 7px; }
   .upcoming-todo-date { color: var(--blue); font-size: 10.5px; font-weight: 900; text-align: center; white-space: nowrap; }
@@ -443,12 +445,30 @@
   .dm-txt { min-width: 0; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.55; }
   .dm-actions { display: flex; align-items: center; justify-content: flex-end; gap: 3px; flex-wrap: wrap; max-width: 160px; }
   .dm-note { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; line-height: 1.8; white-space: pre-wrap; word-break: break-all; }
-  #reportModal, #moveDateModal, #catEditModal, #dashCatEditModal, #sobrietyModal {
+  .search-input {
+    width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px;
+    color: var(--text); font-family: inherit; font-size: 15px; font-weight: 700; padding: 11px 14px; outline: none;
+  }
+  .search-input:focus { border-color: var(--blue); }
+  .search-results { margin-top: 12px; display: grid; max-height: 55vh; overflow-y: auto; }
+  .search-hit {
+    width: 100%; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 8px;
+    padding: 9px 4px; border: none; border-bottom: 1px solid var(--border); background: transparent;
+    color: var(--text); text-align: left; cursor: pointer; font-family: inherit;
+  }
+  .search-hit:last-child { border-bottom: none; }
+  .search-hit:hover { background: var(--blue-light); border-radius: 8px; }
+  .search-hit-date { color: var(--blue); font-size: 11px; font-weight: 900; text-align: center; white-space: nowrap; }
+  .search-hit-text { min-width: 0; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .search-hit-text.done { text-decoration: line-through; color: var(--muted); }
+  .search-hit-kind { font-size: 10.5px; font-weight: 800; color: var(--muted); white-space: nowrap; }
+
+  #reportModal, #moveDateModal, #catEditModal, #dashCatEditModal, #sobrietyModal, #searchModal {
     position: fixed; inset: 0; background: rgba(18,18,20,0.55); z-index: 1500;
     display: none; align-items: center; justify-content: center; padding: 20px;
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
-  #reportModal.open, #moveDateModal.open, #catEditModal.open, #dashCatEditModal.open, #sobrietyModal.open { display: flex; }
+  #reportModal.open, #moveDateModal.open, #catEditModal.open, #dashCatEditModal.open, #sobrietyModal.open, #searchModal.open { display: flex; }
   #catEditModal .move-date-card, #dashCatEditModal .move-date-card { max-height: 84vh; overflow-y: auto; }
   .cat-edit-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
   .cat-edit-row:last-child { border-bottom: none; }
@@ -731,6 +751,22 @@
   }
   body.dark #toast { background: #e1e1e6; color: #1e1e24; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast .toast-undo {
+    background: none; border: none; color: var(--yellow); font-family: inherit; font-size: 13px;
+    font-weight: 900; cursor: pointer; margin-left: 10px; text-decoration: underline; pointer-events: auto;
+  }
+  #toast.has-undo { pointer-events: auto; }
+
+  /* ── FAB: 오늘 할 일 빠른 추가 ── */
+  .fab {
+    position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom));
+    width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--blue); color: #fff; font-size: 28px; font-weight: 700; line-height: 1;
+    box-shadow: 0 8px 22px rgba(21,101,192,0.45); z-index: 900;
+    display: flex; align-items: center; justify-content: center; transition: var(--transition);
+  }
+  .fab:hover { transform: translateY(-2px) scale(1.05); filter: brightness(1.1); }
+  .fab:active { transform: scale(0.96); }
 
   @media (max-width: 760px) {
     /* iOS는 16px 미만 입력창에 포커스하면 화면을 자동 확대한다. */
@@ -804,7 +840,17 @@
     .dm-item > input[type="checkbox"] { grid-column: 1; grid-row: 1; margin-top: 2px; }
     .dm-item > .dm-content { grid-column: 2; grid-row: 1; }
     .dm-item > .dm-actions { grid-column: 2; grid-row: 2; justify-content: flex-start; max-width: none; }
-    .day-modal-card { padding: 16px; }
+    /* 날짜 팝업을 바텀시트로: 아래에서 올라오는 전체 폭 시트 */
+    #dayModal { align-items: flex-end; padding: 0; }
+    .day-modal-card {
+      max-width: none; border-radius: 20px 20px 0 0; max-height: 92vh;
+      padding: 16px 16px calc(18px + env(safe-area-inset-bottom));
+      animation: sheetUp 0.28s ease;
+    }
+    /* 모바일 터치 타겟 확대 */
+    .todo-item .del, .todo-menu-btn { padding: 8px 9px; font-size: 15px; }
+    .memo-entry-actions button { padding: 8px 9px; font-size: 15px; }
+    .fab { width: 60px; height: 60px; }
     .day-modal-card > .card-title { flex-wrap: wrap; }
     .dm-header-actions { gap: 6px; margin-left: auto; }
     .dm-drink-toggle { min-height: 32px; padding: 5px 9px; font-size: 11.5px; }
@@ -833,7 +879,7 @@
     .report-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .report-date { flex-basis: 46px; }
     .week-agenda-item { grid-template-columns: 44px minmax(0, 1fr) auto; }
-    .upcoming-todo { grid-template-columns: 50px minmax(0, 1fr); }
+    .upcoming-todo { grid-template-columns: auto 44px minmax(0, 1fr); }
     .upcoming-todo > .tcat-badge { display: none; }
   }
 
@@ -913,6 +959,8 @@
           <button class="small-btn" onclick="openMonthReport()">월 리포트</button>
           <button class="small-btn" id="moveModeBtn" onclick="toggleCalendarMoveMode()">이동 모드</button>
           <button class="small-btn" onclick="openSobrietyModal()">금주 현황</button>
+          <button class="small-btn" onclick="openSearchModal()">🔍 검색</button>
+          <button class="small-btn" onclick="goToday()">오늘</button>
         </div>
         <div class="month-nav" aria-label="달력 월 이동">
           <button class="small-btn" onclick="moveCalMonth(-1)" aria-label="이전 달">‹</button>
@@ -1087,7 +1135,8 @@
           <input id="joinInput" placeholder="받은 코드 입력" maxlength="8">
           <button class="small-btn" onclick="joinSpace()">참여하기</button>
         </div>
-        <div style="margin-top: 14px; text-align: right;">
+        <div style="margin-top: 14px; display: flex; justify-content: space-between; gap: 8px; align-items: center;">
+          <button class="small-btn" onclick="exportBackup()" title="할 일·메모 전체를 JSON 파일로 저장">📦 데이터 백업</button>
           <button class="small-btn" id="leaveBtn" onclick="leaveSpace()" style="display:none; color: var(--red);">스페이스 나가기</button>
         </div>
       </div>
@@ -1165,6 +1214,18 @@
 </div>
 
 <!-- 금주 현황 모달 -->
+<!-- 검색 모달 -->
+<div id="searchModal" onclick="if(event.target===this) closeSearchModal()">
+  <div class="move-date-card" style="max-width:460px;">
+    <div class="card-title">
+      <span>🔍 검색</span>
+      <button class="small-btn" onclick="closeSearchModal()">✕ 닫기</button>
+    </div>
+    <input id="searchInput" class="search-input" placeholder="할 일·메모 검색 (예: 병원)" oninput="runSearch()">
+    <div id="searchResults" class="search-results"></div>
+  </div>
+</div>
+
 <div id="sobrietyModal" onclick="if(event.target===this) closeSobrietyModal()">
   <div class="move-date-card" style="max-width:360px;">
     <div class="card-title">
@@ -1190,6 +1251,8 @@
     <div id="monthReportBody"></div>
   </div>
 </div>
+
+<button id="fab" class="fab" onclick="openTodayQuickAdd()" title="오늘 할 일 빠른 추가" aria-label="오늘 할 일 빠른 추가">＋</button>
 
 <div id="toast"></div>
 
@@ -2652,12 +2715,21 @@ async function editTodo(id) {
 async function deleteTodo(id) {
   const key = dateKey(selectedDate);
   const day = getDay(key);
+  const removed = day.todos.find(t => t.id === id);
   day.todos = day.todos.filter(t => t.id !== id);
   setDayLocal(key, day);
   renderTodos(day);
   renderMoveDeck();
   await saveDay(key, day);
   cancelLocalReminder(id); // 네이티브 앱 예약 알람 취소
+  if (removed) showUndoToast('🗑 삭제했어요.', async () => {
+    const d = getDay(key);
+    d.todos = [...d.todos, removed];
+    setDayLocal(key, d);
+    renderAll(); refreshModal();
+    await saveDay(key, d);
+    if (removed.remindAtMs) scheduleLocalReminder(removed);
+  });
 }
 
 async function toggleTodoSharing(key, id) {
@@ -2876,6 +2948,47 @@ function closeSobrietyModal() {
   document.getElementById('sobrietyModal').classList.remove('open');
 }
 
+// ── 할 일·메모 통합 검색 ──
+function openSearchModal() {
+  if (!spaceData) { toast('데이터를 불러오는 중이에요.'); return; }
+  document.getElementById('searchModal').classList.add('open');
+  const input = document.getElementById('searchInput');
+  input.value = '';
+  document.getElementById('searchResults').innerHTML = '<div class="empty-msg" style="padding:12px 0 4px;">검색어를 입력해 보세요.</div>';
+  setTimeout(() => { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }, 80);
+}
+function closeSearchModal() { document.getElementById('searchModal').classList.remove('open'); }
+function runSearch() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const box = document.getElementById('searchResults');
+  if (!q) { box.innerHTML = '<div class="empty-msg" style="padding:12px 0 4px;">검색어를 입력해 보세요.</div>'; return; }
+  const hits = [];
+  allDayKeys().forEach(key => {
+    const day = getDay(key);
+    (day.todos || []).filter(isScheduleVisible).forEach(t => {
+      if (String(t.text || '').toLowerCase().includes(q) || String(t.location || '').toLowerCase().includes(q)) {
+        hits.push({ key, text: t.text, done: !!t.done, kind: '할 일' });
+      }
+    });
+    const notes = getDayNotes(day);
+    Object.keys(notes).forEach(cid => {
+      String(notes[cid] || '').split(/\n+/).forEach(line => {
+        if (line.trim() && line.toLowerCase().includes(q)) hits.push({ key, text: line.trim(), done: false, kind: '메모' });
+      });
+    });
+  });
+  hits.sort((a, b) => b.key.localeCompare(a.key)); // 최근 날짜 먼저
+  const top = hits.slice(0, 50);
+  box.innerHTML = top.length ? top.map(h => `
+    <button class="search-hit" onclick="closeSearchModal(); openWeekAgendaDay('${h.key}')">
+      <span class="search-hit-date">${shortDateLabel(h.key)}</span>
+      <span class="search-hit-text ${h.done ? 'done' : ''}">${esc(h.text)}</span>
+      <span class="search-hit-kind">${h.kind}${h.done ? ' · 완료' : ''}</span>
+    </button>`).join('') + (hits.length > 50 ? `<div class="empty-msg" style="padding:8px 0 0;">외 ${hits.length - 50}건 더 있음</div>` : '')
+    : '<div class="empty-msg" style="padding:12px 0 4px;">검색 결과가 없어요.</div>';
+  applyTwemoji(box);
+}
+
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
@@ -3084,19 +3197,35 @@ function renderUpcomingTodos() {
     if (owner) meta.push(owner.label);
     if (isPeriodTodo(todo)) meta.push(`기간 ${shortDateLabel(todo.startDate || sourceKey)}–${shortDateLabel(todo.endDate)}`);
     if (!meta.length) meta.push(esc(cat.name));
-    return `<button class="upcoming-todo" onclick="openWeekAgendaDay('${sourceKey}')" aria-label="${escAttr(todo.text)} 일정 열기">
+    return `<div class="upcoming-todo" role="button" tabindex="0" onclick="openWeekAgendaDay('${sourceKey}')" aria-label="${escAttr(todo.text)} 일정 열기">
+      <input type="checkbox" aria-label="완료" onclick="event.stopPropagation()" onchange="completeUpcomingTodo('${sourceKey}', '${todo.id}', this.checked)">
       <span class="upcoming-todo-date">${month}/${day}<br>${DAYS_KO[dueDate.getDay()]}</span>
       <span class="upcoming-todo-main">
         <span class="upcoming-todo-title">${esc(todo.text)}</span>
         <span class="upcoming-todo-meta">${meta.join(' · ')}</span>
       </span>
       <span class="tcat-badge" style="background:${cat.color}; cursor:default;">${esc(cat.name)}</span>
-    </button>`;
+    </div>`;
   }).join('');
   const more = allItems.length > 8
     ? `<div class="upcoming-more"><button class="small-btn" onclick="toggleUpcomingTodos()">${showAllUpcomingTodos ? '접기' : `+${allItems.length - 8}개 더 보기`}</button></div>`
     : '';
   list.innerHTML = rows + more;
+}
+
+// 메인 '할 일 (오늘부터)' 목록에서 팝업 없이 바로 완료 처리
+async function completeUpcomingTodo(sourceKey, id, checked) {
+  const day = getDay(sourceKey);
+  const t = day.todos.find(todo => todo.id === id);
+  if (!t) return;
+  t.done = checked;
+  t.doneBy = checked ? currentUser.uid : null;
+  if (checked) { t.doneAt = Date.now(); t.doneDate = dateKey(new Date()); }
+  else { delete t.doneAt; delete t.doneDate; }
+  setDayLocal(sourceKey, day);
+  renderAll();
+  await saveDay(sourceKey, day);
+  if (checked) { cancelLocalReminder(id); toast('✅ 완료했어요!'); }
 }
 
 let justCompletedId = null; // 방금 완료한 할 일 id (한 번만 플래시)
@@ -3629,16 +3758,16 @@ async function saveMovedDays(sourceKey, sourceDay, targetKey, targetDay, moveEve
   }
 }
 
-async function moveCalendarItem(sourceKey, targetKey, kind, id) {
+async function moveCalendarItem(sourceKey, targetKey, kind, id, opts = {}) {
   if (!spaceData || !sourceKey || !targetKey) return;
   if (sourceKey === targetKey) {
     toast('이미 이 날짜에 있어요.');
     return;
   }
-  // 실수 이동 방지: 옮기기 전에 한 번 확인
+  // 실수 이동 방지: 옮기기 전에 한 번 확인 (실행 취소로 되돌릴 땐 생략)
   const [, tm, td] = targetKey.split('-').map(Number);
   const targetDow = DAYS_KO[new Date(targetKey.slice(0, 4), tm - 1, td).getDay()];
-  if (!confirm(`📆 ${tm}/${td}(${targetDow})로 이동하시겠습니까?`)) return;
+  if (!opts.silent && !confirm(`📆 ${tm}/${td}(${targetDow})로 이동하시겠습니까?`)) return;
   const sourceDay = getDay(sourceKey);
   const targetDay = getDay(targetKey);
 
@@ -3662,7 +3791,8 @@ async function moveCalendarItem(sourceKey, targetKey, kind, id) {
     renderAll();
     if (modalKey === sourceKey || modalKey === targetKey) refreshModal(true);
     if (await saveMovedDays(sourceKey, sourceDay, targetKey, targetDay, moveEvent)) {
-      toast('📆 할 일을 다른 날짜로 옮겼어요!');
+      if (opts.silent) toast('↩️ 원래 날짜로 되돌렸어요.');
+      else showUndoToast(`📆 ${tm}/${td}(${targetDow})로 옮겼어요.`, () => moveCalendarItem(targetKey, sourceKey, 'todo', id, { silent: true }));
     }
     return;
   }
@@ -4030,11 +4160,22 @@ async function confirmMoveDate() {
 
 async function mDeleteTodo(id) {
   if (!confirm('이 할 일을 삭제할까요?')) return;
-  const day = getDay(modalKey);
+  const key = modalKey;
+  const day = getDay(key);
+  const removed = day.todos.find(t => t.id === id);
   day.todos = day.todos.filter(t => t.id !== id);
-  setDayLocal(modalKey, day);
+  setDayLocal(key, day);
   refreshModal(true); renderAll();
-  await saveDay(modalKey, day);
+  await saveDay(key, day);
+  cancelLocalReminder(id);
+  if (removed) showUndoToast('🗑 삭제했어요.', async () => {
+    const d = getDay(key);
+    d.todos = [...d.todos, removed];
+    setDayLocal(key, d);
+    renderAll(); refreshModal();
+    await saveDay(key, d);
+    if (removed.remindAtMs) scheduleLocalReminder(removed);
+  });
 }
 
 async function mToggleRec(id, checked) {
@@ -4450,18 +4591,87 @@ function updateThemeButton() {
   btn.innerHTML = document.body.classList.contains('dark') ? '☀️ 라이트' : '🌙 다크';
 }
 function loadTheme() {
-  if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+  // 저장된 선택이 있으면 그대로, 없으면 기기(시스템) 설정을 따른다
+  const saved = localStorage.getItem('theme');
+  const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.body.classList.toggle('dark', saved ? saved === 'dark' : systemDark);
   updateThemeButton();
+}
+// 수동 선택을 안 했다면 시스템 다크모드 변경을 실시간 반영
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (!localStorage.getItem('theme')) {
+      document.body.classList.toggle('dark', e.matches);
+      updateThemeButton();
+    }
+  });
 }
 
 let toastTimer = null;
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;
+  el.classList.remove('has-undo');
   applyTwemoji(el);
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ── 실행 취소(Undo) 토스트 ──
+let undoAction = null;
+function showUndoToast(msg, fn) {
+  undoAction = fn;
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  const btn = document.createElement('button');
+  btn.className = 'toast-undo';
+  btn.textContent = '실행 취소';
+  btn.onclick = performUndo;
+  el.appendChild(btn);
+  el.classList.add('has-undo');
+  applyTwemoji(el);
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.classList.remove('show', 'has-undo'); undoAction = null; }, 6000);
+}
+async function performUndo() {
+  const fn = undoAction;
+  undoAction = null;
+  const el = document.getElementById('toast');
+  el.classList.remove('show', 'has-undo');
+  if (fn) await fn();
+}
+
+// 데이터 백업: 개인·공유 기록 전체를 JSON 파일로 내려받기
+function exportBackup() {
+  if (!spaceData || !userData) { toast('데이터를 불러오는 중이에요.'); return; }
+  const data = {
+    app: 'Minb',
+    exportedAt: new Date().toISOString(),
+    spaceId: spaceId || null,
+    personal: userData,
+    shared: spaceData
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `minb-backup-${dateKey(new Date())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('📦 백업 파일을 내려받았어요!');
+}
+
+// FAB: 오늘 날짜 팝업을 바로 열고 입력칸에 포커스
+function openTodayQuickAdd() {
+  if (!spaceData) { toast('데이터를 불러오는 중이에요.'); return; }
+  openDayDetail(dateKey(new Date()));
+  setTimeout(() => {
+    const input = document.getElementById('todoInput');
+    if (input) { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }
+  }, 120);
 }
 
 loadTheme();
