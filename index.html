@@ -439,6 +439,10 @@
   }
   .dm-drink-toggle:hover { background: rgba(245,124,0,0.18); transform: translateY(-1px); }
   .dm-drink-toggle.sel { background: var(--gold); color: #fff; box-shadow: 0 3px 10px rgba(245,124,0,0.28); }
+  /* 운동 기록 버튼: 같은 형태의 녹색 변형 */
+  .dm-ex-toggle { border-color: var(--green); background: rgba(46,125,50,0.10); color: var(--green); }
+  .dm-ex-toggle:hover { background: rgba(46,125,50,0.18); }
+  .dm-ex-toggle.sel { background: var(--green); color: #fff; box-shadow: 0 3px 10px rgba(46,125,50,0.28); }
   #dmBody > .card { box-shadow: none; border: none; background: transparent; padding: 0; }
   #dmBody > .card + .card { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 16px; }
   .dm-section-title { font-size: 13px; font-weight: 800; margin: 16px 0 8px; color: var(--muted); }
@@ -467,12 +471,12 @@
   .search-hit-text.done { text-decoration: line-through; color: var(--muted); }
   .search-hit-kind { font-size: 10.5px; font-weight: 800; color: var(--muted); white-space: nowrap; }
 
-  #reportModal, #moveDateModal, #catEditModal, #dashCatEditModal, #sobrietyModal, #searchModal, #recurSetupModal {
+  #reportModal, #moveDateModal, #catEditModal, #dashCatEditModal, #sobrietyModal, #searchModal, #recurSetupModal, #exerciseModal {
     position: fixed; inset: 0; background: rgba(18,18,20,0.55); z-index: 1500;
     display: none; align-items: center; justify-content: center; padding: 20px;
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
-  #reportModal.open, #moveDateModal.open, #catEditModal.open, #dashCatEditModal.open, #sobrietyModal.open, #searchModal.open, #recurSetupModal.open { display: flex; }
+  #reportModal.open, #moveDateModal.open, #catEditModal.open, #dashCatEditModal.open, #sobrietyModal.open, #searchModal.open, #recurSetupModal.open, #exerciseModal.open { display: flex; }
   #catEditModal .move-date-card, #dashCatEditModal .move-date-card { max-height: 84vh; overflow-y: auto; }
   .cat-edit-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
   .cat-edit-row:last-child { border-bottom: none; }
@@ -689,6 +693,7 @@
   .sobriety-toggle.sel { border-color: var(--gold); color: var(--gold); background: rgba(245,124,0,0.12); font-weight: 800; }
   /* 달력 음주일 마커 */
   .mcal-drink-mark { position: absolute; top: 3px; right: 4px; font-size: 11px; line-height: 1; pointer-events: none; }
+  .mcal-ex-mark { position: absolute; top: 3px; right: 19px; font-size: 11px; line-height: 1; pointer-events: none; }
 
   .week-card { overflow: hidden; }
   .week-range { font-size: 11px; font-weight: 800; color: var(--muted); white-space: nowrap; }
@@ -1160,6 +1165,7 @@
     <div class="card-title" style="margin-bottom:4px;">
       <span id="dmDate">날짜</span>
       <span class="dm-header-actions">
+        <button type="button" class="dm-drink-toggle dm-ex-toggle" id="dmExerciseBtn" onclick="openExerciseModal()" aria-pressed="false">💪 운동 기록</button>
         <button type="button" class="dm-drink-toggle" id="dmDrinkToggle" onclick="toggleDrinkDay(modalKey)" aria-pressed="false">🍺 음주 표시</button>
         <button class="small-btn" onclick="closeDayModal()">✕ 닫기</button>
       </span>
@@ -1219,6 +1225,22 @@
 </div>
 
 <!-- 금주 현황 모달 -->
+<!-- 운동 기록 모달 -->
+<div id="exerciseModal" onclick="if(event.target===this) closeExerciseModal()">
+  <div class="move-date-card" style="max-width:420px;">
+    <div class="card-title">
+      <span>💪 운동 기록</span>
+      <button class="small-btn" onclick="closeExerciseModal()">✕ 닫기</button>
+    </div>
+    <div id="exerciseDateLabel" class="scope-hint" style="margin-bottom:8px;"></div>
+    <textarea id="exerciseInput" class="note-area" rows="4" placeholder="예: 러닝 5km, 스쿼트 3세트, 헬스 1시간"></textarea>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+      <button class="small-btn" onclick="closeExerciseModal()">취소</button>
+      <button class="add-btn" onclick="saveExerciseEntry()">저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- 기존 할 일 → 반복 설정 모달 -->
 <div id="recurSetupModal" onclick="if(event.target===this) closeRecurSetup()">
   <div class="move-date-card" style="max-width:420px;">
@@ -3012,6 +3034,55 @@ function renderDayDrinkToggle() {
   btn.classList.toggle('sel', selected);
   btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
   btn.setAttribute('aria-label', selected ? '이 날짜의 음주 기록 해제' : '이 날짜를 음주일로 표시');
+  renderDayExerciseToggle();
+}
+
+// ── 운동 기록 (하루 메모의 '운동' 칸에 저장) ──
+const EXERCISE_CAT_ID = 'ex';
+function exerciseTextFor(key) {
+  const notes = getDay(key).notes || {};
+  return String(notes[EXERCISE_CAT_ID] || '').trim();
+}
+let exerciseKey = null;
+
+function renderDayExerciseToggle() {
+  const btn = document.getElementById('dmExerciseBtn');
+  if (!btn || !modalKey) return;
+  const has = !!exerciseTextFor(modalKey);
+  btn.textContent = has ? '✓ 💪 운동 기록됨' : '💪 운동 기록';
+  btn.classList.toggle('sel', has);
+  btn.setAttribute('aria-pressed', has ? 'true' : 'false');
+}
+
+function openExerciseModal(key) {
+  exerciseKey = key || modalKey || dateKey(selectedDate);
+  const [, m, d] = exerciseKey.split('-').map(Number);
+  document.getElementById('exerciseDateLabel').textContent = `${m}월 ${d}일의 운동 — 하루 메모의 '운동' 칸에 저장돼요.`;
+  document.getElementById('exerciseInput').value = exerciseTextFor(exerciseKey);
+  document.getElementById('exerciseModal').classList.add('open');
+  setTimeout(() => {
+    const t = document.getElementById('exerciseInput');
+    try { t.focus({ preventScroll: true }); } catch (e) { t.focus(); }
+  }, 80);
+}
+function closeExerciseModal() {
+  document.getElementById('exerciseModal').classList.remove('open');
+  exerciseKey = null;
+}
+async function saveExerciseEntry() {
+  if (!exerciseKey) return;
+  const key = exerciseKey;
+  const text = document.getElementById('exerciseInput').value.trim();
+  const day = getDay(key);
+  const notes = { ...(day.notes || {}) };
+  notes[EXERCISE_CAT_ID] = text;
+  day.notes = normalizeNotes(notes);
+  day.note = combinedNoteText(day.notes);
+  setDayLocal(key, day);
+  closeExerciseModal();
+  renderAll();
+  await saveDay(key, day);
+  toast(text ? '💪 운동 기록을 저장했어요!' : '운동 기록을 지웠어요.');
 }
 
 async function toggleDrinkDay(key) {
@@ -3678,6 +3749,7 @@ function renderCalendarTags(key, dateObj) {
   const day = getDay(key);
   const tags = [];
   if (isDrinkDay(key)) tags.push('<span class="mcal-drink-mark" title="음주일">🍺</span>');
+  if (String((day.notes || {})[EXERCISE_CAT_ID] || '').trim()) tags.push('<span class="mcal-ex-mark" title="운동한 날">💪</span>');
 
   // 기간 일정 막대 — 시작일~종료일을 가로질러 표시
   (periodIndex[key] || []).forEach(b => {
