@@ -463,12 +463,12 @@
   .search-hit-text.done { text-decoration: line-through; color: var(--muted); }
   .search-hit-kind { font-size: 10.5px; font-weight: 800; color: var(--muted); white-space: nowrap; }
 
-  #reportModal, #moveDateModal, #catEditModal, #dashCatEditModal, #sobrietyModal, #searchModal {
+  #reportModal, #moveDateModal, #catEditModal, #dashCatEditModal, #sobrietyModal, #searchModal, #recurSetupModal {
     position: fixed; inset: 0; background: rgba(18,18,20,0.55); z-index: 1500;
     display: none; align-items: center; justify-content: center; padding: 20px;
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
-  #reportModal.open, #moveDateModal.open, #catEditModal.open, #dashCatEditModal.open, #sobrietyModal.open, #searchModal.open { display: flex; }
+  #reportModal.open, #moveDateModal.open, #catEditModal.open, #dashCatEditModal.open, #sobrietyModal.open, #searchModal.open, #recurSetupModal.open { display: flex; }
   #catEditModal .move-date-card, #dashCatEditModal .move-date-card { max-height: 84vh; overflow-y: auto; }
   .cat-edit-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
   .cat-edit-row:last-child { border-bottom: none; }
@@ -1214,6 +1214,43 @@
 </div>
 
 <!-- 금주 현황 모달 -->
+<!-- 기존 할 일 → 반복 설정 모달 -->
+<div id="recurSetupModal" onclick="if(event.target===this) closeRecurSetup()">
+  <div class="move-date-card" style="max-width:420px;">
+    <div class="card-title">
+      <span>🔁 반복 설정</span>
+      <button class="small-btn" onclick="closeRecurSetup()">✕ 닫기</button>
+    </div>
+    <div id="rsTodoText" style="font-size:14px; font-weight:800; margin-bottom:12px;"></div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; align-items:center;">
+      <span style="font-size:12px; font-weight:800; color:var(--muted);">반복 주기</span>
+      <button class="small-btn" id="rsModeWeekly" onclick="setRsMode('weekly')">매주 (요일)</button>
+      <button class="small-btn" id="rsModeMonthly" onclick="setRsMode('monthly')">매월 (날짜)</button>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; align-items:center;" id="rsDayBtns">
+      <button class="small-btn" onclick="rsSetEveryday()">매일</button>
+      <button class="small-btn" data-day="1" onclick="rsToggleDay(1)">월</button>
+      <button class="small-btn" data-day="2" onclick="rsToggleDay(2)">화</button>
+      <button class="small-btn" data-day="3" onclick="rsToggleDay(3)">수</button>
+      <button class="small-btn" data-day="4" onclick="rsToggleDay(4)">목</button>
+      <button class="small-btn" data-day="5" onclick="rsToggleDay(5)">금</button>
+      <button class="small-btn" data-day="6" onclick="rsToggleDay(6)">토</button>
+      <button class="small-btn" data-day="0" onclick="rsToggleDay(0)">일</button>
+    </div>
+    <div style="display:none; gap:8px; margin-bottom:12px; align-items:center;" id="rsMonthRow">
+      <span style="font-size:12.5px; font-weight:800;">매월</span>
+      <input type="number" id="rsMonthDay" min="1" max="31" value="1"
+        style="width:70px; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; color:var(--text); font-family:inherit; font-size:14px; font-weight:800; outline:none; text-align:center;">
+      <span style="font-size:12.5px; font-weight:800;">일에 반복</span>
+      <span class="scope-hint">없는 달은 말일에 표시돼요.</span>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+      <button class="small-btn" onclick="closeRecurSetup()">취소</button>
+      <button class="add-btn" onclick="saveRecurSetup()">반복 등록</button>
+    </div>
+  </div>
+</div>
+
 <!-- 검색 모달 -->
 <div id="searchModal" onclick="if(event.target===this) closeSearchModal()">
   <div class="move-date-card" style="max-width:460px;">
@@ -2333,6 +2370,69 @@ async function deleteRecurring(id) {
   renderRecurList(); renderAll();
 }
 
+// ── 기존 할 일 → 반복 일정 등록 (매주 요일 / 매월 날짜) ──
+let rsCtx = null; // { key, id }
+let rsMode = 'weekly';
+let rsDays = [0, 1, 2, 3, 4, 5, 6];
+
+function openRecurSetup(key, id) {
+  const todo = getDay(key).todos.find(t => t.id === id);
+  if (!todo) return;
+  rsCtx = { key, id };
+  rsMode = 'weekly';
+  rsDays = [0, 1, 2, 3, 4, 5, 6];
+  document.getElementById('rsTodoText').textContent = `“${todo.text}”`;
+  // 매월 기본값: 이 할 일이 등록된 날짜
+  document.getElementById('rsMonthDay').value = Number(key.split('-')[2]) || 1;
+  renderRsUi();
+  document.getElementById('recurSetupModal').classList.add('open');
+}
+function closeRecurSetup() {
+  document.getElementById('recurSetupModal').classList.remove('open');
+  rsCtx = null;
+}
+function renderRsUi() {
+  document.querySelectorAll('#rsDayBtns [data-day]').forEach(b =>
+    b.classList.toggle('sel', rsDays.includes(Number(b.dataset.day))));
+  document.getElementById('rsModeWeekly').classList.toggle('sel', rsMode === 'weekly');
+  document.getElementById('rsModeMonthly').classList.toggle('sel', rsMode === 'monthly');
+  document.getElementById('rsDayBtns').style.display = rsMode === 'weekly' ? 'flex' : 'none';
+  document.getElementById('rsMonthRow').style.display = rsMode === 'monthly' ? 'flex' : 'none';
+}
+function setRsMode(m) { rsMode = m === 'monthly' ? 'monthly' : 'weekly'; renderRsUi(); }
+function rsToggleDay(d) { rsDays = rsDays.includes(d) ? rsDays.filter(x => x !== d) : [...rsDays, d]; renderRsUi(); }
+function rsSetEveryday() { rsDays = [0, 1, 2, 3, 4, 5, 6]; renderRsUi(); }
+
+async function saveRecurSetup() {
+  if (!rsCtx) return;
+  const todo = getDay(rsCtx.key).todos.find(t => t.id === rsCtx.id);
+  if (!todo) { closeRecurSetup(); return; }
+  const isMonthly = rsMode === 'monthly';
+  let monthDay = 1;
+  if (isMonthly) {
+    monthDay = Math.min(31, Math.max(1, Number(document.getElementById('rsMonthDay').value) || 0));
+    if (!monthDay) { toast('매월 반복할 날짜(1~31)를 입력해 주세요!'); return; }
+  } else if (!rsDays.length) {
+    toast('반복할 요일을 선택해 주세요!'); return;
+  }
+  const cat = todoCategory(todo);
+  const rule = {
+    id: 'r' + Date.now().toString(36),
+    text: todo.text,
+    by: currentUser.uid,
+    cat: todo.cat,
+    catName: cat.name,
+    catColor: cat.color,
+    visibility: todoScope(todo, 'private') // 할 일의 공유 범위를 그대로 따라감
+  };
+  if (isMonthly) { rule.freq = 'monthly'; rule.monthDay = monthDay; rule.days = []; }
+  else { rule.days = [...rsDays].sort(); }
+  closeRecurSetup();
+  await saveRecurring([...getAllRecurring(), rule]);
+  renderRecurList(); renderAll();
+  toast(isMonthly ? `🔁 매월 ${monthDay}일 반복으로 등록했어요!` : '🔁 반복 일정으로 등록했어요!');
+}
+
 async function toggleRecurringSharing(id) {
   const arr = getAllRecurring();
   const rule = arr.find(item => item.id === id);
@@ -3285,6 +3385,7 @@ function renderTodos(day) {
           <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
           <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
           <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
+          <button class="del" onclick="openRecurSetup('${currentKey}', '${t.id}')" title="이 할 일을 반복 일정으로">🔁</button>
           <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
         </span>` : '';
     return `<div class="todo-item ${mine ? 'swipeable' : ''} ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
