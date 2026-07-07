@@ -187,21 +187,25 @@
   .category-section-head strong { font-size: 12px; color: var(--muted); }
   .cat-grid { display: flex; flex-wrap: wrap; gap: 8px; }
   .cat-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    --cat-color: var(--blue); --cat-bg: var(--blue-light);
+    background: linear-gradient(135deg, var(--cat-bg), var(--card) 72%); border: 1px solid var(--border); border-radius: 12px;
     flex: 0 1 138px; min-height: 38px; padding: 6px 12px; cursor: pointer; text-decoration: none; color: var(--text);
     box-shadow: var(--shadow); transition: var(--transition);
     display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center;
   }
-  .cat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); border-color: var(--blue); }
+  .cat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); border-color: var(--cat-color); }
   .cat-card .icon { font-size: 15px; flex-shrink: 0; }
   .cat-card .name { font-size: 11.5px; font-weight: 800; line-height: 1.3; word-break: keep-all; }
   .cat-card .desc { display: none !important; }
   .cat-grid-empty { color: var(--muted); font-size: 11.5px; font-weight: 700; padding: 9px 2px; }
-  .dash-cat-edit-row { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .dash-cat-edit-row { display: grid; grid-template-columns: 40px 54px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); }
   .dash-cat-edit-row:last-child { border-bottom: none; }
   .dash-cat-icon, .dash-cat-name { background: var(--bg); border: 1.5px solid var(--border); border-radius: 9px; padding: 8px 9px; color: var(--text); font-family: inherit; font-size: 13px; outline: none; }
+  .dash-cat-color { width: 40px; height: 34px; padding: 0; border: 1.5px solid var(--border); border-radius: 9px; background: var(--bg); cursor: pointer; }
+  .dash-cat-color::-webkit-color-swatch-wrapper { padding: 2px; }
+  .dash-cat-color::-webkit-color-swatch { border: none; border-radius: 6px; }
   .dash-cat-icon { text-align: center; }
-  .dash-cat-icon:focus, .dash-cat-name:focus { border-color: var(--blue); }
+  .dash-cat-color:focus, .dash-cat-icon:focus, .dash-cat-name:focus { border-color: var(--blue); }
 
   .upcoming-todos { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
   .upcoming-todos-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
@@ -1171,7 +1175,7 @@
       <span>🧩 홈 카테고리 편집</span>
       <button class="small-btn" onclick="closeDashboardCategoryEditor()">✕ 닫기</button>
     </div>
-    <div class="scope-hint" style="margin-bottom:10px;">이 설정은 내 홈에만 적용돼요. 삭제해도 기존 기록은 지워지지 않습니다.</div>
+    <div class="scope-hint" style="margin-bottom:10px;">색상·아이콘·이름을 바꿀 수 있어요. 이 설정은 내 홈에만 적용되고 기존 기록은 지워지지 않습니다.</div>
     <div id="dashCatEditBody"></div>
     <div style="display:flex; justify-content:space-between; gap:8px; margin-top:14px;">
       <button class="small-btn" onclick="resetDashboardCategoryEditor()">기본값 복원</button>
@@ -1205,6 +1209,7 @@
       <span>🎨 카테고리 편집</span>
       <button class="small-btn" onclick="closeCatEditor()">✕ 닫기</button>
     </div>
+    <div class="scope-hint" style="margin-bottom:10px;">왼쪽 색상칸을 누르면 할 일·메모 카테고리 컬러를 직접 바꿀 수 있어요.</div>
     <div id="catEditBody"></div>
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
       <button class="small-btn" onclick="closeCatEditor()">취소</button>
@@ -1332,9 +1337,9 @@ const MEMBER_SIGNATURES = [
   { label: '단비', color: '#F97316', aliases: ['단비', 'danbi'] }
 ];
 const DEFAULT_DASHBOARD_CATEGORIES = [
-  { id: 'study', icon: '🇪🇸', name: '스페인어 스터디', href: 'study.html' },
-  { id: 'diary', icon: '📔', name: '일기장', href: 'diary.html' },
-  { id: 'sharedDiary', icon: '💌', name: '교환일기', href: 'shared-diary.html' }
+  { id: 'study', icon: '🇪🇸', name: '스페인어 스터디', href: 'study.html', color: '#3949ab' },
+  { id: 'diary', icon: '📔', name: '일기장', href: 'diary.html', color: '#8e24aa' },
+  { id: 'sharedDiary', icon: '💌', name: '교환일기', href: 'shared-diary.html', color: '#c2185b' }
 ];
 const RESERVED_SIGNATURE_COLORS = MEMBER_SIGNATURES.map(member => member.color.toLowerCase());
 const dateKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1582,15 +1587,21 @@ function renderStudyStats(data) {
 function dashboardCategoryBase(id) {
   return DEFAULT_DASHBOARD_CATEGORIES.find(item => item.id === id);
 }
+function normalizeDashboardColor(color, fallback = '#3949ab') {
+  const value = String(color || '').trim();
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
+}
 function normalizeDashboardCategories(raw) {
   if (!Array.isArray(raw)) return DEFAULT_DASHBOARD_CATEGORIES.map(item => ({ ...item }));
   return raw.map(item => {
     const base = dashboardCategoryBase(item && item.id);
     if (!base) return null;
+    const color = normalizeDashboardColor(item.color, base.color);
     return {
       ...base,
       icon: String(item.icon || base.icon).trim().slice(0, 8) || base.icon,
-      name: String(item.name || base.name).trim().slice(0, 24) || base.name
+      name: String(item.name || base.name).trim().slice(0, 24) || base.name,
+      color
     };
   }).filter(Boolean);
 }
@@ -1602,7 +1613,7 @@ function renderDashboardCategories() {
   if (!grid) return;
   const items = getDashboardCategories();
   grid.innerHTML = items.length ? items.map(item => `
-    <a class="cat-card" href="${item.href}">
+    <a class="cat-card" href="${item.href}" style="--cat-color:${item.color}; --cat-bg:${hexToRgba(item.color, 0.14)};">
       <span class="icon">${esc(item.icon)}</span>
       <span class="name">${esc(item.name)}</span>
       ${item.id === 'study' ? '<span class="desc" id="studyStats"></span>' : ''}
@@ -1612,6 +1623,7 @@ function renderDashboardCategories() {
 function dashboardCategoryEditorRows(items) {
   return items.map(item => `
     <div class="dash-cat-edit-row" data-id="${item.id}">
+      <input type="color" class="dash-cat-color" value="${escAttr(normalizeDashboardColor(item.color))}" aria-label="${escAttr(item.name)} 색상">
       <input class="dash-cat-icon" value="${escAttr(item.icon)}" maxlength="8" aria-label="${escAttr(item.name)} 아이콘">
       <input class="dash-cat-name" value="${escAttr(item.name)}" maxlength="24" aria-label="${escAttr(item.name)} 이름">
       <button type="button" class="cat-edit-del" onclick="removeDashboardCategoryRow(this)" title="홈에서 삭제">🗑</button>
@@ -1640,9 +1652,10 @@ async function saveDashboardCategoryEditor() {
   const items = [...document.querySelectorAll('#dashCatEditBody .dash-cat-edit-row')].map(row => {
     const base = dashboardCategoryBase(row.dataset.id);
     if (!base) return null;
+    const color = normalizeDashboardColor(row.querySelector('.dash-cat-color').value, base.color);
     const icon = row.querySelector('.dash-cat-icon').value.trim().slice(0, 8) || base.icon;
     const name = row.querySelector('.dash-cat-name').value.trim().slice(0, 24) || base.name;
-    return { id: base.id, icon, name, href: base.href };
+    return { id: base.id, icon, name, href: base.href, color };
   }).filter(Boolean);
   userData.dashboardCategories = items;
   closeDashboardCategoryEditor();
@@ -2104,6 +2117,35 @@ function removeCatEditRow(btn, scope) {
   if (!confirm('이 카테고리를 삭제할까요?\n이 카테고리로 적어둔 기존 기록은 더 이상 표시되지 않을 수 있어요.')) return;
   btn.closest('.cat-edit-row').remove();
 }
+function refreshOwnedSharedCategorySnapshots(todoCats) {
+  if (!currentUser || !spaceData) return { days: {}, recurring: null };
+  const catMap = Object.fromEntries(todoCats.map(cat => [cat.id, cat]));
+  const changedDays = {};
+  Object.entries(spaceData.days || {}).forEach(([key, day]) => {
+    let changed = false;
+    const todos = (day.todos || []).map(todo => {
+      const cat = catMap[todo.cat];
+      if (!cat || todo.by !== currentUser.uid) return todo;
+      if (todo.catName === cat.name && todo.catColor === cat.color) return todo;
+      changed = true;
+      return { ...todo, catName: cat.name, catColor: cat.color };
+    });
+    if (!changed) return;
+    const nextDay = { ...day, todos };
+    spaceData.days[key] = nextDay;
+    changedDays[key] = nextDay;
+  });
+  let recurringChanged = false;
+  const recurring = (spaceData.recurring || []).map(rule => {
+    const cat = catMap[rule.cat];
+    if (!cat || rule.by !== currentUser.uid) return rule;
+    if (rule.catName === cat.name && rule.catColor === cat.color) return rule;
+    recurringChanged = true;
+    return { ...rule, catName: cat.name, catColor: cat.color };
+  });
+  if (recurringChanged) spaceData.recurring = recurring;
+  return { days: changedDays, recurring: recurringChanged ? recurring : null };
+}
 function openCatEditor() {
   if (!userData) { toast('데이터를 불러오는 중이에요.'); return; }
   document.getElementById('catEditBody').innerHTML = `
@@ -2147,14 +2189,27 @@ async function saveCatEditor() {
   if (!memoCats.some(c => c.id === selectedMemoCat)) selectedMemoCat = memoCats[0].id;
   userData.personalCategories = todoCats;
   userData.personalMemoCategories = memoCats;
+  const sharedCategoryPatch = refreshOwnedSharedCategorySnapshots(todoCats);
   closeCatEditor();
   renderAll();
   try {
-    await db.collection('users').doc(currentUser.uid).update({
+    const userUpdate = {
       personalCategories: todoCats,
       personalMemoCategories: memoCats,
       personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    };
+    const changedSharedDays = Object.entries(sharedCategoryPatch.days || {});
+    if (spaceId && (changedSharedDays.length || sharedCategoryPatch.recurring)) {
+      const batch = db.batch();
+      batch.update(db.collection('users').doc(currentUser.uid), userUpdate);
+      const spaceUpdate = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      changedSharedDays.forEach(([key, day]) => { spaceUpdate[`days.${key}`] = day; });
+      if (sharedCategoryPatch.recurring) spaceUpdate.recurring = sharedCategoryPatch.recurring;
+      batch.update(db.collection('spaces').doc(spaceId), spaceUpdate);
+      await batch.commit();
+    } else {
+      await db.collection('users').doc(currentUser.uid).update(userUpdate);
+    }
     toast('🎨 카테고리를 수정했어요!');
   } catch (e) { console.error('카테고리 수정 저장 실패:', e); toast('저장에 실패했어요.'); }
 }
