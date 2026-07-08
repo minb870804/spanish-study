@@ -373,6 +373,7 @@
     color: var(--muted); font-size: 10.5px; font-weight: 900; line-height: 1.2; white-space: nowrap;
   }
   .calendar-summary-chip.sober { background: var(--green-light); border-color: transparent; color: var(--green); }
+  .calendar-summary-chip.exercise { background: var(--blue-light); border-color: transparent; color: var(--blue); }
   .schedule-filter-bar {
     display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
     margin: -4px 0 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
@@ -3220,15 +3221,32 @@ function monthDrinkStats(baseDate) {
   };
 }
 
+function monthExerciseStats(baseDate, cutoffKey = '') {
+  if (cutoffKey === null) return { exercise: 0 };
+  const info = monthInfo(baseDate);
+  let exercise = 0;
+  allDayKeys().forEach(key => {
+    const normalized = normalizeDateKey(key);
+    if (!normalized || !keyInMonth(normalized, info)) return;
+    if (cutoffKey && normalized > cutoffKey) return;
+    if (exerciseTextFor(normalized)) exercise++;
+  });
+  return { exercise };
+}
+
 function renderCalendarDaySummary(baseDate) {
   const el = document.getElementById('calendarDaySummary');
   if (!el) return;
   const stats = monthDrinkStats(baseDate);
+  const info = monthInfo(baseDate);
+  const cutoffKey = stats.elapsed === 0 ? null : (stats.elapsed === stats.totalDays ? info.lastKey : dateKey(new Date()));
+  const exerciseStats = monthExerciseStats(baseDate, cutoffKey);
   const scope = stats.elapsed < stats.totalDays ? `오늘까지 ${stats.elapsed}일 집계` : '월 전체 집계';
   el.innerHTML = `
     <span class="calendar-summary-chip">전체 ${stats.totalDays}일</span>
-    <span class="calendar-summary-chip sober">🌿 금주 ${stats.sober}일</span>`;
-  el.title = `${stats.label} · ${scope} · 음주 ${stats.drink}일`;
+    <span class="calendar-summary-chip sober">🌿 금주 ${stats.sober}일</span>
+    <span class="calendar-summary-chip exercise">💪 운동 ${exerciseStats.exercise}일</span>`;
+  el.title = `${stats.label} · ${scope} · 음주 ${stats.drink}일 · 운동 ${exerciseStats.exercise}일`;
 }
 
 function renderSobriety() {
