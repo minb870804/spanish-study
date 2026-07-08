@@ -478,7 +478,7 @@
   }
   #reportModal.open, #moveDateModal.open, #catEditModal.open, #dashCatEditModal.open, #sobrietyModal.open, #searchModal.open, #recurSetupModal.open, #exerciseModal.open { display: flex; }
   #catEditModal .move-date-card, #dashCatEditModal .move-date-card { max-height: 84vh; overflow-y: auto; }
-  .cat-edit-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .cat-edit-row { display: flex; align-items: center; gap: 10px; padding: 7px 0 7px 8px; border-bottom: 1px solid var(--border); border-left: 4px solid var(--cat-row-color, transparent); }
   .cat-edit-row:last-child { border-bottom: none; }
   .cat-edit-color { width: 38px; height: 34px; flex-shrink: 0; padding: 0; border: 1.5px solid var(--border); border-radius: 9px; background: var(--bg); cursor: pointer; }
   .cat-edit-color::-webkit-color-swatch-wrapper { padding: 2px; }
@@ -1215,7 +1215,7 @@
       <span>🎨 카테고리 편집</span>
       <button class="small-btn" onclick="closeCatEditor()">✕ 닫기</button>
     </div>
-    <div class="scope-hint" style="margin-bottom:10px;">왼쪽 색상칸을 누르면 할 일·메모 카테고리 컬러를 직접 바꿀 수 있어요.</div>
+    <div class="scope-hint" style="margin-bottom:10px;">왼쪽 색상칸을 누르면 오늘의 할 일·한 일 카테고리 컬러를 직접 바꿀 수 있어요.</div>
     <div id="catEditBody"></div>
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
       <button class="small-btn" onclick="closeCatEditor()">취소</button>
@@ -1352,6 +1352,9 @@ let unsubUser = null;
 let selectedDate = initialSelectedDate();
 let scheduleFilter = 'all'; // all | mine | shared
 let todoStartDateEdited = false;
+const pendingDayWrites = new Map();
+const daySaveQueues = new Map();
+let daySaveSeq = 0;
 
 const DAYS_KO = ['일','월','화','수','목','금','토'];
 const MEMBER_SIGNATURES = [
@@ -2011,18 +2014,28 @@ function scopedTodo(todo, fallback) {
   return { ...todo, visibility: todoScope(todo, fallback) };
 }
 
+function pendingDaySplit(key) {
+  const pending = pendingDayWrites.get(key);
+  return pending && pending.split;
+}
+
 function sharedDayRaw(key) {
+  const pending = pendingDaySplit(key);
+  if (pending) return pending.shared || {};
   return (spaceData && spaceData.days && spaceData.days[key]) || {};
 }
 
 function personalDayRaw(key) {
+  const pending = pendingDaySplit(key);
+  if (pending) return pending.personal || {};
   return (userData && userData.personalDays && userData.personalDays[key]) || {};
 }
 
 function allDayKeys() {
   return [...new Set([
     ...Object.keys((userData && userData.personalDays) || {}),
-    ...Object.keys((spaceData && spaceData.days) || {})
+    ...Object.keys((spaceData && spaceData.days) || {}),
+    ...pendingDayWrites.keys()
   ])];
 }
 
@@ -2108,13 +2121,25 @@ async function addMemoCategory() {
 }
 
 // ── 카테고리 편집(색·이름) ── 할 일/메모 카테고리 모두
+function normalizeCategoryColor(color, fallback = '#70757f') {
+  const value = String(color || '').trim();
+  return /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : fallback;
+}
+
+function categoryScopeName(scope) {
+  return scope === 'todo' ? '할 일' : '한 일';
+}
+
 function catEditRows(scope, cats) {
-  return cats.map(c => `
-    <div class="cat-edit-row" data-scope="${scope}">
-      <input type="color" class="cat-edit-color" value="${c.color}" data-prev-color="${c.color}" data-scope="${scope}" data-id="${c.id}" aria-label="${esc(c.name)} 색상" onchange="guardCategoryColor(this)">
-      <input type="text" class="cat-edit-name" value="${esc(c.name)}" maxlength="20" data-scope="${scope}" data-id="${c.id}" aria-label="${esc(c.name)} 이름">
+  return cats.map((c, index) => {
+    const color = normalizeCategoryColor(c.color, nextCategoryColor(index));
+    return `
+    <div class="cat-edit-row" data-scope="${scope}" style="--cat-row-color:${color};">
+      <input type="color" class="cat-edit-color" value="${escAttr(color)}" data-original-color="${escAttr(color)}" data-prev-color="${escAttr(color)}" data-scope="${scope}" data-id="${escAttr(c.id)}" aria-label="${escAttr(c.name)} 색상" onchange="guardCategoryColor(this)">
+      <input type="text" class="cat-edit-name" value="${escAttr(c.name)}" maxlength="20" data-scope="${scope}" data-id="${escAttr(c.id)}" aria-label="${escAttr(c.name)} 이름">
       <button type="button" class="cat-edit-del" onclick="removeCatEditRow(this, '${scope}')" title="카테고리 삭제">🗑</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 function isReservedSignatureColor(color) {
   return RESERVED_SIGNATURE_COLORS.includes(String(color || '').toLowerCase());
@@ -2124,14 +2149,51 @@ function nextCategoryColor(offset = 0) {
   return available[((offset % available.length) + available.length) % available.length];
 }
 function guardCategoryColor(input) {
-  if (!isReservedSignatureColor(input.value)) {
-    input.dataset.prevColor = input.value;
+  const normalized = normalizeCategoryColor(input.value, input.dataset.prevColor || nextCategoryColor(0));
+  input.value = normalized;
+  if (!isReservedSignatureColor(normalized)) {
+    input.dataset.prevColor = normalized;
+    const row = input.closest('.cat-edit-row');
+    if (row) row.style.setProperty('--cat-row-color', normalized);
     return;
   }
   input.value = input.dataset.prevColor && !isReservedSignatureColor(input.dataset.prevColor)
     ? input.dataset.prevColor
     : nextCategoryColor(0);
+  const row = input.closest('.cat-edit-row');
+  if (row) row.style.setProperty('--cat-row-color', input.value);
   toast('민석·단비 시그니처 컬러는 카테고리에 사용할 수 없어요.');
+}
+
+function categoryColorChanges(prevTodo, prevMemo, todoCats, memoCats) {
+  const changes = [];
+  const collect = (scope, before, after) => {
+    const beforeMap = Object.fromEntries(before.map(cat => [cat.id, cat]));
+    after.forEach(cat => {
+      const prev = beforeMap[cat.id];
+      if (!prev) return;
+      const prevColor = normalizeCategoryColor(prev.color);
+      if (prevColor === normalizeCategoryColor(cat.color)) return;
+      changes.push({
+        scope,
+        name: cat.name || prev.name || cat.id,
+        from: prevColor,
+        to: normalizeCategoryColor(cat.color)
+      });
+    });
+  };
+  collect('todo', prevTodo, todoCats);
+  collect('memo', prevMemo, memoCats);
+  return changes;
+}
+
+function confirmCategoryColorChanges(changes) {
+  if (!changes.length) return true;
+  const rows = changes.slice(0, 6)
+    .map(change => `- ${categoryScopeName(change.scope)} · ${change.name}: ${change.from} → ${change.to}`)
+    .join('\n');
+  const more = changes.length > 6 ? `\n외 ${changes.length - 6}개` : '';
+  return confirm(`카테고리 컬러를 변경하시겠습니까?\n\n${rows}${more}\n\n확인을 누르면 오늘의 할 일과 한 일 카테고리에 반영됩니다.`);
 }
 function removeCatEditRow(btn, scope) {
   const remaining = document.querySelectorAll(`#catEditBody .cat-edit-row[data-scope="${scope}"]`).length;
@@ -2178,7 +2240,7 @@ function openCatEditor() {
     </div>
     <div class="dm-section-title">✅ 할 일 카테고리</div>
     ${catEditRows('todo', getCategories())}
-    <div class="dm-section-title">🌙 하루 메모 카테고리</div>
+    <div class="dm-section-title">🌙 한 일 카테고리</div>
     ${catEditRows('memo', getMemoCats())}`;
   document.getElementById('catEditModal').classList.add('open');
 }
@@ -2202,10 +2264,12 @@ async function saveCatEditor() {
     const nameEl = row.querySelector('.cat-edit-name');
     const scope = colorEl.dataset.scope, id = colorEl.dataset.id;
     const prev = (scope === 'todo' ? prevTodo : prevMemo).find(c => c.id === id) || {};
-    const cat = { ...prev, id, color: colorEl.value, name: nameEl.value.trim() || prev.name || id };
+    const cat = { ...prev, id, color: normalizeCategoryColor(colorEl.value, prev.color || nextCategoryColor(0)), name: nameEl.value.trim() || prev.name || id };
     (scope === 'todo' ? todoCats : memoCats).push(cat);
   });
   if (!todoCats.length || !memoCats.length) { toast('카테고리는 최소 1개는 있어야 해요.'); return; }
+  const colorChanges = categoryColorChanges(prevTodo, prevMemo, todoCats, memoCats);
+  if (!confirmCategoryColorChanges(colorChanges)) return;
   // 선택된 할 일 카테고리가 삭제됐으면 첫 번째로 보정
   if (!todoCats.some(c => c.id === selectedTodoCat)) selectedTodoCat = todoCats[0].id;
   if (!memoCats.some(c => c.id === selectedMemoCat)) selectedMemoCat = memoCats[0].id;
@@ -2214,6 +2278,7 @@ async function saveCatEditor() {
   const sharedCategoryPatch = refreshOwnedSharedCategorySnapshots(todoCats);
   closeCatEditor();
   renderAll();
+  if (modalKey) refreshModal(true);
   try {
     const userUpdate = {
       personalCategories: todoCats,
@@ -2535,7 +2600,7 @@ async function toggleRecurringDone(id, checked) {
   // 완료 시 누가 완료했는지 uid를 기록 (truthy라 기존 로직과 호환)
   day.recDone = { ...day.recDone, [id]: checked ? currentUser.uid : false };
   setDayLocal(key, day);
-  renderTodos(day);
+  renderAll();
   await saveDay(key, day);
 }
 
@@ -2555,22 +2620,40 @@ function renderRecurList() {
   activateActionTooltips(box);
 }
 
+async function commitDaySplit(key, split) {
+  const batch = db.batch();
+  batch.update(db.collection('users').doc(currentUser.uid), {
+    [`personalDays.${key}`]: split.personal,
+    personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  batch.update(db.collection('spaces').doc(spaceId), {
+    [`days.${key}`]: split.shared,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await batch.commit();
+}
+
 async function saveDay(key, day) {
   if (!spaceId || !currentUser) return;
   const split = splitDayForStorage(day);
+  const writeId = ++daySaveSeq;
+  pendingDayWrites.set(key, { id: writeId, split });
   applySplitDayLocal(key, split);
+
+  const previous = daySaveQueues.get(key) || Promise.resolve();
+  const write = previous.catch(() => {}).then(() => commitDaySplit(key, split));
+  daySaveQueues.set(key, write);
+
   try {
-    const batch = db.batch();
-    batch.update(db.collection('users').doc(currentUser.uid), {
-      [`personalDays.${key}`]: split.personal,
-      personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    batch.update(db.collection('spaces').doc(spaceId), {
-      [`days.${key}`]: split.shared,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await batch.commit();
-  } catch (e) { console.error('저장 실패:', e); toast('저장에 실패했어요. 네트워크를 확인해 주세요.'); }
+    await write;
+    if ((pendingDayWrites.get(key) || {}).id === writeId) applySplitDayLocal(key, split);
+  } catch (e) {
+    console.error('저장 실패:', e);
+    toast('저장에 실패했어요. 네트워크를 확인해 주세요.');
+  } finally {
+    if ((pendingDayWrites.get(key) || {}).id === writeId) pendingDayWrites.delete(key);
+    if (daySaveQueues.get(key) === write) daySaveQueues.delete(key);
+  }
 }
 
 function splitDayForStorage(day) {
@@ -2730,6 +2813,19 @@ function autoSizeTodoInput(el) {
   el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
 }
 
+function setTodoDoneState(todo, checked) {
+  todo.done = checked;
+  if (checked) {
+    todo.doneBy = currentUser.uid;
+    todo.doneAt = Date.now();
+    todo.doneDate = dateKey(new Date());
+  } else {
+    delete todo.doneBy;
+    delete todo.doneAt;
+    delete todo.doneDate;
+  }
+}
+
 // 할 일 세부설정(시간·장소·기간·알림) 펼치기/접기 — 기본은 접힘
 function toggleTodoOptions() {
   const box = document.getElementById('todoAdvOptions');
@@ -2827,19 +2923,10 @@ async function toggleTodo(id, checked) {
   const day = getDay(key);
   const t = day.todos.find(t => t.id === id);
   if (!t) return;
-  t.done = checked;
-  t.doneBy = checked ? currentUser.uid : null;
-  if (checked) {
-    t.doneAt = Date.now();
-    t.doneDate = dateKey(new Date());
-    justCompletedId = id; // 완료 플래시용
-  } else {
-    delete t.doneAt;
-    delete t.doneDate;
-  }
+  setTodoDoneState(t, checked);
+  if (checked) justCompletedId = id; // 완료 플래시용
   setDayLocal(key, day);
-  renderTodos(day);
-  renderMoveDeck();
+  renderAll();
   await saveDay(key, day);
   if (checked) cancelLocalReminder(id); else if (t.remindAtMs) scheduleLocalReminder(t); // 완료 시 알람 취소
 }
@@ -3444,14 +3531,12 @@ async function completeUpcomingTodo(sourceKey, id, checked) {
   const day = getDay(sourceKey);
   const t = day.todos.find(todo => todo.id === id);
   if (!t) return;
-  t.done = checked;
-  t.doneBy = checked ? currentUser.uid : null;
-  if (checked) { t.doneAt = Date.now(); t.doneDate = dateKey(new Date()); }
-  else { delete t.doneAt; delete t.doneDate; }
+  setTodoDoneState(t, checked);
   setDayLocal(sourceKey, day);
   renderAll();
   await saveDay(sourceKey, day);
   if (checked) { cancelLocalReminder(id); toast('✅ 완료했어요!'); }
+  else if (t.remindAtMs) scheduleLocalReminder(t);
 }
 
 let justCompletedId = null; // 방금 완료한 할 일 id (한 번만 플래시)
@@ -4317,18 +4402,11 @@ async function mToggleTodo(id, checked) {
   const day = getDay(modalKey);
   const t = day.todos.find(t => t.id === id);
   if (!t) return;
-  t.done = checked;
-  t.doneBy = checked ? currentUser.uid : null;
-  if (checked) {
-    t.doneAt = Date.now();
-    t.doneDate = dateKey(new Date());
-  } else {
-    delete t.doneAt;
-    delete t.doneDate;
-  }
+  setTodoDoneState(t, checked);
   setDayLocal(modalKey, day);
   refreshModal(true); renderAll();
   await saveDay(modalKey, day);
+  if (checked) cancelLocalReminder(id); else if (t.remindAtMs) scheduleLocalReminder(t);
 }
 
 async function mEditTodo(id) {
