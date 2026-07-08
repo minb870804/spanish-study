@@ -1201,10 +1201,10 @@
       <span id="moveDateTitle">일정 변경</span>
       <button class="small-btn" onclick="closeMoveDateModal()">✕ 닫기</button>
     </div>
-    <input id="moveDateInput" class="move-date-input" type="date" aria-label="이동할 날짜">
+    <input id="moveDateInput" class="move-date-input" type="date" aria-label="적용할 날짜">
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
       <button class="small-btn" onclick="closeMoveDateModal()">취소</button>
-      <button class="add-btn" onclick="confirmMoveDate()">이동</button>
+      <button class="add-btn" id="moveDateConfirmBtn" onclick="confirmMoveDate()">이동</button>
     </div>
   </div>
 </div>
@@ -3612,6 +3612,7 @@ function renderTodos(day) {
           <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 1)" title="내일로 이동">내일</button>
           <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
           <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
+          <button class="del" onclick="copyTodoToDateFromKey('${currentKey}', '${t.id}')" title="다른 날짜에 한 번 복사">📋</button>
           <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
           <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
           <button class="del" onclick="openRecurSetup('${currentKey}', '${t.id}')" title="이 할 일을 반복 일정으로">🔁</button>
@@ -4292,6 +4293,81 @@ async function quickMoveTodo(sourceKey, id, days) {
   await moveCalendarItem(sourceKey, targetKey, 'todo', id);
 }
 
+function cloneTodoForDate(todo, sourceKey, targetKey) {
+  const now = Date.now();
+  const copy = {
+    ...todo,
+    id: `${now.toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    done: false,
+    by: currentUser.uid,
+    createdAt: now,
+    createdDate: targetKey,
+    moveCount: 0
+  };
+  delete copy.doneBy;
+  delete copy.doneAt;
+  delete copy.doneDate;
+  delete copy.lastMovedAt;
+  delete copy.lastMovedFrom;
+  delete copy.lastMovedTo;
+  delete copy.moveHistory;
+  delete copy.reminderSentAt;
+  delete copy.reminderSkippedAt;
+  delete copy.reminderSentCount;
+
+  if (isPeriodTodo(todo)) {
+    const delta = dayDiff(sourceKey, targetKey);
+    copy.startDate = targetKey;
+    copy.endDate = keyPlusDays(todo.endDate, delta);
+  } else {
+    delete copy.startDate;
+    delete copy.endDate;
+  }
+
+  if (copy.reminderTime) {
+    const remindAt = reminderDateFromTime(targetKey, copy.reminderTime);
+    if (remindAt && remindAt.getTime() > Date.now()) copy.remindAtMs = remindAt.getTime();
+    else {
+      delete copy.reminderTime;
+      delete copy.remindAtMs;
+    }
+  } else {
+    delete copy.remindAtMs;
+  }
+
+  return copy;
+}
+
+async function copyCalendarTodo(sourceKey, targetKey, id) {
+  if (!spaceData || !currentUser) return;
+  sourceKey = normalizeDateKey(sourceKey);
+  targetKey = normalizeDateKey(targetKey);
+  if (!sourceKey || !targetKey) return;
+  const sourceDay = getDay(sourceKey);
+  const todo = sourceDay.todos.find(t => t.id === id);
+  if (!todo) return;
+  if (todo.by && todo.by !== currentUser.uid) {
+    toast('내가 만든 일정만 복사할 수 있어요.');
+    return;
+  }
+  const targetDay = getDay(targetKey);
+  const copied = cloneTodoForDate(todo, sourceKey, targetKey);
+  targetDay.todos = [...targetDay.todos, copied];
+  if (scheduleFilter === 'shared' && todoScope(copied, 'private') !== 'shared') scheduleFilter = 'all';
+  setDayLocal(targetKey, targetDay);
+  if (!modalKey) {
+    selectedDate = new Date(+targetKey.slice(0, 4), +targetKey.slice(5, 7) - 1, +targetKey.slice(8, 10));
+    calMonth = new Date(selectedDate);
+    todoStartDateEdited = false;
+    showAllUpcomingTodos = false;
+  }
+  renderAll();
+  if (modalKey === targetKey) refreshModal(true);
+  await saveDay(targetKey, targetDay);
+  if (copied.remindAtMs) scheduleLocalReminder(copied);
+  toast(`📋 ${shortDateLabel(targetKey)}에 한 번 복사했어요.`);
+}
+
 function attachTodoSwipeHandlers(root) {
   root.querySelectorAll('.todo-item.swipeable').forEach(item => {
     item.addEventListener('pointerdown', startTodoSwipe);
@@ -4450,14 +4526,25 @@ function moveTodoToDate(id) {
 }
 
 function moveTodoToDateFromKey(sourceKey, id) {
+  openTodoDatePicker('move', sourceKey, id);
+}
+
+function copyTodoToDateFromKey(sourceKey, id) {
+  openTodoDatePicker('copy', sourceKey, id);
+}
+
+function openTodoDatePicker(mode, sourceKey, id) {
   sourceKey = normalizeDateKey(sourceKey);
   if (!sourceKey) return;
   const day = getDay(sourceKey);
   const todo = day.todos.find(t => t.id === id);
   if (!todo) return;
 
-  moveDateCtx = { sourceKey, id };
-  document.getElementById('moveDateTitle').textContent = `일정 변경 · ${shortDateLabel(sourceKey)}`;
+  moveDateCtx = { mode, sourceKey, id };
+  document.getElementById('moveDateTitle').textContent =
+    `${mode === 'copy' ? '일정 복사' : '일정 변경'} · ${shortDateLabel(sourceKey)}`;
+  const confirmBtn = document.getElementById('moveDateConfirmBtn');
+  if (confirmBtn) confirmBtn.textContent = mode === 'copy' ? '복사' : '이동';
   const input = document.getElementById('moveDateInput');
   input.value = sourceKey;
   document.getElementById('moveDateModal').classList.add('open');
@@ -4469,6 +4556,8 @@ function moveTodoToDateFromKey(sourceKey, id) {
 
 function closeMoveDateModal() {
   document.getElementById('moveDateModal').classList.remove('open');
+  const confirmBtn = document.getElementById('moveDateConfirmBtn');
+  if (confirmBtn) confirmBtn.textContent = '이동';
   moveDateCtx = null;
 }
 
@@ -4476,10 +4565,13 @@ async function confirmMoveDate() {
   if (!moveDateCtx) return;
   const targetKey = normalizeDateKey(document.getElementById('moveDateInput').value);
   if (!targetKey) { toast('날짜를 다시 확인해 주세요.'); return; }
-  const { sourceKey, id } = moveDateCtx;
-  if (targetKey === sourceKey) { closeMoveDateModal(); return; }
+  const { mode, sourceKey, id } = moveDateCtx;
   closeMoveDateModal();
-  await moveCalendarItem(sourceKey, targetKey, 'todo', id);
+  if (mode === 'copy') await copyCalendarTodo(sourceKey, targetKey, id);
+  else {
+    if (targetKey === sourceKey) return;
+    await moveCalendarItem(sourceKey, targetKey, 'todo', id);
+  }
 }
 
 async function mDeleteTodo(id) {
