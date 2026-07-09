@@ -19,12 +19,6 @@
 <!-- Twemoji: 기본 이모지를 일관된 고해상도 SVG 이모지로 교체 -->
 <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@15.1.0/dist/twemoji.min.js" defer></script>
 
-<!-- Firebase 10.8.0 Compat SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-functions-compat.js"></script>
-
 <style>
   :root {
     --red: #d32f2f;
@@ -1321,6 +1315,12 @@
 
 <div id="toast"></div>
 
+<!-- Firebase 10.8.0 Compat SDK — head가 아닌 여기서 로드해 첫 화면 렌더를 막지 않는다 -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-functions-compat.js"></script>
+
 <script>
 // Firebase Auth는 127.0.0.1과 localhost를 서로 다른 도메인으로 본다.
 // 로컬 확인 때 unauthorized-domain이 나지 않도록 허용 가능성이 높은 localhost로 맞춘다.
@@ -1342,6 +1342,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+// 오프라인 캐시: 재방문 시 네트워크를 기다리지 않고 캐시 데이터를 즉시 표시(이후 실시간 갱신)
+db.enablePersistence({ synchronizeTabs: true }).catch(e => console.warn('오프라인 캐시 비활성:', e && e.code));
 const cloudFunctions = firebase.app().functions('asia-northeast3');
 
 let currentUser = null;
@@ -3098,9 +3100,22 @@ function renderAll() {
 }
 
 // 기본 이모지를 Twemoji SVG로 교체해 모든 기기에서 동일한 고품질 디자인으로 표시
+// 전체 문서 파싱은 무겁기 때문에 연속 호출을 하나로 합치고, 브라우저 유휴 시간에 실행한다(멈춤 방지)
+let twemojiPending = false;
 function applyTwemoji(root) {
   if (!window.twemoji) return;
-  try { twemoji.parse(root || document.body, { folder: 'svg', ext: '.svg' }); } catch (e) {}
+  if (root) { // 토스트·검색결과처럼 작은 영역은 즉시
+    try { twemoji.parse(root, { folder: 'svg', ext: '.svg' }); } catch (e) {}
+    return;
+  }
+  if (twemojiPending) return;
+  twemojiPending = true;
+  const run = () => {
+    twemojiPending = false;
+    try { twemoji.parse(document.body, { folder: 'svg', ext: '.svg' }); } catch (e) {}
+  };
+  if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 400 });
+  else setTimeout(run, 40);
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => applyTwemoji());
 else applyTwemoji();
