@@ -466,12 +466,37 @@
   .search-hit-text.done { text-decoration: line-through; color: var(--muted); }
   .search-hit-kind { font-size: 10.5px; font-weight: 800; color: var(--muted); white-space: nowrap; }
 
-  #reportModal, #moveDateModal, #catEditModal, #dashCatEditModal, #sobrietyModal, #searchModal, #recurSetupModal, #exerciseModal {
+  /* ── 공유 계정 금고 ── */
+  .vault-open-btn {
+    width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+    background: var(--purple-light); border: 1.5px solid var(--purple); border-radius: 12px;
+    padding: 11px 14px; margin-bottom: 12px; cursor: pointer; font-family: inherit;
+    color: var(--purple); font-size: 13.5px; font-weight: 900; text-align: left; transition: var(--transition);
+  }
+  .vault-open-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+  .vault-open-sub { font-size: 11px; font-weight: 700; color: var(--muted); }
+  .vault-list { display: grid; gap: 8px; margin-top: 12px; max-height: 44vh; overflow-y: auto; }
+  .vault-row { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .vault-service { font-size: 13.5px; font-weight: 900; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .vault-service .vault-actions { display: flex; gap: 2px; }
+  .vault-service .vault-actions button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 3px 6px; border-radius: 6px; }
+  .vault-service .vault-actions button:hover { color: var(--red); background: var(--red-light); }
+  .vault-field { display: flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 2px 0; }
+  .vault-field .vf-label { flex: 0 0 30px; color: var(--muted); font-weight: 800; font-size: 11px; }
+  .vault-field .vf-value { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'SF Mono', Menlo, monospace; font-size: 12px; }
+  .vault-field button { background: var(--card); border: 1px solid var(--border); border-radius: 7px; color: var(--muted); cursor: pointer; font-size: 11px; padding: 2px 7px; font-family: inherit; font-weight: 700; white-space: nowrap; }
+  .vault-field button:hover { border-color: var(--blue); color: var(--blue); }
+  .vault-add { display: grid; gap: 7px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+  .vault-add input { background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 9px 12px; color: var(--text); font-family: inherit; font-size: 13.5px; outline: none; }
+  .vault-add input:focus { border-color: var(--blue); }
+  .vault-warn { font-size: 11px; color: var(--muted); line-height: 1.6; margin-top: 10px; }
+
+  #reportModal, #moveDateModal, #catEditModal, #dashCatEditModal, #sobrietyModal, #searchModal, #recurSetupModal, #exerciseModal, #vaultModal {
     position: fixed; inset: 0; background: rgba(18,18,20,0.55); z-index: 1500;
     display: none; align-items: center; justify-content: center; padding: 20px;
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
-  #reportModal.open, #moveDateModal.open, #catEditModal.open, #dashCatEditModal.open, #sobrietyModal.open, #searchModal.open, #recurSetupModal.open, #exerciseModal.open { display: flex; }
+  #reportModal.open, #moveDateModal.open, #catEditModal.open, #dashCatEditModal.open, #sobrietyModal.open, #searchModal.open, #recurSetupModal.open, #exerciseModal.open, #vaultModal.open { display: flex; }
   #catEditModal .move-date-card, #dashCatEditModal .move-date-card { max-height: 84vh; overflow-y: auto; }
   .cat-edit-row { display: flex; align-items: center; gap: 10px; padding: 7px 0 7px 8px; border-bottom: 1px solid var(--border); border-left: 4px solid var(--cat-row-color, transparent); }
   .cat-edit-row:last-child { border-bottom: none; }
@@ -1137,6 +1162,9 @@
 
       <div class="card share-card">
         <div class="card-title"><span>👥 함께 쓰는 사람</span></div>
+        <button type="button" class="vault-open-btn" onclick="openVaultModal()">
+          🔐 공유 계정 관리 <span class="vault-open-sub">넷플릭스 · 디즈니+ · 쿠팡 등 아이디/비밀번호</span>
+        </button>
         <div class="member-chips" id="memberChips"></div>
         <div class="share-desc">
           <strong>초대 코드</strong>로 부부 공간을 연결하면, 각자 <strong>배우자와 공유</strong>를 선택한 일정과 교환일기만 함께 보여요. 개인 일정·메모·카테고리는 서로 분리됩니다.
@@ -1230,6 +1258,25 @@
 </div>
 
 <!-- 금주 현황 모달 -->
+<!-- 공유 계정 금고 모달 -->
+<div id="vaultModal" onclick="if(event.target===this) closeVaultModal()">
+  <div class="move-date-card" style="max-width:460px;">
+    <div class="card-title">
+      <span>🔐 공유 계정</span>
+      <button class="small-btn" onclick="closeVaultModal()">✕ 닫기</button>
+    </div>
+    <div class="scope-hint">부부가 함께 쓰는 서비스의 아이디·비밀번호를 기록해요. 두 사람 모두 보고 수정할 수 있어요.</div>
+    <div id="vaultList" class="vault-list"></div>
+    <div class="vault-add">
+      <input id="vaultService" placeholder="서비스명 (예: 넷플릭스)" maxlength="30">
+      <input id="vaultId" placeholder="아이디 / 이메일" maxlength="60" autocomplete="off">
+      <input id="vaultPw" placeholder="비밀번호" maxlength="60" autocomplete="off">
+      <button class="add-btn" onclick="addVaultEntry()">＋ 추가</button>
+    </div>
+    <div class="vault-warn">⚠️ 은행·증권 등 금융 비밀번호는 저장하지 마세요. 구독 서비스용으로만 사용하는 걸 권장해요.</div>
+  </div>
+</div>
+
 <!-- 운동 기록 모달 -->
 <div id="exerciseModal" onclick="if(event.target===this) closeExerciseModal()">
   <div class="move-date-card" style="max-width:420px;">
@@ -2610,6 +2657,8 @@ async function toggleRecurringSharing(id) {
 async function toggleRecurringDone(id, checked) {
   const key = dateKey(selectedDate);
   const day = getDay(key);
+  const rule = getAllRecurring().find(r => r.id === id);
+  if (rule && isOthersTodo(rule)) { toast('배우자의 일정은 체크할 수 없어요.'); renderAll(); return; }
   // 완료 시 누가 완료했는지 uid를 기록 (truthy라 기존 로직과 호환)
   day.recDone = { ...day.recDone, [id]: checked ? currentUser.uid : false };
   setDayLocal(key, day);
@@ -2931,11 +2980,17 @@ async function addTodo() {
   else if (scheduleTime || scheduleLocation) toast('✅ 시간·장소와 함께 할 일을 추가했어요!');
 }
 
+// 배우자(타인)가 만든 일정인지 — 타인의 일정은 어떤 변경도 불가
+function isOthersTodo(item) {
+  return !!(item && item.by && currentUser && item.by !== currentUser.uid);
+}
+
 async function toggleTodo(id, checked) {
   const key = dateKey(selectedDate);
   const day = getDay(key);
   const t = day.todos.find(t => t.id === id);
   if (!t) return;
+  if (isOthersTodo(t)) { toast('배우자의 일정은 체크할 수 없어요.'); renderAll(); return; }
   setTodoDoneState(t, checked);
   if (checked) justCompletedId = id; // 완료 플래시용
   setDayLocal(key, day);
@@ -3182,6 +3237,128 @@ function closeExerciseModal() {
   document.getElementById('exerciseModal').classList.remove('open');
   exerciseKey = null;
 }
+// ── 공유 계정 금고 (부부 공용 아이디·비밀번호) ──
+let vaultShown = new Set(); // 비밀번호 보기 상태 (모달 닫으면 초기화)
+
+function getVaultEntries() { return (spaceData && spaceData.sharedLogins) || []; }
+
+async function saveVaultEntries(arr) {
+  if (!spaceData) return;
+  spaceData.sharedLogins = arr;
+  renderVaultList();
+  if (!spaceId) return;
+  try {
+    await db.collection('spaces').doc(spaceId).update({
+      sharedLogins: arr,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) { console.error('공유 계정 저장 실패:', e); toast('저장에 실패했어요.'); }
+}
+
+function copyTextToClipboard(text, msg) {
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => toast(msg)).catch(() => toast(fallback() ? msg : '복사에 실패했어요.'));
+  } else toast(fallback() ? msg : '복사에 실패했어요.');
+}
+function copyVaultField(id, field) {
+  const entry = getVaultEntries().find(e => e.id === id);
+  if (!entry) return;
+  copyTextToClipboard(entry[field] || '', field === 'password' ? '🔑 비밀번호를 복사했어요.' : '📋 아이디를 복사했어요.');
+}
+function toggleVaultPw(id) {
+  if (vaultShown.has(id)) vaultShown.delete(id); else vaultShown.add(id);
+  renderVaultList();
+}
+
+function renderVaultList() {
+  const box = document.getElementById('vaultList');
+  if (!box) return;
+  const entries = getVaultEntries();
+  box.innerHTML = entries.length ? entries.map(e => `
+    <div class="vault-row">
+      <div class="vault-service">
+        <span>${esc(e.service)}</span>
+        <span class="vault-actions">
+          <button onclick="editVaultEntry('${e.id}')" title="수정">✏️</button>
+          <button onclick="deleteVaultEntry('${e.id}')" title="삭제">✕</button>
+        </span>
+      </div>
+      <div class="vault-field">
+        <span class="vf-label">ID</span>
+        <span class="vf-value">${esc(e.username || '')}</span>
+        <button onclick="copyVaultField('${e.id}', 'username')">복사</button>
+      </div>
+      <div class="vault-field">
+        <span class="vf-label">PW</span>
+        <span class="vf-value">${vaultShown.has(e.id) ? esc(e.password || '') : '••••••••'}</span>
+        <button onclick="toggleVaultPw('${e.id}')">${vaultShown.has(e.id) ? '숨김' : '보기'}</button>
+        <button onclick="copyVaultField('${e.id}', 'password')">복사</button>
+      </div>
+    </div>`).join('') : '<div class="empty-msg" style="padding:14px 0 6px;">아직 기록한 계정이 없어요. 아래에서 추가해 보세요.</div>';
+  applyTwemoji(box);
+}
+
+function openVaultModal() {
+  if (!spaceData) { toast('데이터를 불러오는 중이에요.'); return; }
+  vaultShown = new Set();
+  renderVaultList();
+  document.getElementById('vaultModal').classList.add('open');
+}
+function closeVaultModal() {
+  vaultShown = new Set();
+  document.getElementById('vaultModal').classList.remove('open');
+}
+
+async function addVaultEntry() {
+  const service = document.getElementById('vaultService').value.trim();
+  const username = document.getElementById('vaultId').value.trim();
+  const password = document.getElementById('vaultPw').value;
+  if (!service) { toast('서비스명을 입력해 주세요.'); return; }
+  if (!username && !password) { toast('아이디 또는 비밀번호를 입력해 주세요.'); return; }
+  const arr = [...getVaultEntries(), {
+    id: 'v' + Date.now().toString(36),
+    service, username, password,
+    by: currentUser ? currentUser.uid : '',
+    updatedAt: Date.now()
+  }];
+  document.getElementById('vaultService').value = '';
+  document.getElementById('vaultId').value = '';
+  document.getElementById('vaultPw').value = '';
+  await saveVaultEntries(arr);
+  toast(`🔐 '${service}' 계정을 저장했어요!`);
+}
+
+async function editVaultEntry(id) {
+  const arr = getVaultEntries().map(e => ({ ...e }));
+  const entry = arr.find(e => e.id === id);
+  if (!entry) return;
+  const service = prompt('서비스명', entry.service);
+  if (service === null) return;
+  const username = prompt('아이디 / 이메일', entry.username || '');
+  if (username === null) return;
+  const password = prompt('비밀번호', entry.password || '');
+  if (password === null) return;
+  entry.service = service.trim() || entry.service;
+  entry.username = username.trim();
+  entry.password = password;
+  entry.updatedAt = Date.now();
+  await saveVaultEntries(arr);
+  toast('✏️ 수정했어요!');
+}
+
+async function deleteVaultEntry(id) {
+  const entry = getVaultEntries().find(e => e.id === id);
+  if (!entry || !confirm(`'${entry.service}' 계정 기록을 삭제할까요?`)) return;
+  await saveVaultEntries(getVaultEntries().filter(e => e.id !== id));
+  toast('🗑 삭제했어요.');
+}
+
 async function saveExerciseEntry() {
   if (!exerciseKey) return;
   const key = exerciseKey;
@@ -3553,8 +3730,9 @@ function renderUpcomingTodos() {
     if (owner) meta.push(owner.label);
     if (isPeriodTodo(todo)) meta.push(`기간 ${shortDateLabel(todo.startDate || sourceKey)}–${shortDateLabel(todo.endDate)}`);
     if (!meta.length) meta.push(esc(cat.name));
+    const upMine = !todo.by || !!(currentUser && todo.by === currentUser.uid);
     return `<div class="upcoming-todo" role="button" tabindex="0" onclick="openWeekAgendaDay('${sourceKey}')" aria-label="${escAttr(todo.text)} 일정 열기">
-      <input type="checkbox" aria-label="완료" onclick="event.stopPropagation()" onchange="completeUpcomingTodo('${sourceKey}', '${todo.id}', this.checked)">
+      <input type="checkbox" aria-label="완료" ${upMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onclick="event.stopPropagation()" onchange="completeUpcomingTodo('${sourceKey}', '${todo.id}', this.checked)">
       <span class="upcoming-todo-date">${month}/${day}<br>${DAYS_KO[dueDate.getDay()]}</span>
       <span class="upcoming-todo-main">
         <span class="upcoming-todo-title">${esc(todo.text)}</span>
@@ -3574,6 +3752,7 @@ async function completeUpcomingTodo(sourceKey, id, checked) {
   const day = getDay(sourceKey);
   const t = day.todos.find(todo => todo.id === id);
   if (!t) return;
+  if (isOthersTodo(t)) { toast('배우자의 일정은 체크할 수 없어요.'); renderAll(); return; }
   setTodoDoneState(t, checked);
   setDayLocal(sourceKey, day);
   renderAll();
@@ -3608,8 +3787,9 @@ function renderTodos(day) {
     const done = !!day.recDone[r.id];
     const cat = todoCategory(r);
     const borderStyle = sharedOwnerBorderStyle(r);
+    const rMine = !r.by || !!(currentUser && r.by === currentUser.uid);
     return `<div class="todo-item recurring ${done ? 'done' : ''}" style="${borderStyle}">
-      <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleRecurringDone('${r.id}', this.checked)">
+      <input type="checkbox" ${done ? 'checked' : ''} ${rMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleRecurringDone('${r.id}', this.checked)">
       <span class="todo-content"><span class="txt">${esc(r.text)}</span></span>
       <span class="todo-actions">
         <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
@@ -3645,7 +3825,7 @@ function renderTodos(day) {
         </span>` : '';
     return `<div class="todo-item ${mine ? 'swipeable' : ''} ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
       ${handle}
-      <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', this.checked)">
+      <input type="checkbox" ${t.done ? 'checked' : ''} ${mine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleTodo('${t.id}', this.checked)">
       <span class="todo-content"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
       <span class="todo-actions">
         ${badge}
