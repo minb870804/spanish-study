@@ -506,6 +506,16 @@
   .report-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
   .report-stat .num { font-size: 20px; font-weight: 900; color: var(--blue); }
   .report-stat .label { font-size: 11px; font-weight: 800; color: var(--muted); margin-top: 3px; }
+  .report-stat .sub { font-size: 10.5px; font-weight: 700; color: var(--muted); margin-top: 2px; opacity: 0.85; }
+  .report-lead {
+    font-size: 13.5px; line-height: 1.7; font-weight: 700; color: var(--text);
+    background: var(--blue-light); border-radius: 10px; padding: 12px 14px; margin-top: 12px;
+  }
+  .report-hl-list { display: grid; gap: 6px; }
+  .report-hl {
+    font-size: 13px; line-height: 1.6; font-weight: 700; color: var(--text);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 8px 11px;
+  }
   .report-meter { height: 9px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; margin: 8px 0 16px; }
   .report-meter span { display: block; height: 100%; background: var(--green); border-radius: inherit; }
   .report-section { margin-top: 16px; }
@@ -4829,6 +4839,43 @@ function buildMonthReport(baseDate) {
   const categoryRows = Object.values(categoryMap)
     .sort((a, b) => (b.done - a.done) || (b.planned - a.planned) || a.name.localeCompare(b.name));
 
+  // ── 운동한 날 + 내역 (하루 메모 '운동' 칸) ──
+  const exerciseItems = [];
+  for (let dd = 1; dd <= info.days; dd++) {
+    const key = dateKey(new Date(info.y, info.m, dd));
+    const exText = String((getDay(key).notes || {})[EXERCISE_CAT_ID] || '').trim();
+    if (exText) exerciseItems.push({ date: key, text: exText.split(/\n+/).map(cleanNoteLine).filter(Boolean).join(' · ') });
+  }
+  const exerciseDays = exerciseItems.length;
+
+  // ── 음주한 날 목록 + 이달 최장 금주 연속 ──
+  const todayK = dateKey(new Date());
+  const elapsedDays = todayK < info.firstKey ? 0 : (todayK > info.lastKey ? info.days : Number(todayK.split('-')[2]));
+  const drinkDates = [];
+  let soberRun = 0, longestSoberRun = 0;
+  for (let dd = 1; dd <= elapsedDays; dd++) {
+    const key = dateKey(new Date(info.y, info.m, dd));
+    if (isDrinkDay(key)) { drinkDates.push(key); soberRun = 0; }
+    else { soberRun += 1; longestSoberRun = Math.max(longestSoberRun, soberRun); }
+  }
+
+  // ── 이벤트: 이 달과 겹치는 기간 일정 ──
+  const eventSeen = new Set();
+  const events = [];
+  allDayKeys().forEach(k => {
+    getDay(k).todos.filter(isScheduleVisible).forEach(t => {
+      if (!isPeriodTodo(t) || eventSeen.has(t.id)) return;
+      if (t.startDate > info.lastKey || t.endDate < info.firstKey) return;
+      eventSeen.add(t.id);
+      const cat = todoCategory(t);
+      events.push({ text: t.text, startDate: t.startDate, endDate: t.endDate, catName: cat.name, catColor: cat.color, done: !!t.done });
+    });
+  });
+  events.sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+  // ── 미룬 비율: 뒤로 미룬 이동 건수 / 일반 계획 수 ──
+  const postponeRate = percent(postponed, moveDenominator);
+
   return {
     ...info,
     plannedCount: plannedItems.length,
@@ -4853,8 +4900,36 @@ function buildMonthReport(baseDate) {
     completedItems,
     remainingItems,
     noteItems,
-    sobriety
+    sobriety,
+    exerciseItems,
+    exerciseDays,
+    drinkDates,
+    longestSoberRun,
+    elapsedDays,
+    events,
+    postponeRate
   };
+}
+
+// 보고서 하이라이트: 이번 달에서 주목할 만한 점을 자동 요약
+function buildReportHighlights(report) {
+  const list = [];
+  if (report.bestDay && (report.bestDay.done || report.bestDay.notes)) {
+    list.push(`🏆 가장 생산적인 날 — ${report.m + 1}/${report.bestDay.day} (완료 ${report.bestDay.done}개, 메모 ${report.bestDay.notes}줄)`);
+  }
+  if (report.longestStreak >= 2) list.push(`🔥 연속 기록 흐름 최장 ${report.longestStreak}일`);
+  const topCat = report.categoryRows[0];
+  if (topCat && topCat.done > 0) list.push(`🏷 가장 많이 해낸 카테고리 — ${topCat.name} (${topCat.done}/${topCat.planned} 완료)`);
+  if (report.exerciseDays > 0) {
+    const perWeek = Math.round((report.exerciseDays / Math.max(1, report.elapsedDays || report.days)) * 7 * 10) / 10;
+    list.push(`💪 운동 ${report.exerciseDays}일 — 주 평균 약 ${perWeek}회`);
+  }
+  if (report.elapsedDays > 0 && report.longestSoberRun >= 3) list.push(`🌿 최장 금주 연속 ${report.longestSoberRun}일`);
+  if (report.plannedCount > 0 && report.postponed === 0) list.push('⏰ 미룬 일정 없이 진행 — 계획대로 착착!');
+  else if (report.postponed >= 3) list.push(`⏰ 뒤로 미룬 일정 ${report.postponed}건 — 다음 달엔 여유 있게 계획해 볼까요?`);
+  if (report.events.length) list.push(`📅 기간 이벤트 ${report.events.length}건 — ${report.events.slice(0, 2).map(e => e.text).join(', ')}${report.events.length > 2 ? ' 외' : ''}`);
+  if (report.achievementRate >= 80 && report.plannedCount >= 5) list.push(`✨ 달성률 ${report.achievementRate}% — 아주 훌륭한 한 달!`);
+  return list;
 }
 
 function reportRows(items, emptyText, limit = 8) {
@@ -4875,11 +4950,6 @@ function reportRows(items, emptyText, limit = 8) {
 }
 
 function renderMonthReport(report) {
-  const bestDayText = report.bestDay && (report.bestDay.done || report.bestDay.notes)
-    ? `${report.bestDay.day}일 · 완료 ${report.bestDay.done}개 · 메모 ${report.bestDay.notes}줄`
-    : '아직 뚜렷한 기록 없음';
-  const topCat = report.categoryRows[0];
-  const topCatText = topCat ? `${topCat.name} 완료 ${topCat.done}/${topCat.planned}` : '아직 카테고리 통계 없음';
   const moveText = report.moveEventCount
     ? `일정 변경 ${report.moveEventCount}건 · 미룸 ${report.postponed}건 · 앞당김 ${report.pulledForward}건${report.sameDayMoves ? ` · 동일일 ${report.sameDayMoves}건` : ''}`
     : '이번 달에 기록된 일정 변경이 없어요.';
@@ -4896,30 +4966,58 @@ function renderMonthReport(report) {
   const sobrietyDescription = report.sobriety.elapsed
     ? `${sobrietyScope} 중 음주 ${report.sobriety.drink}일 · 금주 ${report.sobriety.sober}일`
     : '아직 집계할 날짜가 시작되지 않았어요.';
+  const drinkDatesText = report.elapsedDays
+    ? (report.drinkDates.length ? `음주한 날: ${report.drinkDates.map(shortDateLabel).join(', ')}` : '이번 달 음주 기록이 없어요 🎉')
+    : '';
+
+  // 리드 문단: 한 달 총평 한 줄
+  const lead = `${report.label}에는 계획 ${report.plannedCount}개 중 ${report.completedCount}개를 완료했어요 (달성률 ${report.achievementRate}%).
+    운동 ${report.exerciseDays}일 · 금주 ${report.sobriety.sober}일을 기록했고, 계획 외 기록이 ${report.noteCount}줄 있어요.`;
+
+  const highlights = buildReportHighlights(report);
+  const highlightsHtml = highlights.length
+    ? `<div class="report-hl-list">${highlights.map(h => `<div class="report-hl">${esc(h)}</div>`).join('')}</div>`
+    : '<div class="report-muted">아직 하이라이트로 뽑을 기록이 부족해요. 기록이 쌓이면 자동으로 요약돼요.</div>';
+
+  const eventsHtml = report.events.map(e => `
+    <div class="report-row">
+      <span class="report-date">${shortDateLabel(e.startDate)}–${shortDateLabel(e.endDate)}</span>
+      <span class="report-text">${esc(e.text)}${e.done ? ' ✓' : ''} <span class="tcat-badge" style="background:${e.catColor}; cursor:default;">${esc(e.catName)}</span></span>
+    </div>`).join('');
+
+  const exerciseHtml = report.exerciseItems.length
+    ? `<div class="report-list">${report.exerciseItems.map(x => `
+        <div class="report-row"><span class="report-date">${shortDateLabel(x.date)}</span><span class="report-text">${esc(x.text)}</span></div>`).join('')}</div>`
+    : '<div class="report-muted">이번 달 운동 기록이 아직 없어요.</div>';
 
   return `
+    <div class="report-lead">${lead}</div>
     <div class="report-stats">
-      <div class="report-stat"><div class="num">${report.plannedCount}</div><div class="label">계획한 일</div></div>
-      <div class="report-stat"><div class="num">${report.completedCount}</div><div class="label">완료한 계획</div></div>
-      <div class="report-stat"><div class="num">${report.achievementRate}%</div><div class="label">계획 달성률</div></div>
-      <div class="report-stat"><div class="num">${report.moveRate}%</div><div class="label">일정 변경 비율</div></div>
-      <div class="report-stat"><div class="num">${report.noteCount}</div><div class="label">메모 기반 한 일</div></div>
-      <div class="report-stat"><div class="num">${report.activeDays}</div><div class="label">기록한 날</div></div>
-      <div class="report-stat"><div class="num">${report.sobriety.sober}</div><div class="label">금주 일수</div></div>
-      <div class="report-stat"><div class="num">${report.sobriety.soberRate}%</div><div class="label">금주율</div></div>
+      <div class="report-stat"><div class="num">${report.achievementRate}%</div><div class="label">계획 달성률</div><div class="sub">${report.completedCount}/${report.plannedCount} 완료</div></div>
+      <div class="report-stat"><div class="num">${report.postponeRate}%</div><div class="label">미룬 비율</div><div class="sub">뒤로 미룸 ${report.postponed}건</div></div>
+      <div class="report-stat"><div class="num">${report.sobriety.sober}일</div><div class="label">금주한 날</div><div class="sub">금주율 ${report.sobriety.soberRate}%</div></div>
+      <div class="report-stat"><div class="num">${report.exerciseDays}일</div><div class="label">운동한 날</div><div class="sub">${report.exerciseDays ? `주 평균 ${Math.round((report.exerciseDays / Math.max(1, report.elapsedDays || report.days)) * 70) / 10}회` : '기록 없음'}</div></div>
     </div>
     <div class="report-meter"><span style="width:${Math.min(100, report.achievementRate)}%;"></span></div>
 
     <div class="report-section">
-      <h3>이번 달 요약</h3>
-      <div class="report-muted">
-        ${report.label}에는 계획 ${report.plannedCount}개 중 ${report.completedCount}개를 완료했고, 계획에 없던 일/메모를 ${report.noteCount}줄 기록했어요.
-        남은 계획은 ${report.remainingCount}개입니다.
-      </div>
+      <h3>✨ 주목할 만한 점</h3>
+      ${highlightsHtml}
+    </div>
+
+    ${report.events.length ? `
+    <div class="report-section">
+      <h3>📅 이벤트 · 기간 일정</h3>
+      <div class="report-list">${eventsHtml}</div>
+    </div>` : ''}
+
+    <div class="report-section">
+      <h3>💪 운동 내역 (${report.exerciseDays}일)</h3>
+      ${exerciseHtml}
     </div>
 
     <div class="report-section">
-      <h3>금주 현황</h3>
+      <h3>🍺 음주 · 금주</h3>
       <div class="report-sobriety">
         <span class="report-sobriety-icon">🌿</span>
         <div class="report-sobriety-copy">
@@ -4928,27 +5026,27 @@ function renderMonthReport(report) {
         </div>
         <span class="report-sobriety-rate">${report.sobriety.soberRate}%</span>
       </div>
+      ${drinkDatesText ? `<div class="report-muted" style="margin-top:7px;">${drinkDatesText}${report.longestSoberRun ? ` · 최장 금주 연속 ${report.longestSoberRun}일` : ''}</div>` : ''}
     </div>
 
     <div class="report-section">
-      <h3>완료한 계획</h3>
+      <h3>✅ 완료한 계획 (${report.completedCount})</h3>
       ${reportRows(report.completedItems, '완료된 계획이 아직 없어요.')}
     </div>
 
     <div class="report-section">
-      <h3>계획하지 않았지만 기록한 일</h3>
+      <h3>🗒 계획 외 기록 (${report.noteCount})</h3>
       ${reportRows(report.noteItems, '하루 메모에 기록된 추가 한 일이 아직 없어요.')}
     </div>
 
     <div class="report-section">
-      <h3>일정 변경</h3>
-      <div class="report-muted">${moveText} 일반 할 일 기준 변경 비율은 ${report.moveRate}%입니다.</div>
+      <h3>🔁 일정 변경</h3>
+      <div class="report-muted">${moveText} 미룬 비율 ${report.postponeRate}% · 전체 변경 비율 ${report.moveRate}%.</div>
     </div>
 
     <div class="report-section">
-      <h3>추가 통계</h3>
-      <div class="report-muted">가장 많이 완료한 카테고리: ${esc(topCatText)} · 가장 생산적인 날: ${esc(bestDayText)} · 최장 기록 흐름: ${report.longestStreak}일</div>
-      <div class="report-list" style="margin-top:8px;">${catRows}</div>
+      <h3>🏷 카테고리 통계</h3>
+      <div class="report-list">${catRows}</div>
     </div>
   `;
 }
@@ -4957,20 +5055,37 @@ function buildMonthReportText(report) {
   const lines = [
     `${report.label} 월 리포트`,
     ``,
-    `계획 달성률: ${report.achievementRate}% (${report.completedCount}/${report.plannedCount})`,
-    `일정 변경 비율: ${report.moveRate}% (${report.movedTodoCount}/${report.moveDenominator || 0})`,
-    `계획하지 않았지만 기록한 일: ${report.noteCount}개`,
-    `기록한 날: ${report.activeDays}일 / 최장 기록 흐름: ${report.longestStreak}일`,
-    `금주 현황: 금주 ${report.sobriety.sober}일 / 음주 ${report.sobriety.drink}일 / 금주율 ${report.sobriety.soberRate}%`,
-    ``,
-    `완료한 계획`
+    `■ 핵심 지표`,
+    `- 계획 달성률: ${report.achievementRate}% (${report.completedCount}/${report.plannedCount})`,
+    `- 미룬 비율: ${report.postponeRate}% (뒤로 미룸 ${report.postponed}건)`,
+    `- 금주한 날: ${report.sobriety.sober}일 / 음주 ${report.sobriety.drink}일 (금주율 ${report.sobriety.soberRate}%)`,
+    `- 운동한 날: ${report.exerciseDays}일`,
+    `- 기록한 날: ${report.activeDays}일 / 최장 기록 흐름: ${report.longestStreak}일`
   ];
+  const highlights = buildReportHighlights(report);
+  if (highlights.length) {
+    lines.push('', '■ 주목할 만한 점');
+    highlights.forEach(h => lines.push(`- ${h}`));
+  }
+  if (report.events.length) {
+    lines.push('', '■ 이벤트·기간 일정');
+    report.events.forEach(e => lines.push(`- ${shortDateLabel(e.startDate)}~${shortDateLabel(e.endDate)} ${e.text}${e.done ? ' (완료)' : ''}`));
+  }
+  lines.push('', `■ 운동 내역 (${report.exerciseDays}일)`);
+  report.exerciseItems.slice(0, 15).forEach(x => lines.push(`- ${shortDateLabel(x.date)} ${x.text}`));
+  if (!report.exerciseItems.length) lines.push('- 없음');
+  if (report.elapsedDays) {
+    lines.push('', `■ 음주·금주`);
+    lines.push(report.drinkDates.length ? `- 음주한 날: ${report.drinkDates.map(shortDateLabel).join(', ')}` : '- 음주 기록 없음 🎉');
+    if (report.longestSoberRun) lines.push(`- 최장 금주 연속 ${report.longestSoberRun}일`);
+  }
+  lines.push('', `■ 완료한 계획 (${report.completedCount})`);
   report.completedItems.slice(0, 12).forEach(item => lines.push(`- ${shortDateLabel(item.date)} ${item.text}`));
   if (!report.completedItems.length) lines.push('- 없음');
-  lines.push('', '계획하지 않았지만 기록한 일');
+  lines.push('', `■ 계획 외 기록 (${report.noteCount})`);
   report.noteItems.slice(0, 12).forEach(item => lines.push(`- ${shortDateLabel(item.date)} ${item.text}`));
   if (!report.noteItems.length) lines.push('- 없음');
-  lines.push('', `일정 변경: ${report.moveEventCount}건 (미룸 ${report.postponed}, 앞당김 ${report.pulledForward})`);
+  lines.push('', `■ 일정 변경: ${report.moveEventCount}건 (미룸 ${report.postponed}, 앞당김 ${report.pulledForward})`);
   return lines.join('\n');
 }
 
