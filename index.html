@@ -467,14 +467,6 @@
   .search-hit-kind { font-size: 10.5px; font-weight: 800; color: var(--muted); white-space: nowrap; }
 
   /* ── 공유 계정 금고 ── */
-  .vault-open-btn {
-    width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
-    background: var(--purple-light); border: 1.5px solid var(--purple); border-radius: 12px;
-    padding: 11px 14px; margin-bottom: 12px; cursor: pointer; font-family: inherit;
-    color: var(--purple); font-size: 13.5px; font-weight: 900; text-align: left; transition: var(--transition);
-  }
-  .vault-open-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
-  .vault-open-sub { font-size: 11px; font-weight: 700; color: var(--muted); }
   .vault-list { display: grid; gap: 8px; margin-top: 12px; max-height: 44vh; overflow-y: auto; }
   .vault-row { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
   .vault-service { font-size: 13.5px; font-weight: 900; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
@@ -1161,10 +1153,10 @@
       </div>
 
       <div class="card share-card">
-        <div class="card-title"><span>👥 함께 쓰는 사람</span></div>
-        <button type="button" class="vault-open-btn" onclick="openVaultModal()">
-          🔐 공유 계정 관리 <span class="vault-open-sub">넷플릭스 · 디즈니+ · 쿠팡 등 아이디/비밀번호</span>
-        </button>
+        <div class="card-title">
+          <span>👥 함께 쓰는 사람</span>
+          <button class="small-btn" onclick="openVaultModal()" title="넷플릭스·쿠팡 등 공유 아이디/비밀번호">🔐 공유 계정</button>
+        </div>
         <div class="member-chips" id="memberChips"></div>
         <div class="share-desc">
           <strong>초대 코드</strong>로 부부 공간을 연결하면, 각자 <strong>배우자와 공유</strong>를 선택한 일정과 교환일기만 함께 보여요. 개인 일정·메모·카테고리는 서로 분리됩니다.
