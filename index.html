@@ -820,6 +820,7 @@
     box-shadow: 0 10px 24px rgba(24,34,53,0.18); font-family: inherit;
   }
   .google-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+  .google-btn:disabled { opacity: 0.72; cursor: wait; transform: none; filter: none; }
 
   /* ── TOAST ── */
   #toast {
@@ -984,9 +985,9 @@
     <p style="font-size: 13.5px; color: var(--muted); margin-bottom: 28px; line-height: 1.6;">
       할 일·일기·스터디 기록을 어디서나 동기화하고,<br>소중한 사람과 공유하려면 구글 로그인이 필요해요.
     </p>
-    <button onclick="loginWithGoogle()" class="google-btn">
+    <button onclick="loginWithGoogle()" class="google-btn" id="loginBtn">
       <svg style="width:18px; height:18px; fill:currentColor" viewBox="0 0 24 24"><path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.513 0-6.386-2.87-6.386-6.385s2.87-6.386 6.386-6.386c1.61 0 3.076.61 4.2 1.61l3.053-3.053C19.16 2.457 15.903 1 12.24 1c-6.077 0-11 4.923-11 11s4.923 11 11 11c5.962 0 10.884-4.854 10.884-11 0-.693-.077-1.37-.216-2.03H12.24z"/></svg>
-      Google 계정으로 시작하기
+      <span id="loginBtnText">Google 계정으로 시작하기</span>
     </button>
   </div>
 </div>
@@ -1502,8 +1503,57 @@ const SILENT_AUTH_CODES = new Set([
   'auth/web-storage-unsupported'
 ]);
 
+let signedInInitUid = '';
+let signedInInitPromise = null;
+
+function setLoginBusy(busy, text = '로그인 확인 중…') {
+  const btn = document.getElementById('loginBtn');
+  const label = document.getElementById('loginBtnText');
+  if (!btn || !label) return;
+  btn.disabled = !!busy;
+  label.textContent = busy ? text : 'Google 계정으로 시작하기';
+}
+
+function shouldUseRedirectLogin() {
+  const ua = navigator.userAgent || '';
+  const isTouchMac = /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || isTouchMac;
+  const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+  return isMobile || isStandalone;
+}
+
+async function finishSignedInUser(user) {
+  if (!user) return;
+  currentUser = user;
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('userProfile').style.display = 'flex';
+  document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
+  setLoginBusy(false);
+
+  if (signedInInitUid === user.uid && signedInInitPromise) return signedInInitPromise;
+  signedInInitUid = user.uid;
+  signedInInitPromise = (async () => {
+    try {
+      await ensureSpace();
+      try {
+        await syncPushSubscriptionIfAllowed();
+      } catch (e) {
+        console.warn('알림 구독 동기화 실패:', e);
+      }
+      updatePushStatus();
+    } catch (e) {
+      console.error('로그인 후 데이터 초기화 실패:', e);
+      toast('로그인은 됐지만 데이터를 불러오지 못했어요. 새로고침해 주세요.');
+      updatePushStatus();
+    }
+  })();
+  return signedInInitPromise;
+}
+
 // 리다이렉트 로그인 복귀 시 에러 표면화 (정상 로그인은 onAuthStateChanged가 처리)
-auth.getRedirectResult().catch(e => {
+auth.getRedirectResult().then(result => {
+  if (result && result.user) finishSignedInUser(result.user);
+}).catch(e => {
   if (e && e.code && !SILENT_AUTH_CODES.has(e.code)) {
     console.error('리다이렉트 로그인 에러:', e);
     alert('구글 로그인 중 문제가 발생했습니다.\n코드: ' + e.code + '\n메시지: ' + e.message);
@@ -1514,20 +1564,13 @@ auth.getRedirectResult().catch(e => {
 
 auth.onAuthStateChanged(async (user) => {
   if (user) {
-    currentUser = user;
-    document.getElementById('loginOverlay').style.display = 'none';
-    document.getElementById('userProfile').style.display = 'flex';
-    document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
-    await ensureSpace();
-    try {
-      await syncPushSubscriptionIfAllowed();
-    } catch (e) {
-      console.warn('알림 구독 동기화 실패:', e);
-    }
-    updatePushStatus();
+    await finishSignedInUser(user);
   } else {
     currentUser = null;
     userData = null;
+    signedInInitUid = '';
+    signedInInitPromise = null;
+    setLoginBusy(false);
     document.getElementById('loginOverlay').style.display = 'flex';
     document.getElementById('userProfile').style.display = 'none';
     if (unsubSpace) { unsubSpace(); unsubSpace = null; }
@@ -1537,6 +1580,12 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 async function loginWithGoogle() {
+  setLoginBusy(true, 'Google 로그인 중…');
+  try {
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  } catch (e) {
+    console.warn('로그인 유지 설정 실패:', e);
+  }
   // iOS/Android 앱(Capacitor)에서는 네이티브 구글 로그인을 사용한다
   // (웹뷰에서는 구글이 OAuth 팝업을 차단하기 때문)
   const cap = window.Capacitor;
@@ -1547,22 +1596,31 @@ async function loginWithGoogle() {
       const accessToken = result.credential && result.credential.accessToken;
       if (!idToken) throw new Error('네이티브 로그인에서 토큰을 받지 못했습니다.');
       const credential = firebase.auth.GoogleAuthProvider.credential(idToken, accessToken || null);
-      await auth.signInWithCredential(credential);
+      const userCred = await auth.signInWithCredential(credential);
+      await finishSignedInUser(userCred.user || auth.currentUser);
     } catch (e) {
+      setLoginBusy(false);
       console.error('네이티브 로그인 에러:', e);
       alert('구글 로그인 중 문제가 발생했습니다.\n' + (e.message || e));
     }
     return;
   }
   const provider = new firebase.auth.GoogleAuthProvider();
-  // 팝업 우선 (iOS 홈 화면 앱에서도 팝업이 리다이렉트보다 안정적)
+  if (shouldUseRedirectLogin()) {
+    setLoginBusy(true, 'Google 로그인으로 이동 중…');
+    try { await auth.signInWithRedirect(provider); return; } catch (e) { setLoginBusy(false); }
+  }
+  // 데스크톱 웹은 팝업 우선, 팝업 차단 환경에서는 리다이렉트로 전환한다
   try {
-    await auth.signInWithPopup(provider);
+    const userCred = await auth.signInWithPopup(provider);
+    await finishSignedInUser(userCred.user || auth.currentUser);
   } catch (e) {
     // 팝업이 차단되면 리다이렉트로 자동 전환
-    if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment' || e.code === 'auth/cancelled-popup-request') {
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') {
+      setLoginBusy(true, 'Google 로그인으로 이동 중…');
       try { await auth.signInWithRedirect(provider); return; } catch (e2) { e = e2; }
     }
+    setLoginBusy(false);
     if (e.code === 'auth/cancelled-popup-request' || e.code === 'auth/popup-closed-by-user') return; // 사용자가 닫음 — 조용히 무시
     if (SILENT_AUTH_CODES.has(e.code)) {
       console.warn('로그인(환경 제약):', e.code);
