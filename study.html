@@ -224,6 +224,33 @@
   .phrase-of-day .ko { font-size: 15px; opacity: .9; margin-bottom: 6px; font-weight: 500; }
   .phrase-of-day .pron { font-size: 13px; font-style: italic; opacity: .7; }
 
+  .practice-card {
+    border-left: 5px solid var(--green);
+  }
+  .practice-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .practice-date { font-size: 11px; font-weight: 900; color: var(--green); background: var(--green-light); border-radius: 999px; padding: 4px 9px; white-space: nowrap; }
+  .practice-ko { font-size: 17px; font-weight: 900; color: var(--text); margin-bottom: 6px; line-height: 1.45; }
+  .practice-hint { font-size: 12px; color: var(--muted); font-weight: 700; }
+  .practice-answer {
+    width: 100%; min-height: 72px; resize: vertical; margin: 14px 0 10px;
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px;
+    background: rgba(255,255,255,0.64); color: var(--text); font-family: inherit; font-size: 14px; line-height: 1.6;
+    outline: none; transition: var(--transition);
+  }
+  body.dark .practice-answer { background: rgba(255,255,255,0.06); }
+  .practice-answer:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(59,134,105,0.14); }
+  .practice-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .practice-actions .left, .practice-actions .right { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .practice-solution { display: none; margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--green-light); color: var(--green); font-size: 13px; font-weight: 800; line-height: 1.6; }
+  .practice-solution.show { display: block; }
+  .practice-status { font-size: 11.5px; color: var(--muted); font-weight: 800; }
+  .vocab-summary {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px;
+  }
+  .vocab-summary .box { background: var(--red-light); border-radius: 12px; padding: 10px 12px; border: 1px solid rgba(199,83,72,0.14); }
+  .vocab-summary .label { font-size: 10.5px; color: var(--muted); font-weight: 900; margin-bottom: 2px; }
+  .vocab-summary .value { font-size: 15px; color: var(--text); font-weight: 900; }
+
   /* TTS Button styling */
   .speak-btn {
     background: rgba(255, 255, 255, 0.12);
@@ -621,6 +648,9 @@
     .hero-stat { padding: 8px 10px; min-width: 72px; }
     .hero-stat .val { font-size: 20px; }
     .grid-2 { gap: 12px; margin-bottom: 12px; }
+    .practice-head { display: grid; gap: 8px; }
+    .practice-date { justify-self: start; }
+    .vocab-summary { grid-template-columns: 1fr; }
     .section-title { font-size: 16px; margin-bottom: 12px; }
     .week-header { margin: 18px 0 10px; padding: 10px 14px; border-radius: 10px; }
     .dia-card-header { padding: 12px 14px; gap: 10px; }
@@ -727,6 +757,30 @@
       </div>
       <button onclick="nextPhrase()" style="margin-top:16px; align-self: flex-start; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); color:white; padding:8px 16px; border-radius:14px; cursor:pointer; font-size:12px; font-weight:700; transition: var(--transition);">다음 표현 →</button>
     </div>
+  </div>
+
+  <div class="card practice-card">
+    <div class="practice-head">
+      <div>
+        <div class="card-title-left" style="font-weight:900;margin-bottom:8px;">✍️ 오늘의 문장 연습</div>
+        <div class="practice-ko" id="practiceKo"></div>
+        <div class="practice-hint" id="practiceHint"></div>
+      </div>
+      <div class="practice-date" id="practiceDateChip"></div>
+    </div>
+    <textarea id="practiceAnswer" class="practice-answer" placeholder="스페인어로 직접 써보세요." oninput="savePracticeDraft()"></textarea>
+    <div class="practice-actions">
+      <div class="left">
+        <button class="filter-btn" onclick="revealPracticeAnswer()">정답 보기</button>
+        <button class="filter-btn" onclick="speakPracticeAnswer()">🔊 듣기</button>
+      </div>
+      <div class="right">
+        <span class="practice-status" id="practiceStatus"></span>
+        <button class="filter-btn" onclick="savePractice(false)">저장</button>
+        <button class="filter-btn active" onclick="savePractice(true)">완료 체크</button>
+      </div>
+    </div>
+    <div class="practice-solution" id="practiceSolution"></div>
   </div>
 
   <div class="card">
@@ -839,12 +893,18 @@
     <div class="card-title">
       <div class="card-title-left">📋 단어 목록</div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <div class="vocab-summary" id="vocabSummary"></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
       <input type="text" class="search-input" placeholder="🔍 단어 검색..." oninput="filterVocab(this.value)">
       <button class="filter-btn active" onclick="filterByDia('all',this)">전체</button>
       <button class="filter-btn" onclick="filterByDia('1',this)">Día 01~05</button>
       <button class="filter-btn" onclick="filterByDia('2',this)">Día 06~10</button>
       <button class="filter-btn" onclick="filterByDia('3',this)">Día 11~16</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+      <button class="filter-btn active" id="review-all" onclick="filterByReview('all',this)">전체 상태</button>
+      <button class="filter-btn" id="review-needed" onclick="filterByReview('needed',this)">복습 필요</button>
+      <button class="filter-btn" id="review-done" onclick="filterByReview('done',this)">암기 완료</button>
     </div>
     <table class="vocab-table">
       <thead><tr><th>스페인어</th><th>발음</th><th>뜻</th><th>Día</th><th>암기/삭제</th></tr></thead>
@@ -1335,7 +1395,8 @@ async function loadDataFromFirestore(uid) {
         words: data.words || {},
         studiedDates: data.studiedDates || [],
         customVocab: data.customVocab || [],
-        dailyTasks: data.dailyTasks || {}
+        dailyTasks: data.dailyTasks || {},
+        practiceLog: data.practiceLog || {}
       };
       saveState(state);
     } else {
@@ -1347,6 +1408,7 @@ async function loadDataFromFirestore(uid) {
         studiedDates: localState.studiedDates || [],
         customVocab: localState.customVocab || [],
         dailyTasks: localState.dailyTasks || {},
+        practiceLog: localState.practiceLog || {},
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
     }
@@ -1369,6 +1431,7 @@ async function syncToFirestore() {
       studiedDates: s.studiedDates || [],
       customVocab: s.customVocab || [],
       dailyTasks: s.dailyTasks || {},
+      practiceLog: s.practiceLog || {},
       stats: computeStats(s), // Minb 대시보드 표시용 요약
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
@@ -1679,6 +1742,19 @@ const VOCAB = [
   {es:'mira',pron:'미라',ko:'봐라 (tú 명령)',ex:'¡Mira esto!',d:'3',dia:16}
 ];
 
+const PRACTICE_SENTENCES = [
+  { ko:'나는 오늘 스페인어를 공부해요.', es:'Hoy estudio español.', hint:'hoy + estudiar' },
+  { ko:'나는 커피를 좋아해요.', es:'Me gusta el café.', hint:'gustar 구문' },
+  { ko:'나는 집에 있어요.', es:'Estoy en casa.', hint:'estar + 장소' },
+  { ko:'나는 한국 사람이에요.', es:'Soy coreano.', hint:'ser + 국적' },
+  { ko:'화장실이 어디에 있나요?', es:'¿Dónde está el baño?', hint:'dónde + estar' },
+  { ko:'나는 배가 고파요.', es:'Tengo hambre.', hint:'tener + hambre' },
+  { ko:'내일 봐요.', es:'Hasta mañana.', hint:'hasta + 시간' },
+  { ko:'나는 스페인어를 조금 말해요.', es:'Hablo español un poco.', hint:'hablar 현재형' },
+  { ko:'같이 공부하러 가자!', es:'¡Vamos a estudiar juntos!', hint:'ir a + 동사원형' },
+  { ko:'천천히 말해 주세요.', es:'Más despacio, por favor.', hint:'요청 표현' }
+];
+
 const PHRASES = [
   {es:'Buenos días',ko:'좋은 아침이에요',pron:'[ 부에노스 디아스 ]'},
   {es:'¿Cómo estás?',ko:'어때요?',pron:'[ 꼬모 에스따스 ]'},
@@ -1907,6 +1983,37 @@ function getMergedVocab() {
   return [...VOCAB, ...(s.customVocab || [])];
 }
 
+let vocabSearchQuery = '';
+let vocabDiaFilter = 'all';
+let vocabReviewFilter = 'all';
+
+function renderVocabSummary() {
+  const el = document.getElementById('vocabSummary');
+  if (!el) return;
+  const s = getState();
+  const all = getMergedVocab();
+  const done = all.filter(v => s.words[v.es]).length;
+  const needed = Math.max(0, all.length - done);
+  const pct = all.length ? Math.round(done / all.length * 100) : 0;
+  el.innerHTML = [
+    { label:'암기 완료', value: done + '개' },
+    { label:'복습 필요', value: needed + '개' },
+    { label:'암기율', value: pct + '%' }
+  ].map(item => '<div class="box"><div class="label">' + item.label + '</div><div class="value">' + item.value + '</div></div>').join('');
+}
+
+function applyVocabFilters() {
+  const s = getState();
+  const q = vocabSearchQuery.trim().toLowerCase();
+  let list = getMergedVocab();
+  if (q) list = list.filter(v => v.es.toLowerCase().includes(q) || v.ko.toLowerCase().includes(q) || v.pron.toLowerCase().includes(q));
+  if (vocabDiaFilter !== 'all') list = list.filter(v => v.d === vocabDiaFilter);
+  if (vocabReviewFilter === 'needed') list = list.filter(v => !s.words[v.es]);
+  if (vocabReviewFilter === 'done') list = list.filter(v => !!s.words[v.es]);
+  renderVocabSummary();
+  renderVocabList(list);
+}
+
 // 플래시카드 상태
 let currentVocab = [];
 let cardIdx = 0;
@@ -1989,18 +2096,26 @@ async function toggleWord(word, checked) {
   saveState(s);
   await syncToFirestore(); // DB 백업
   updateAllStats();
+  applyVocabFilters();
 }
 
-function filterVocab(q) { 
-  const allList = getMergedVocab();
-  renderVocabList(allList.filter(v=>v.es.includes(q)||v.ko.includes(q)||v.pron.includes(q))); 
+function filterVocab(q) {
+  vocabSearchQuery = q || '';
+  applyVocabFilters();
 }
 
 function filterByDia(d, btn) {
-  document.querySelectorAll('#tab-vocab .card:last-child .filter-btn').forEach(b=>b.classList.remove('active'));
+  vocabDiaFilter = d;
+  btn.parentElement.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  const allList = getMergedVocab();
-  renderVocabList(d==='all'?allList:allList.filter(v=>v.d===d));
+  applyVocabFilters();
+}
+
+function filterByReview(mode, btn) {
+  vocabReviewFilter = mode;
+  btn.parentElement.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyVocabFilters();
 }
 
 // ══════════════════════════════════════
@@ -2078,12 +2193,8 @@ async function deleteCustomWord(wordEs) {
 }
 
 function refreshVocabData() {
-  const s = getState();
   const allVocab = getMergedVocab();
-  
-  const activeFilterBtn = document.querySelector('#tab-vocab .card:last-child .filter-btn.active');
-  const dVal = activeFilterBtn ? activeFilterBtn.textContent.includes('01~05') ? '1' : activeFilterBtn.textContent.includes('06~10') ? '2' : activeFilterBtn.textContent.includes('11~16') ? '3' : 'all' : 'all';
-  renderVocabList(dVal==='all'?allVocab:allVocab.filter(v=>v.d===dVal));
+  applyVocabFilters();
   
   const flashFilterBtn = document.querySelector('#tab-vocab .card:first-child .filter-btn.active');
   const fVal = flashFilterBtn ? flashFilterBtn.textContent.includes('01~05') ? '1' : flashFilterBtn.textContent.includes('06~10') ? '2' : flashFilterBtn.textContent.includes('11~16') ? '3' : 'all' : 'all';
@@ -2436,7 +2547,7 @@ async function resetAllData() {
     if (currentUser) {
       try {
         await db.collection('users').doc(currentUser.uid).update({
-          tasks: {}, words: {}, studiedDates: [], customVocab: [], dailyTasks: {},
+          tasks: {}, words: {}, studiedDates: [], customVocab: [], dailyTasks: {}, practiceLog: {},
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       } catch (e) { console.error('DB 초기화 실패:', e); }
@@ -2549,6 +2660,63 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ══════════════════════════════════════
+// DAILY PRACTICE
+// ══════════════════════════════════════
+function dailyPracticeFor(dateKey) {
+  const seed = dateKey.replace(/-/g, '').split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  return PRACTICE_SENTENCES[seed % PRACTICE_SENTENCES.length];
+}
+function renderDailyPractice() {
+  const item = dailyPracticeFor(todayStr());
+  const s = getState();
+  const log = (s.practiceLog || {})[todayStr()] || {};
+  const days = ['일','월','화','수','목','금','토'];
+  const now = new Date();
+  document.getElementById('practiceDateChip').textContent = (now.getMonth()+1) + '/' + now.getDate() + ' (' + days[now.getDay()] + ')';
+  document.getElementById('practiceKo').textContent = item.ko;
+  document.getElementById('practiceHint').textContent = '힌트: ' + item.hint;
+  document.getElementById('practiceAnswer').value = log.answer || '';
+  document.getElementById('practiceSolution').textContent = item.es;
+  document.getElementById('practiceSolution').classList.remove('show');
+  document.getElementById('practiceStatus').textContent = log.done ? '오늘 문장 완료' : (log.answer ? '임시 저장됨' : '아직 작성 전');
+}
+function savePracticeDraft() {
+  const s = getState();
+  if (!s.practiceLog) s.practiceLog = {};
+  const key = todayStr();
+  const prev = s.practiceLog[key] || {};
+  const item = dailyPracticeFor(key);
+  s.practiceLog[key] = { ...prev, answer: document.getElementById('practiceAnswer').value, es: item.es, ko: item.ko, updatedAt: Date.now() };
+  saveState(s);
+  document.getElementById('practiceStatus').textContent = '임시 저장됨';
+}
+async function savePractice(done) {
+  const s = getState();
+  if (!s.practiceLog) s.practiceLog = {};
+  const key = todayStr();
+  const item = dailyPracticeFor(key);
+  s.practiceLog[key] = { answer: document.getElementById('practiceAnswer').value.trim(), done: !!done, es: item.es, ko: item.ko, updatedAt: Date.now() };
+  if (done && !s.studiedDates.includes(key)) s.studiedDates.push(key);
+  if (done) {
+    if (!s.dailyTasks) s.dailyTasks = {};
+    const taskCount = Object.keys(s.tasks || {}).filter(k => s.tasks[k]).length;
+    s.dailyTasks[key] = Math.max(s.dailyTasks[key] || 0, taskCount + 1);
+  }
+  saveState(s);
+  await syncToFirestore();
+  document.getElementById('practiceStatus').textContent = done ? '오늘 문장 완료' : '저장됨';
+  updateAllStats();
+  updateHomeToday();
+  if (document.getElementById('tab-progress').classList.contains('active')) { renderCal(getState().studiedDates); renderChart(); renderLog(getState().studiedDates); }
+}
+function revealPracticeAnswer() {
+  document.getElementById('practiceSolution').classList.add('show');
+}
+function speakPracticeAnswer() {
+  speakSpanish(dailyPracticeFor(todayStr()).es);
+}
+
+// ══════════════════════════════════════
 // PHRASES
 // ══════════════════════════════════════
 let phraseIdx = 0;
@@ -2579,7 +2747,8 @@ function initUI() {
   renderCard();
   
   renderAlphabet();
-  renderVocabList(currentVocab);
+  applyVocabFilters();
+  renderDailyPractice();
   updateAllStats();
   updateHomeToday();
 }
@@ -2598,9 +2767,10 @@ function init() {
 // 기존 로컬스토리지 1차 가동
 function getState() {
   const d = localStorage.getItem('sp_v2');
-  const state = d ? JSON.parse(d) : {tasks:{}, words:{}, studiedDates:[], customVocab:[], dailyTasks:{}};
+  const state = d ? JSON.parse(d) : {tasks:{}, words:{}, studiedDates:[], customVocab:[], dailyTasks:{}, practiceLog:{}};
   if (!state.customVocab) state.customVocab = [];
   if (!state.dailyTasks) state.dailyTasks = {};
+  if (!state.practiceLog) state.practiceLog = {};
   return state;
 }
 function saveState(s) { localStorage.setItem('sp_v2', JSON.stringify(s)); }

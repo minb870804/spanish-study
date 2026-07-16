@@ -185,6 +185,28 @@
   .mood-btn:hover { transform: scale(1.12); }
   .mood-btn.active { border-color: var(--purple); background: var(--purple-light); box-shadow: 0 2px 8px rgba(107,90,166,0.2); }
 
+  .prompt-card {
+    background: linear-gradient(135deg, var(--purple-light), rgba(255,255,255,0.58));
+    border: 1px solid rgba(107,90,166,0.18); border-radius: 12px;
+    padding: 14px; margin-bottom: 14px;
+    display: grid; gap: 12px;
+  }
+  body.dark .prompt-card { background: rgba(179,157,219,0.12); border-color: rgba(179,157,219,0.2); }
+  .prompt-label { font-size: 11px; font-weight: 900; letter-spacing: .8px; color: var(--purple); text-transform: uppercase; margin-bottom: 5px; }
+  .prompt-text { font-size: 14px; font-weight: 800; line-height: 1.55; color: var(--text); }
+  .prompt-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .prompt-actions .ghost-btn { padding: 7px 11px; font-size: 12px; }
+
+  .feeling-row { display: flex; gap: 7px; margin: -4px 0 14px; flex-wrap: wrap; }
+  .feeling-btn {
+    background: rgba(255,255,255,0.58); border: 1.5px solid var(--border); border-radius: 999px;
+    padding: 7px 10px; color: var(--text); font-size: 12px; font-weight: 800; cursor: pointer;
+    font-family: inherit; transition: var(--transition);
+  }
+  body.dark .feeling-btn { background: rgba(255,255,255,0.06); }
+  .feeling-btn:hover { border-color: var(--purple); color: var(--purple); transform: translateY(-1px); }
+  .feeling-btn.active { background: var(--purple); border-color: var(--purple); color: white; box-shadow: 0 4px 12px rgba(107,90,166,0.22); }
+
   .diary-area {
     width: 100%; min-height: 320px; background: rgba(255,255,255,0.64);
     border: 1.5px solid var(--border); border-radius: 12px; padding: 16px;
@@ -241,6 +263,21 @@
   .entry-date { font-size: 13px; font-weight: 800; }
   .entry-mood { font-size: 16px; }
   .entry-preview { font-size: 12.5px; color: var(--muted); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-all; }
+  .entry-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+  .entry-tag {
+    background: var(--purple-light); color: var(--purple); border-radius: 999px;
+    padding: 2px 7px; font-size: 10.5px; font-weight: 900;
+  }
+  .diary-insight {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px;
+  }
+  .insight-pill {
+    background: var(--surface); border: 1px solid rgba(221,229,217,0.86); border-radius: 12px;
+    padding: 12px 14px; box-shadow: var(--shadow); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  body.dark .insight-pill { border-color: rgba(255,255,255,0.08); }
+  .insight-pill .label { font-size: 10.5px; font-weight: 900; color: var(--muted); margin-bottom: 3px; }
+  .insight-pill .value { font-size: 14px; font-weight: 900; color: var(--text); }
   .empty-msg { color: var(--muted); font-size: 13px; text-align: center; padding: 30px 0; line-height: 1.7; }
 
   /* ── 로그인 오버레이 (메인과 동일) ── */
@@ -296,6 +333,8 @@
     .card-title { font-size: 14px; margin-bottom: 10px; }
     .streak-banner { padding: 14px 16px; margin-bottom: 12px; border-radius: 12px; gap: 10px; }
     .streak-banner .big { font-size: 17px; }
+    .diary-insight { grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px; }
+    .prompt-actions .ghost-btn { flex: 1; }
     .diary-area { min-height: 240px; }
   }
 </style>
@@ -348,6 +387,8 @@
     <div style="font-size: 38px;" id="streakEmoji">🌱</div>
   </div>
 
+  <div class="diary-insight" id="diaryInsight"></div>
+
   <div class="grid">
     <!-- 목록 -->
     <div class="card">
@@ -370,7 +411,18 @@
         <input type="date" id="entryDate" onchange="loadEntry(this.value)">
         <button class="ghost-btn" style="color: var(--text);" onclick="goTodayEntry()">오늘</button>
       </div>
+      <div class="prompt-card">
+        <div>
+          <div class="prompt-label">오늘의 질문</div>
+          <div class="prompt-text" id="promptText"></div>
+        </div>
+        <div class="prompt-actions">
+          <button class="ghost-btn" style="color: var(--text);" onclick="insertPrompt()">질문 넣기</button>
+          <button class="ghost-btn" style="color: var(--text);" onclick="rotatePrompt()">다른 질문</button>
+        </div>
+      </div>
       <div class="mood-row" id="moodRow"></div>
+      <div class="feeling-row" id="feelingRow"></div>
       <textarea id="diaryArea" class="diary-area" placeholder="오늘 하루는 어땠나요?&#10;&#10;기억에 남는 순간, 감정, 내일의 다짐… 무엇이든 좋아요." oninput="updateCharCount()"></textarea>
       <div class="editor-footer">
         <span class="char-count" id="charCount">0자</span>
@@ -403,11 +455,31 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 let currentUser = null;
-let diary = {};                  // { 'YYYY-MM-DD': { text, mood } }
+let diary = {};                  // { 'YYYY-MM-DD': { text, mood, feelings, prompt } }
 let viewMonth = new Date();      // 목록에 보여줄 달
 let editingKey = todayKey();     // 에디터가 가리키는 날짜
 
 const MOODS = ['😊','😆','😌','😐','😢','😡','🥰','💪','😴','🤒'];
+const FEELINGS = [
+  { id:'proud', icon:'✨', label:'뿌듯' },
+  { id:'grateful', icon:'🙏', label:'감사' },
+  { id:'tired', icon:'🌙', label:'피곤' },
+  { id:'calm', icon:'🌿', label:'차분' },
+  { id:'anxious', icon:'🌀', label:'복잡' },
+  { id:'focused', icon:'🎯', label:'몰입' },
+  { id:'lonely', icon:'☁️', label:'허전' },
+  { id:'loved', icon:'💛', label:'따뜻' }
+];
+const DAILY_PROMPTS = [
+  '오늘 가장 오래 마음에 남은 순간은 무엇이었나요?',
+  '오늘의 나에게 고맙다고 말하고 싶은 일은 무엇인가요?',
+  '오늘 미뤄둔 감정이 있다면 어떤 이름을 붙일 수 있을까요?',
+  '내일 조금 더 가볍게 만들 수 있는 작은 선택은 무엇인가요?',
+  '오늘 내가 잘 버텼다고 느낀 장면은 언제였나요?',
+  '오늘 누군가에게 받은 에너지나 내가 건넨 친절은 무엇이었나요?',
+  '요즘 반복해서 떠오르는 생각은 무엇이고, 왜 그럴까요?',
+  '오늘 하루를 한 문장으로 제목 붙인다면 무엇인가요?'
+];
 function todayKey() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
 // ══════════════════════════════════════
@@ -494,7 +566,7 @@ async function saveEntry() {
   if (!currentUser) return;
   const text = document.getElementById('diaryArea').value.trim();
   if (!text) { toast('내용을 입력해 주세요 ✍️'); return; }
-  const entry = { text, mood: selectedMood, updatedAt: Date.now() };
+  const entry = { text, mood: selectedMood, feelings: selectedFeelings, prompt: currentPrompt, updatedAt: Date.now() };
   diary[editingKey] = entry;
   try {
     await db.collection('users').doc(currentUser.uid).set({ diary: { [editingKey]: entry } }, { merge: true });
@@ -524,6 +596,8 @@ async function deleteEntry() {
 // EDITOR
 // ══════════════════════════════════════
 let selectedMood = MOODS[0];
+let selectedFeelings = [];
+let currentPrompt = '';
 
 function renderMoodRow() {
   document.getElementById('moodRow').innerHTML = MOODS.map(m =>
@@ -532,11 +606,52 @@ function renderMoodRow() {
 }
 function pickMood(m) { selectedMood = m; renderMoodRow(); scheduleDraft(); }
 
+function feelingLabel(id) {
+  const item = FEELINGS.find(f => f.id === id);
+  return item ? item.icon + ' ' + item.label : '';
+}
+function renderFeelingRow() {
+  const row = document.getElementById('feelingRow');
+  if (!row) return;
+  row.innerHTML = FEELINGS.map(f => '<button class="feeling-btn ' + (selectedFeelings.includes(f.id) ? 'active' : '') + '" onclick="toggleFeeling(\'' + f.id + '\')">' + f.icon + ' ' + f.label + '</button>').join('');
+}
+function toggleFeeling(id) {
+  selectedFeelings = selectedFeelings.includes(id) ? selectedFeelings.filter(x => x !== id) : [...selectedFeelings, id];
+  renderFeelingRow();
+  scheduleDraft();
+}
+function promptForKey(key) {
+  const seed = key.replace(/-/g, '').split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  return DAILY_PROMPTS[seed % DAILY_PROMPTS.length];
+}
+function renderPrompt() {
+  const el = document.getElementById('promptText');
+  if (el) el.textContent = currentPrompt || promptForKey(editingKey);
+}
+function rotatePrompt() {
+  const idx = DAILY_PROMPTS.indexOf(currentPrompt);
+  currentPrompt = DAILY_PROMPTS[(idx + 1 + DAILY_PROMPTS.length) % DAILY_PROMPTS.length];
+  renderPrompt();
+  scheduleDraft();
+}
+function insertPrompt() {
+  const area = document.getElementById('diaryArea');
+  const q = currentPrompt || promptForKey(editingKey);
+  if (area.value.includes(q)) return;
+  const block = 'Q. ' + q + '\nA. ';
+  area.value = area.value.trim() ? area.value.trim() + '\n\n' + block : block;
+  area.focus();
+  updateCharCount();
+}
+
 // 저장 안 한 일기 내용이 있는지 확인
 function isDirty() {
   const cur = document.getElementById('diaryArea').value.trim();
-  const saved = (diary[editingKey] && diary[editingKey].text || '').trim();
-  return cur !== saved;
+  const savedEntry = diary[editingKey] || {};
+  const saved = (savedEntry.text || '').trim();
+  const savedFeelings = JSON.stringify(savedEntry.feelings || []);
+  const activePrompt = currentPrompt || promptForKey(editingKey);
+  return cur !== saved || selectedMood !== (savedEntry.mood || MOODS[0]) || JSON.stringify(selectedFeelings) !== savedFeelings || activePrompt !== (savedEntry.prompt || promptForKey(editingKey));
 }
 
 // ── 임시 저장 (작성 중 내용 유실 방지) ──
@@ -550,7 +665,7 @@ function flushDraft() {
   clearTimeout(draftTimer);
   const drafts = getDrafts();
   if (isDirty()) {
-    drafts[editingKey] = { text: document.getElementById('diaryArea').value, mood: selectedMood, t: Date.now() };
+    drafts[editingKey] = { text: document.getElementById('diaryArea').value, mood: selectedMood, feelings: selectedFeelings, prompt: currentPrompt, t: Date.now() };
   } else {
     delete drafts[editingKey];
   }
@@ -573,18 +688,25 @@ function loadEntry(key) {
   document.getElementById('entryDate').value = key;
   document.getElementById('diaryArea').value = e ? e.text : '';
   selectedMood = e && e.mood ? e.mood : MOODS[0];
+  selectedFeelings = e && Array.isArray(e.feelings) ? e.feelings.filter(id => FEELINGS.some(f => f.id === id)) : [];
+  currentPrompt = e && e.prompt ? e.prompt : promptForKey(key);
+  renderPrompt();
   // 저장본과 다른 임시 저장본이 있으면 복원해서 이어쓰기
   const draft = getDrafts()[key];
   const hint = document.getElementById('saveHint');
   if (draft && (draft.text || '').trim() && (draft.text || '').trim() !== (e ? e.text : '').trim()) {
     document.getElementById('diaryArea').value = draft.text;
     if (draft.mood) selectedMood = draft.mood;
+    if (Array.isArray(draft.feelings)) selectedFeelings = draft.feelings.filter(id => FEELINGS.some(f => f.id === id));
+    if (draft.prompt) currentPrompt = draft.prompt;
+    renderPrompt();
     hint.textContent = '📝 임시 저장본 복원됨';
   } else {
     hint.textContent = '';
   }
   document.getElementById('deleteBtn').style.display = e ? 'inline-block' : 'none';
   renderMoodRow();
+  renderFeelingRow();
   updateCharCount();
   renderList(); // selected 표시 갱신
 }
@@ -645,12 +767,15 @@ function renderList() {
     const [yy,mm,dd] = k.split('-').map(Number);
     const day = DAYS_KO[new Date(yy, mm-1, dd).getDay()];
     const dateLabel = diarySearchQuery ? `${yy}년 ${mm}월 ${dd}일 (${day})` : `${mm}월 ${dd}일 (${day})`;
+    const tags = (e.feelings || []).map(feelingLabel).filter(Boolean);
+    const tagHtml = tags.length ? '<div class="entry-tags">' + tags.map(t => '<span class="entry-tag">' + esc(t) + '</span>').join('') + '</div>' : '';
     return `<div class="entry-item ${k === editingKey ? 'selected' : ''}" onclick="loadEntry('${k}')">
       <div class="entry-head">
         <span class="entry-mood">${e.mood || '📝'}</span>
         <span class="entry-date">${dateLabel}</span>
       </div>
       <div class="entry-preview">${esc(e.text)}</div>
+      ${tagHtml}
     </div>`;
   }).join('');
 }
@@ -679,9 +804,28 @@ function renderStreak() {
   }
 }
 
+function renderDiaryInsight() {
+  const box = document.getElementById('diaryInsight');
+  if (!box) return;
+  const y = viewMonth.getFullYear(), m = viewMonth.getMonth();
+  const prefix = y + '-' + String(m + 1).padStart(2, '0');
+  const entries = Object.entries(diary).filter(([key]) => key.startsWith(prefix));
+  const feelingCounts = {};
+  entries.forEach(([, entry]) => (entry.feelings || []).forEach(id => { feelingCounts[id] = (feelingCounts[id] || 0) + 1; }));
+  const topFeeling = Object.entries(feelingCounts).sort((a, b) => b[1] - a[1])[0];
+  const todayDone = !!diary[todayKey()];
+  const cells = [
+    { label: '이번 달 기록', value: entries.length ? entries.length + '편' : '아직 없음' },
+    { label: '자주 나온 감정', value: topFeeling ? feelingLabel(topFeeling[0]) + ' ' + topFeeling[1] + '회' : '태그를 눌러보세요' },
+    { label: '오늘 상태', value: todayDone ? '오늘 일기 완료' : '오늘 질문 대기 중' }
+  ];
+  box.innerHTML = cells.map(c => '<div class="insight-pill"><div class="label">' + esc(c.label) + '</div><div class="value">' + esc(c.value) + '</div></div>').join('');
+}
+
 function renderAll() {
   renderList();
   renderStreak();
+  renderDiaryInsight();
   loadEntry(editingKey);
 }
 
@@ -712,6 +856,7 @@ function toast(msg) {
 
 loadTheme();
 renderMoodRow();
+renderFeelingRow();
 loadEntry(editingKey);
 </script>
 </body>
