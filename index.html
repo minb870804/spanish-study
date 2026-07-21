@@ -2718,6 +2718,7 @@ async function toggleRecurringSharing(id) {
   rule.catColor = cat.color;
   await saveRecurring(arr);
   renderRecurList(); renderAll();
+  if (makeShared) notifyScheduleShared('', rule.text);
   toast(makeShared ? '👫 반복 일정을 공유했어요.' : '🔒 공유를 취소했어요. 이제 나에게만 보여요.');
 }
 
@@ -2877,10 +2878,20 @@ let catPickCtx = null; // { key, kind: 'todo'|'rec', id }
 function openCatPicker(ev, key, kind, id) {
   ev.stopPropagation();
   catPickCtx = { key, kind, id };
+  // 현재 카테고리를 찾아 팝오버에서 강조 표시
+  let curCatId = '';
+  if (kind === 'rec') {
+    const r = getAllRecurring().find(r => r.id === id);
+    curCatId = r && r.cat;
+  } else {
+    const t = getDay(key).todos.find(t => t.id === id);
+    curCatId = t && t.cat;
+  }
   const picker = document.getElementById('catPicker');
-  picker.innerHTML = getCategories().map(c =>
-    `<button class="tcat-chip sel" style="background:${c.color}; color:white;" onclick="applyCatChange('${c.id}')">${esc(c.name)}</button>`
-  ).join('');
+  picker.innerHTML = getCategories().map(c => {
+    const isCur = c.id === curCatId;
+    return `<button class="tcat-chip ${isCur ? 'sel' : ''}" style="background:${c.color}; color:white; ${isCur ? '' : 'opacity:0.6;'}" onclick="applyCatChange('${c.id}')">${isCur ? '✓ ' : ''}${esc(c.name)}</button>`;
+  }).join('');
   picker.classList.add('open');
   // 클릭 위치 근처에 표시 (화면 밖으로 나가지 않게 보정)
   const x = Math.min(ev.clientX, window.innerWidth - 260);
@@ -3089,7 +3100,25 @@ function promptTodoEdits(todo, startKey) {
   const endKey = normalizeDateKey(rawEnd);
   if (rawEnd.trim() && !endKey) { toast('종료일은 2026-07-03 형식으로 입력해 주세요.'); return null; }
 
+  // 카테고리 수정 — 번호로 선택 (비우거나 취소하면 기존 유지)
+  const cats = getCategories();
+  const curIdx = Math.max(0, cats.findIndex(c => c.id === (todo.cat)));
+  const catList = cats.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
+  const rawCat = prompt(`카테고리 선택 (번호 입력)\n${catList}`, String(curIdx + 1));
+  if (rawCat === null) return null;
+
   const result = { text, time, location: normalizeTodoText(rawLocation) };
+  const catNum = parseInt(rawCat.trim(), 10);
+  if (rawCat.trim()) {
+    if (!Number.isInteger(catNum) || catNum < 1 || catNum > cats.length) {
+      toast('카테고리 번호를 목록에서 골라 입력해 주세요.');
+      return null;
+    }
+    const chosen = cats[catNum - 1];
+    result.cat = chosen.id;
+    result.catName = chosen.name;
+    result.catColor = chosen.color;
+  }
   if (endKey && baseStart && endKey > baseStart) {
     result.startDate = baseStart; result.endDate = endKey;
   } else {
@@ -3148,7 +3177,17 @@ async function toggleTodoSharing(key, id) {
   renderAll();
   if (modalKey === key) refreshModal(true);
   await saveDay(key, day);
+  if (makeShared) notifyScheduleShared(key, todo.text);
   toast(makeShared ? '👫 배우자와 공유했어요.' : '🔒 공유를 취소했어요. 이제 나에게만 보여요.');
+}
+
+// 배우자와 공유한 순간 상대방 기기로 푸시 알림을 보낸다(서버가 배우자만 골라 발송).
+function notifyScheduleShared(dayKey, text) {
+  if (!isShared()) return; // 혼자 쓰는 공간이면 배우자가 없음
+  try {
+    cloudFunctions.httpsCallable('notifyScheduleShared')({ dayKey: dayKey || '', text: text || '' })
+      .catch(err => console.warn('공유 알림 실패:', err && (err.message || err.code)));
+  } catch (_) {}
 }
 
 function scheduleScopeBadge(todo, key = '', kind = 'todo') {

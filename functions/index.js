@@ -263,6 +263,41 @@ async function fetchHolidaysForYear(year) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+// ── 일정을 '배우자와 공유'하면 상대방(배우자) 기기에 즉시 푸시 알림 ──
+exports.notifyScheduleShared = onCall({ region: 'asia-northeast3' }, async request => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+  const uid = request.auth.uid;
+  const token = request.auth.token || {};
+  const text = String((request.data && request.data.text) || '').trim().slice(0, 120);
+  const dayKey = String((request.data && request.data.dayKey) || '').trim();
+  const url = /^\d{4}-\d{2}-\d{2}$/.test(dayKey) ? `/?date=${dayKey}` : '/';
+
+  // 공유한 사람의 스페이스 → 배우자(다른 멤버) 찾기
+  const userSnap = await db.collection('users').doc(uid).get();
+  const spaceId = userSnap.exists ? (userSnap.data() || {}).spaceId : null;
+  if (!spaceId) return { sent: 0, recipients: 0 };
+
+  const spaceSnap = await db.collection('spaces').doc(spaceId).get();
+  if (!spaceSnap.exists) return { sent: 0, recipients: 0 };
+  const members = (spaceSnap.data().members || []).filter(m => m && m !== uid);
+  if (!members.length) return { sent: 0, recipients: 0 };
+
+  const sharerName = token.name || '배우자';
+  let sent = 0;
+  for (const memberUid of members) {
+    const result = await sendReminderToUser(memberUid, {
+      title: '👫 배우자가 일정을 공유했어요',
+      body: text ? `${sharerName}: ${text}` : `${sharerName}님이 새 일정을 공유했어요.`,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: `share-${spaceId}-${dayKey}-${text}`.slice(0, 120),
+      url
+    });
+    sent += result.sent;
+  }
+  return { sent, recipients: members.length };
+});
+
 async function sendReminderToUser(uid, payload) {
   if (!uid) return { sent: 0 };
 
