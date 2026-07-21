@@ -2462,7 +2462,7 @@ function renderHomeMemo(day) {
   const items = memoEntryItems(dnotes);
   list.innerHTML = items.length ? items.map(({ cat, text, index }) => `
     <div class="memo-entry-item">
-      <span class="tcat-badge" style="background:${cat.color}; cursor:default;">${cat.icon ? `${esc(cat.icon)} ` : ''}${esc(cat.name)}</span>
+      <button class="tcat-badge" style="background:${cat.color};" onclick="openMemoCatPicker(event, '${cat.id}', ${index})" title="카테고리 변경">${cat.icon ? `${esc(cat.icon)} ` : ''}${esc(cat.name)}</button>
       <span class="memo-entry-text">${esc(text)}</span>
       <span class="memo-entry-actions">
         <button onclick="editMemoEntry('${cat.id}', ${index})" title="메모 수정">✏️</button>
@@ -2516,6 +2516,42 @@ async function deleteMemoEntry(catId, index) {
   lines.splice(index, 1);
   notes[catId] = lines.join('\n');
   await persistMemoEntries(notes, '🗑 메모를 삭제했어요.');
+}
+
+// 작성한 메모의 카테고리 변경 — 뱃지 클릭 → 팝오버에서 다른 카테고리로 이동
+let memoCatPickCtx = null; // { fromCat, index }
+function openMemoCatPicker(ev, catId, index) {
+  ev.stopPropagation();
+  memoCatPickCtx = { fromCat: catId, index };
+  catPickCtx = null; // 할 일 카테고리 팝오버와 컨텍스트 혼동 방지
+  const picker = document.getElementById('catPicker');
+  picker.innerHTML = getMemoCats().map(c => {
+    const isCur = c.id === catId;
+    return `<button class="tcat-chip ${isCur ? 'sel' : ''}" style="background:${c.color}; color:white; ${isCur ? '' : 'opacity:0.6;'}" onclick="applyMemoCatChange('${c.id}')">${isCur ? '✓ ' : ''}${c.icon ? `${esc(c.icon)} ` : ''}${esc(c.name)}</button>`;
+  }).join('');
+  picker.classList.add('open');
+  const x = Math.min(ev.clientX, window.innerWidth - 260);
+  const y = Math.min(ev.clientY + 8, window.innerHeight - 120);
+  picker.style.left = Math.max(8, x) + 'px';
+  picker.style.top = Math.max(8, y) + 'px';
+}
+
+async function applyMemoCatChange(newCatId) {
+  if (!memoCatPickCtx) return;
+  const { fromCat, index } = memoCatPickCtx;
+  memoCatPickCtx = null;
+  closeCatPicker();
+  if (newCatId === fromCat) return;
+  const notes = getDayNotes(getDay(dateKey(selectedDate)));
+  const fromLines = memoLines(notes, fromCat);
+  if (index < 0 || index >= fromLines.length) return;
+  const [moved] = fromLines.splice(index, 1);
+  notes[fromCat] = fromLines.join('\n');
+  const toLines = memoLines(notes, newCatId);
+  toLines.push(moved);
+  notes[newCatId] = toLines.join('\n');
+  const catName = (getMemoCats().find(c => c.id === newCatId) || {}).name || '카테고리';
+  await persistMemoEntries(notes, `🏷 '${catName}'(으)로 옮겼어요!`);
 }
 
 // hex 색을 옅은 배경 rgba로 (달력 카테고리 태그용)
@@ -2903,6 +2939,7 @@ function openCatPicker(ev, key, kind, id) {
 function closeCatPicker() {
   document.getElementById('catPicker').classList.remove('open');
   catPickCtx = null;
+  memoCatPickCtx = null;
 }
 document.addEventListener('click', e => {
   if (!e.target.closest('#catPicker') && !e.target.closest('.tcat-badge')) closeCatPicker();
