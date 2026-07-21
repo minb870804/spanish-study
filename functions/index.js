@@ -205,6 +205,64 @@ exports.leaveSpace = onCall({ region: 'asia-northeast3' }, async request => {
   return { ok: true };
 });
 
+// ── 한국 공휴일(공공데이터포털 특일 정보) 조회 ──────────────────────────
+// 인증키는 서버에만 두고, 결과는 Firestore(caches/holidays_{year})에 캐싱한다.
+const HOLIDAY_API_KEY = process.env.HOLIDAY_API_KEY;
+const HOLIDAY_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 올해·미래 연도는 7일마다 갱신(대체공휴일 지정 반영)
+
+exports.getHolidays = onCall({ region: 'asia-northeast3' }, async request => {
+  const year = Number(request.data && request.data.year);
+  if (!Number.isInteger(year) || year < 2004 || year > 2100) {
+    throw new HttpsError('invalid-argument', '연도가 올바르지 않습니다.');
+  }
+  if (!HOLIDAY_API_KEY) {
+    logger.error('HOLIDAY_API_KEY is missing. Set it in functions/.env.');
+    throw new HttpsError('failed-precondition', '공휴일 API 키가 설정되지 않았습니다.');
+  }
+
+  const cacheRef = db.collection('caches').doc(`holidays_${year}`);
+  const cacheSnap = await cacheRef.get();
+  const currentYear = new Date().getFullYear();
+  if (cacheSnap.exists) {
+    const cached = cacheSnap.data() || {};
+    const fresh = year < currentYear || (Date.now() - Number(cached.fetchedAt || 0) < HOLIDAY_CACHE_TTL_MS);
+    if (fresh && Array.isArray(cached.holidays)) {
+      return { year, holidays: cached.holidays };
+    }
+  }
+
+  const holidays = await fetchHolidaysForYear(year);
+  await cacheRef.set({ holidays, fetchedAt: Date.now(), updatedAt: FieldValue.serverTimestamp() });
+  return { year, holidays };
+});
+
+async function fetchHolidaysForYear(year) {
+  const url = 'https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo'
+    + `?serviceKey=${HOLIDAY_API_KEY}&solYear=${year}&numOfRows=100&_type=json`;
+
+  let json;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    json = await res.json();
+  } catch (error) {
+    logger.error('Holiday API request failed', { year, message: error.message });
+    throw new HttpsError('unavailable', '공휴일 정보를 불러오지 못했습니다.');
+  }
+
+  const body = json && json.response && json.response.body;
+  const rawItems = body && body.items && body.items.item;
+  const items = Array.isArray(rawItems) ? rawItems : (rawItems ? [rawItems] : []);
+
+  return items
+    .filter(it => String(it.isHoliday).toUpperCase() === 'Y')
+    .map(it => {
+      const s = String(it.locdate); // YYYYMMDD
+      return { date: `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`, name: String(it.dateName || '공휴일') };
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 async function sendReminderToUser(uid, payload) {
   if (!uid) return { sent: 0 };
 
