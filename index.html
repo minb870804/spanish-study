@@ -361,8 +361,6 @@
   .mcal-day.sel { outline: 2px solid var(--blue); box-shadow: 0 0 0 4px rgba(56,103,155,0.12); }
   .mcal-day.drop-target { outline: 2px dashed var(--blue); background: var(--blue-light); }
   .mcal-day.is-drag-source { opacity: 0.55; }
-  .mcal-day.move-target { min-height: 112px; justify-content: space-between; }
-  .mcal-day.move-source { outline: 2px dashed var(--gold); background: rgba(245,124,0,0.10); }
   .mcal-num { font-weight: 800; font-size: 12px; line-height: 1.3; }
   .mcal-day.sun .mcal-num { color: var(--red); }
   .mcal-day.sat .mcal-num { color: var(--blue); }
@@ -420,35 +418,6 @@
   }
   .month-nav .small-btn { width: 36px; padding-left: 0; padding-right: 0; }
   .month-label { font-size: 13px; font-weight: 800; min-width: 80px; text-align: center; }
-  .move-deck {
-    display: none; background: var(--bg); border: 1.5px dashed var(--border);
-    border-radius: 12px; padding: 12px; margin-bottom: 12px;
-  }
-  .calendar-card.move-mode .move-deck { display: block; }
-  .move-deck-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-  .move-deck-title { font-size: 13px; font-weight: 900; }
-  .move-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-  .move-list { display: grid; gap: 6px; max-height: 210px; overflow-y: auto; padding-right: 2px; }
-  .move-task {
-    display: flex; align-items: center; gap: 8px; background: var(--card);
-    border: 1px solid var(--border); border-radius: 8px; padding: 8px 9px;
-    cursor: pointer; transition: var(--transition); font-size: 12.5px;
-  }
-  .move-task:hover { border-color: var(--blue); box-shadow: var(--shadow-hover); }
-  .move-task.sel { border-color: var(--blue); background: var(--blue-light); }
-  .move-task.done .move-task-text { text-decoration: line-through; color: var(--muted); }
-  .move-grip { color: var(--blue); cursor: grab; touch-action: none; user-select: none; font-weight: 900; }
-  .move-task-text { flex: 1; min-width: 0; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .move-task-date { font-size: 11px; font-weight: 800; color: var(--muted); white-space: nowrap; }
-  .mcal-summary { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; }
-  .mcal-count {
-    border-radius: 999px; padding: 1px 6px; font-size: 9.5px; font-weight: 900;
-    background: var(--bg); border: 1px solid var(--border); color: var(--muted);
-  }
-  .mcal-count.todo { background: var(--red-light); color: var(--red); border-color: transparent; }
-  .mcal-count.done { background: var(--green-light); color: var(--green); border-color: transparent; }
-  .mcal-count.note { background: var(--blue-light); color: var(--blue); border-color: transparent; }
-  .mcal-drop-label { font-size: 9.5px; font-weight: 900; color: var(--blue); margin-top: auto; }
 
   /* ── 날짜 상세 모달 ── */
   #dayModal {
@@ -951,12 +920,9 @@
     .mcal-grid { gap: 3px; }
     .mcal-dow { font-size: 10px; padding: 2px 0; }
     .mcal-day { min-height: 72px; padding: 4px; border-radius: 7px; gap: 2px; }
-    .mcal-day.move-target { min-height: 72px; }
     .mcal-num { font-size: 10px; }
     .mcal-tag { font-size: 9.5px; line-height: 1.45; padding: 0 3px; }
     .calendar-legend { display: none !important; }
-    .move-list { max-height: 170px; }
-    .move-task { padding: 8px; }
     .invite-code-box { padding: 10px 12px; }
     .invite-code-box .code { font-size: 17px; letter-spacing: 3px; }
     .join-row { flex-direction: column; }
@@ -1042,7 +1008,6 @@
       <div class="calendar-actions">
         <div class="calendar-tools">
           <button class="small-btn" onclick="openMonthReport()">월 리포트</button>
-          <button class="small-btn" id="moveModeBtn" onclick="toggleCalendarMoveMode()">이동 모드</button>
           <button class="small-btn" onclick="openSobrietyModal()">금주 현황</button>
           <button class="small-btn" onclick="openSearchModal()">🔍 검색</button>
           <button class="small-btn" onclick="goToday()">오늘</button>
@@ -1060,7 +1025,6 @@
       <button class="small-btn" data-schedule-filter="mine" onclick="setScheduleFilter('mine')">내 일정</button>
       <button class="small-btn" data-schedule-filter="shared" onclick="setScheduleFilter('shared')">공유 일정</button>
     </div>
-    <div id="moveDeck" class="move-deck"></div>
     <div id="monthCal"></div>
     <div class="calendar-legend" style="display:flex; gap:10px; margin-top:10px; font-size:11px; color:var(--muted); flex-wrap:wrap;">
       <span><span class="mcal-tag t-todo">할 일</span> 남은 할 일</span>
@@ -3154,7 +3118,6 @@ async function deleteTodo(id) {
   day.todos = day.todos.filter(t => t.id !== id);
   setDayLocal(key, day);
   renderTodos(day);
-  renderMoveDeck();
   await saveDay(key, day);
   cancelLocalReminder(id); // 네이티브 앱 예약 알람 취소
   if (removed) showUndoToast('🗑 삭제했어요.', async () => {
@@ -3260,7 +3223,6 @@ function renderAll() {
   renderMembers();
   renderDashboardCategories();
   renderCatChips();
-  renderMoveDeck();
   renderMonthCal();
   renderSobriety();
   renderDayDrinkToggle();
@@ -4001,147 +3963,6 @@ function renderMembers() {
 
 // ── 월간 달력 ──
 let calMonth = new Date();
-let calendarMoveMode = false;
-let moveDeckFilter = 'selected';
-let selectedMoveTask = null; // { sourceKey, id }
-
-function moveTaskSig(key, id) { return `${key}::${id}`; }
-
-function toggleCalendarMoveMode(force) {
-  calendarMoveMode = typeof force === 'boolean' ? force : !calendarMoveMode;
-  if (!calendarMoveMode) selectedMoveTask = null;
-  renderMoveDeck();
-  renderMonthCal();
-}
-
-function setMoveDeckFilter(filter) {
-  moveDeckFilter = filter;
-  renderMoveDeck();
-}
-
-function findTodoLocationById(id) {
-  for (const key of allDayKeys()) {
-    const todo = getDay(key).todos.find(t => t.id === id);
-    if (todo) return { key, todo };
-  }
-  return null;
-}
-
-function todoMoveItem(key, todo) {
-  return {
-    key,
-    id: todo.id,
-    text: todo.text,
-    done: !!todo.done,
-    cat: todo.cat,
-    catName: todo.catName,
-    catColor: todo.catColor,
-    visibility: todoScope(todo, 'private'),
-    by: todo.by,
-    movedAt: todo.lastMovedAt || 0
-  };
-}
-
-function collectMoveDeckTasks() {
-  if (!spaceData) return [];
-  const seen = new Set();
-  const addUnique = (items, item) => {
-    const sig = moveTaskSig(item.key, item.id);
-    if (seen.has(sig)) return;
-    seen.add(sig);
-    items.push(item);
-  };
-  const selectedKey = dateKey(selectedDate);
-  const month = monthInfo(calMonth);
-  const items = [];
-
-  if (moveDeckFilter === 'selected') {
-    (getDay(selectedKey).todos || []).filter(isScheduleVisible).forEach(todo => addUnique(items, todoMoveItem(selectedKey, todo)));
-    return items;
-  }
-
-  if (moveDeckFilter === 'recent') {
-    collectMoveEvents().slice().reverse().forEach(ev => {
-      if (!ev.todoId) return;
-      const found = findTodoLocationById(ev.todoId);
-      if (found && isScheduleVisible(found.todo)) addUnique(items, todoMoveItem(found.key, found.todo));
-    });
-    return items.slice(0, 24);
-  }
-
-  allDayKeys()
-    .filter(key => keyInMonth(key, month))
-    .sort((a, b) => a.localeCompare(b))
-    .forEach(key => {
-      getDay(key).todos
-        .filter(isScheduleVisible)
-        .filter(todo => !todo.done)
-        .forEach(todo => addUnique(items, todoMoveItem(key, todo)));
-    });
-  return items;
-}
-
-function pickMoveTask(sourceKey, id) {
-  selectedMoveTask = { sourceKey, id };
-  renderMoveDeck();
-  renderMonthCal();
-  toast('옮길 할 일을 선택했어요.');
-}
-
-function clearMoveTask() {
-  selectedMoveTask = null;
-  renderMoveDeck();
-  renderMonthCal();
-}
-
-function renderMoveDeck() {
-  const card = document.querySelector('.calendar-card');
-  const btn = document.getElementById('moveModeBtn');
-  const deck = document.getElementById('moveDeck');
-  if (card) card.classList.toggle('move-mode', calendarMoveMode);
-  if (btn) {
-    btn.classList.toggle('sel', calendarMoveMode);
-    btn.textContent = calendarMoveMode ? '이동 중' : '이동 모드';
-  }
-  if (!deck) return;
-  if (!calendarMoveMode) {
-    deck.innerHTML = '';
-    return;
-  }
-
-  const tasks = collectMoveDeckTasks();
-  const selectedSig = selectedMoveTask ? moveTaskSig(selectedMoveTask.sourceKey, selectedMoveTask.id) : '';
-  const selectedFound = selectedMoveTask && findTodoLocationById(selectedMoveTask.id);
-  const selectedLabel = selectedFound ? selectedFound.todo.text : '';
-  const tabs = [
-    ['selected', '선택일'],
-    ['open', '미완료'],
-    ['recent', '최근 이동']
-  ].map(([id, label]) =>
-    `<button class="small-btn ${moveDeckFilter === id ? 'sel' : ''}" onclick="setMoveDeckFilter('${id}')">${label}</button>`
-  ).join('');
-
-  const rows = tasks.length ? tasks.map(item => {
-    const cat = todoCategory(item);
-    const sel = selectedSig === moveTaskSig(item.key, item.id);
-    return `<div class="move-task ${sel ? 'sel' : ''} ${item.done ? 'done' : ''}" onclick="pickMoveTask('${item.key}', '${item.id}')">
-      <span class="move-grip" onpointerdown="startMoveDeckDrag(event, '${item.key}', '${item.id}')">↕</span>
-      <span class="move-task-date">${shortDateLabel(item.key)}</span>
-      <span class="move-task-text">${esc(item.text)}</span>
-      ${authorChip(item)}
-      <span class="tcat-badge" style="background:${cat.color}; cursor:default;">${esc(cat.name)}</span>
-    </div>`;
-  }).join('') : '<div class="empty-msg" style="padding:10px 0;">옮길 할 일이 없어요.</div>';
-
-  deck.innerHTML = `
-    <div class="move-deck-head">
-      <span class="move-deck-title">옮길 할 일${selectedLabel ? ` · ${esc(selectedLabel)}` : ''}</span>
-      ${selectedMoveTask ? '<button class="small-btn" onclick="clearMoveTask()">선택 해제</button>' : ''}
-    </div>
-    <div class="move-tabs">${tabs}</div>
-    <div class="move-list">${rows}</div>`;
-}
-
 function dayCounts(d) {
   const day = getDay(dateKey(d));
   const todos = day.todos.filter(isScheduleVisible);
@@ -4151,14 +3972,13 @@ function dayCounts(d) {
   return { total, done, remain: total - done, hasNote: scheduleFilter !== 'shared' && notesHaveContent(day.notes) };
 }
 
-function moveCalMonth(delta) { calMonth.setMonth(calMonth.getMonth() + delta); renderMoveDeck(); renderMonthCal(); }
+function moveCalMonth(delta) { calMonth.setMonth(calMonth.getMonth() + delta); renderMonthCal(); }
 
 function calendarDragAttrs(kind, key, id = '') {
   return `role="button" tabindex="0" onpointerdown="startMonthItemDrag(event, '${key}', '${kind}', '${id}')" title="드래그해서 다른 날짜로 이동"`;
 }
 
 function renderCalendarTags(key, dateObj) {
-  if (calendarMoveMode) return renderCalendarMoveSummary(key, dateObj);
   const day = getDay(key);
   const tags = [];
   if (isDrinkDay(key)) tags.push('<span class="mcal-drink-mark" title="음주일">🍺</span>');
@@ -4214,22 +4034,6 @@ function renderCalendarTags(key, dateObj) {
   }
 
   return tags.join('');
-}
-
-function renderCalendarMoveSummary(key, dateObj) {
-  const day = getDay(key);
-  const todos = day.todos.filter(isScheduleVisible);
-  const recs = getRecurringFor(dateObj).filter(isScheduleVisible);
-  const remain = todos.filter(t => !t.done).length + recs.filter(r => !(day.recDone || {})[r.id]).length;
-  const done = todos.filter(t => t.done).length + recs.filter(r => (day.recDone || {})[r.id]).length;
-  const tags = [];
-  if (remain) tags.push(`<span class="mcal-count todo">할 ${remain}</span>`);
-  if (done) tags.push(`<span class="mcal-count done">완 ${done}</span>`);
-  if (scheduleFilter !== 'shared' && notesHaveContent(day.notes)) tags.push('<span class="mcal-count note">메모</span>');
-  const summary = tags.length ? `<div class="mcal-summary">${tags.join('')}</div>` : '<div class="mcal-summary"><span class="mcal-count">비어있음</span></div>';
-  if (!selectedMoveTask) return summary;
-  if (selectedMoveTask.sourceKey === key) return `${summary}<div class="mcal-drop-label">출발</div>`;
-  return `${summary}<div class="mcal-drop-label">보내기</div>`;
 }
 
 // ── 기간 일정 ──
@@ -4329,8 +4133,6 @@ function renderMonthCal() {
       'mcal-day',
       key === todayK ? 'today' : '',
       key === selK ? 'sel' : '',
-      calendarMoveMode ? 'move-target' : '',
-      selectedMoveTask && selectedMoveTask.sourceKey === key ? 'move-source' : '',
       holName ? 'holiday' : '',
       d.getDay() === 0 ? 'sun' : d.getDay() === 6 ? 'sat' : ''
     ].join(' ');
@@ -4352,8 +4154,7 @@ function initCalendarSwipe() {
   box.dataset.swipeBound = '1';
   box.style.touchAction = 'pan-y';
   box.addEventListener('pointerdown', e => {
-    if (calendarMoveMode) return; // 이동 모드에선 비활성(할 일 드래그와 충돌 방지)
-    if (e.target.closest('.mcal-tag, .mcal-bar, .move-grip, [role="button"]')) return;
+    if (e.target.closest('.mcal-tag, .mcal-bar, [role="button"]')) return;
     calSwipeState = { x: e.clientX, y: e.clientY };
   });
   box.addEventListener('pointerup', e => {
@@ -4545,21 +4346,6 @@ function startTodoItemDrag(event, sourceKey, id) {
   });
 }
 
-function startMoveDeckDrag(event, sourceKey, id) {
-  event.stopPropagation();
-  const item = event.currentTarget.closest('.move-task');
-  const txt = item && item.querySelector('.move-task-text');
-  startMoveDrag(event, {
-    sourceKey,
-    kind: 'todo',
-    id,
-    label: txt ? txt.textContent.trim() : '할 일',
-    sourceEl: item,
-    openSourceOnTap: false,
-    clearSelectionAfterDrop: true
-  });
-}
-
 function startMoveDrag(event, dragInfo) {
   if (!spaceData) return;
   event.preventDefault();
@@ -4576,8 +4362,7 @@ function startMoveDrag(event, dragInfo) {
     ghost: null,
     dropEl: null,
     sourceEl: dragInfo.sourceEl,
-    openSourceOnTap: !!dragInfo.openSourceOnTap,
-    clearSelectionAfterDrop: !!dragInfo.clearSelectionAfterDrop
+    openSourceOnTap: !!dragInfo.openSourceOnTap
   };
   document.addEventListener('pointermove', onMonthItemDragMove);
   document.addEventListener('pointerup', onMonthItemDragEnd, { once: true });
@@ -4628,7 +4413,6 @@ async function onMonthItemDragEnd(event) {
   }
   const targetKey = state.dropEl && state.dropEl.dataset.date;
   if (targetKey) {
-    if (state.clearSelectionAfterDrop) selectedMoveTask = null;
     await moveCalendarItem(state.sourceKey, targetKey, state.kind, state.id);
   }
 }
@@ -4799,24 +4583,13 @@ function resetTodoSwipe() {
   todoSwipeState = null;
 }
 
-// 달력 클릭 → 이동 모드에서는 목적지, 일반 모드에서는 상세보기
+// 달력 날짜 클릭 → 해당 날짜 할 일·메모 편집 팝업 열기
 async function onCalDayClick(key) {
   if (calendarSwiped) return; // 스와이프로 월 이동한 직후의 클릭은 무시
   const [y, m, d] = key.split('-').map(Number);
   selectedDate = new Date(y, m-1, d);
   todoStartDateEdited = false;
   showAllUpcomingTodos = false;
-  if (calendarMoveMode) {
-    if (selectedMoveTask) {
-      const task = selectedMoveTask;
-      selectedMoveTask = null;
-      await moveCalendarItem(task.sourceKey, key, 'todo', task.id);
-    } else {
-      renderAll();
-    }
-    return;
-  }
-  // 날짜 클릭 → 해당 날짜 할 일·메모 편집 팝업 열기
   openDayDetail(key);
 }
 
