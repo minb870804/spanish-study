@@ -293,6 +293,29 @@
     font-size: 10.5px; font-weight: 900; line-height: 1.35; white-space: nowrap;
   }
   .owner-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--owner-color); }
+  /* 공유 일정 주인 선택(나/배우자/함께) */
+  .party-btns { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+  .party-btn {
+    border-radius: 999px; padding: 4px 11px; font-size: 11.5px; font-weight: 900;
+    border: 1.5px solid var(--party-color); background: transparent; color: var(--party-color);
+    cursor: pointer; font-family: inherit; transition: var(--transition); white-space: nowrap;
+  }
+  .party-btn.sel { background: var(--party-color); color: #fff; }
+  /* 공유 일정 색 지정 박스 */
+  .owner-color-box {
+    background: var(--bg); border: 1.5px dashed var(--border); border-radius: 12px;
+    padding: 11px 13px; margin-bottom: 12px;
+  }
+  .owner-color-title { font-size: 12.5px; font-weight: 900; margin-bottom: 8px; }
+  .owner-color-row {
+    display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 9px;
+    align-items: center; padding: 4px 0;
+  }
+  .owner-color-row input[type="color"] {
+    width: 40px; height: 28px; padding: 0; border: 1.5px solid var(--border);
+    border-radius: 8px; background: none; cursor: pointer;
+  }
+  .owner-color-name { font-size: 12.5px; font-weight: 800; }
   .reminder-field {
     display: inline-flex; align-items: center; gap: 8px; background: var(--bg);
     border: 1.5px solid var(--border); border-radius: 12px; padding: 7px 10px;
@@ -1101,10 +1124,15 @@
         </div>
         <div class="todo-scope-row">
           <label class="share-check" for="todoShareInput">
-            <input type="checkbox" id="todoShareInput">
+            <input type="checkbox" id="todoShareInput" onchange="renderPartyRow()">
             <span>👫 배우자와 공유</span>
           </label>
           <span class="scope-hint">체크하지 않으면 나에게만 보여요.</span>
+        </div>
+        <!-- 공유할 때 "누구 일정인지" 지정 (나 / 배우자 / 함께) -->
+        <div class="todo-scope-row" id="partyRow" style="display:none;">
+          <span class="scope-hint" style="font-weight:800; color:var(--text);">누구 일정인가요?</span>
+          <div class="party-btns" id="partyBtns"></div>
         </div>
         <div class="tcat-row" id="tcatRow"></div>
 
@@ -1195,6 +1223,12 @@
           <button class="small-btn" onclick="openVaultModal()" title="넷플릭스·쿠팡 등 공유 아이디/비밀번호">🔐 공유 계정</button>
         </div>
         <div class="member-chips" id="memberChips"></div>
+        <!-- 공유 일정 색 지정: 나 / 배우자 / 함께 (두 사람 화면에 같은 색으로 보임) -->
+        <div id="ownerColorBox" class="owner-color-box" style="display:none;">
+          <div class="owner-color-title">🎨 공유 일정 색</div>
+          <div id="ownerColorRows"></div>
+          <span class="scope-hint">색을 바꾸면 두 사람 달력에 똑같이 적용돼요.</span>
+        </div>
         <div class="share-desc">
           <strong>초대 코드</strong>로 부부 공간을 연결하면, 각자 <strong>배우자와 공유</strong>를 선택한 일정과 교환일기만 함께 보여요. 개인 일정·메모·카테고리는 서로 분리됩니다.
         </div>
@@ -3053,6 +3087,7 @@ function closeCatPicker() {
   document.getElementById('catPicker').classList.remove('open');
   catPickCtx = null;
   memoCatPickCtx = null;
+  partyPickCtx = null;
 }
 document.addEventListener('click', e => {
   if (!e.target.closest('#catPicker') && !e.target.closest('.tcat-badge')) closeCatPicker();
@@ -3183,6 +3218,8 @@ async function addTodo() {
   const scheduleLocation = normalizeTodoText(locationInput ? locationInput.value : '');
   const visibility = document.getElementById('todoShareInput').checked ? 'shared' : 'private';
   const selectedCat = catById(selectedTodoCat);
+  // 누구 일정인지 — 공유일 때만 선택값을 쓰고, 개인 일정은 항상 내 것이다.
+  const assignee = visibility === 'shared' ? resolveAssignee(selectedParty) : currentUser.uid;
 
   input.value = '';
   autoSizeTodoInput(input);
@@ -3193,6 +3230,8 @@ async function addTodo() {
   if (endInput) endInput.value = '';
   todoStartDateEdited = false;
   document.getElementById('todoShareInput').checked = false;
+  selectedParty = 'mine';
+  renderPartyRow();
   const day = getDay(key);
   const base = Date.now();
   const todo = {
@@ -3200,6 +3239,7 @@ async function addTodo() {
     text,
     done: false,
     by: currentUser.uid,
+    assignee,
     cat: selectedTodoCat,
     catName: selectedCat.name,
     catColor: selectedCat.color,
@@ -3432,6 +3472,8 @@ function renderAll() {
   renderHomeMemo(day);
 
   renderMembers();
+  renderPartyRow();
+  renderOwnerColors();
   renderDashboardCategories();
   renderCatChips();
   renderMonthCal();
@@ -4102,6 +4144,7 @@ function renderTodos(day) {
           <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
           <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
           <button class="del" onclick="copyTodoToDateFromKey('${currentKey}', '${t.id}')" title="다른 날짜에 한 번 복사">📋</button>
+          ${isShared() ? `<button class="del" onclick="openPartyPicker(event, '${currentKey}', '${t.id}')" title="누구 일정인지 변경 (나·배우자·함께)">👤</button>` : ''}
           <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
           <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
           <button class="del" onclick="openRecurSetup('${currentKey}', '${t.id}')" title="이 할 일을 반복 일정으로">🔁</button>
@@ -4138,24 +4181,170 @@ function memberSignature(uid) {
   const idx = ((spaceData && spaceData.members) || []).indexOf(uid);
   return MEMBER_SIGNATURES[(idx >= 0 ? idx : 0) % MEMBER_SIGNATURES.length];
 }
-function memberColor(uid) { return memberSignature(uid).color; }
+function memberColor(uid) { return ownerColorFor(uid); }
 function memberFirstName(uid) { return memberSignature(uid).label; }
+
+// ── 공유 일정의 주인 표시 ──
+// 일정마다 "누구 일정인지"를 assignee에 담는다: 내 uid · 배우자 uid · 'both'(함께).
+// 예전 데이터에는 assignee가 없으므로 작성자(by)를 주인으로 본다.
+const TOGETHER_KEY = 'both';
+const DEFAULT_TOGETHER_COLOR = '#DC2626';
+
+function partnerUid() {
+  if (!currentUser || !spaceData) return '';
+  return (spaceData.members || []).find(uid => uid !== currentUser.uid) || '';
+}
+function assigneeOf(todo) {
+  const a = todo && todo.assignee;
+  if (a === TOGETHER_KEY) return TOGETHER_KEY;
+  if (a && typeof a === 'string') return a;
+  return (todo && todo.by) || '';
+}
+// 색은 스페이스에 저장해 두 사람 화면에서 같은 색으로 보인다.
+function ownerColorFor(key) {
+  const saved = (spaceData && spaceData.ownerColors) || {};
+  if (saved[key]) return saved[key];
+  return key === TOGETHER_KEY ? DEFAULT_TOGETHER_COLOR : memberSignature(key).color;
+}
+function partyLabel(key) {
+  return key === TOGETHER_KEY ? '함께' : memberFirstName(key);
+}
+function partySignature(key) {
+  return { label: partyLabel(key), color: ownerColorFor(key) };
+}
 function todoOwnerSignature(todo) {
-  return isShared() && todo && todo.by && todoScope(todo, 'private') === 'shared'
-    ? memberSignature(todo.by)
-    : null;
+  if (!isShared() || !todo || todoScope(todo, 'private') !== 'shared') return null;
+  const key = assigneeOf(todo);
+  return key ? partySignature(key) : null;
 }
 function sharedOwnerBorderStyle(todo) {
   const owner = todoOwnerSignature(todo);
   return owner ? `border-left:3px solid ${owner.color}; padding-left:9px;` : '';
 }
-// 작성자 표시 칩 (공유 일정에만)
+// 주인 표시 칩 (공유 일정에만) — 내 일정은 생략하고, 배우자·함께는 표시한다.
 function authorChip(todo) {
   const owner = todoOwnerSignature(todo);
   if (!owner) return '';
-  if (currentUser && todo && todo.by === currentUser.uid) return ''; // 내 일정엔 내 이름 표기 안 함
+  if (currentUser && assigneeOf(todo) === currentUser.uid) return '';
   return `<span class="owner-badge" style="--owner-color:${owner.color}; --owner-bg:${hexToRgba(owner.color, 0.14)};">${owner.label}</span>`;
 }
+// ── 공유 일정 주인 선택 (입력 영역) ──
+let selectedParty = 'mine'; // mine | partner | both
+
+function partyOptions() {
+  const me = currentUser ? currentUser.uid : '';
+  const pUid = partnerUid();
+  const opts = [{ id: 'mine', key: me, label: '나' }];
+  if (pUid) opts.push({ id: 'partner', key: pUid, label: partyLabel(pUid) });
+  opts.push({ id: 'both', key: TOGETHER_KEY, label: '함께' });
+  return opts;
+}
+
+// 공유 체크가 켜져 있고 배우자가 있을 때만 주인 선택 줄을 보여준다.
+function renderPartyRow() {
+  const row = document.getElementById('partyRow');
+  const box = document.getElementById('partyBtns');
+  const share = document.getElementById('todoShareInput');
+  if (!row || !box) return;
+  const on = !!(share && share.checked) && isShared();
+  row.style.display = on ? 'flex' : 'none';
+  if (!on) return;
+  const opts = partyOptions();
+  if (!opts.some(o => o.id === selectedParty)) selectedParty = 'mine';
+  box.innerHTML = opts.map(o =>
+    `<button type="button" class="party-btn ${o.id === selectedParty ? 'sel' : ''}" style="--party-color:${ownerColorFor(o.key)};" onclick="setSelectedParty('${o.id}')">${esc(o.label)}</button>`
+  ).join('');
+}
+function setSelectedParty(id) { selectedParty = id; renderPartyRow(); }
+
+// 선택한 구분(나/배우자/함께)을 저장용 assignee 값으로 바꾼다.
+function resolveAssignee(party) {
+  const me = currentUser ? currentUser.uid : '';
+  if (party === 'both') return TOGETHER_KEY;
+  if (party === 'partner') return partnerUid() || me;
+  return me;
+}
+
+// ── 기존 일정의 주인 변경 (⋯ 메뉴의 👤) ──
+let partyPickCtx = null; // { key, id }
+function openPartyPicker(ev, key, id) {
+  ev.stopPropagation();
+  const todo = getDay(key).todos.find(t => t.id === id);
+  if (!todo) return;
+  if (!isShared()) { toast('배우자와 연결된 뒤에 사용할 수 있어요.'); return; }
+  if (todoScope(todo, 'private') !== 'shared') { toast('먼저 이 일정을 배우자와 공유해 주세요.'); return; }
+  partyPickCtx = { key, id };
+  catPickCtx = null; memoCatPickCtx = null;
+  const cur = assigneeOf(todo);
+  const picker = document.getElementById('catPicker');
+  picker.innerHTML = partyOptions().map(o => {
+    const isCur = o.key === cur;
+    return `<button class="party-btn ${isCur ? 'sel' : ''}" style="--party-color:${ownerColorFor(o.key)};" onclick="applyPartyChange('${o.id}')">${isCur ? '✓ ' : ''}${esc(o.label)}</button>`;
+  }).join('');
+  picker.classList.add('open');
+  const x = Math.min(ev.clientX, window.innerWidth - 260);
+  const y = Math.min(ev.clientY + 8, window.innerHeight - 120);
+  picker.style.left = Math.max(8, x) + 'px';
+  picker.style.top = Math.max(8, y) + 'px';
+}
+async function applyPartyChange(partyId) {
+  if (!partyPickCtx) return;
+  const { key, id } = partyPickCtx;
+  partyPickCtx = null;
+  closeCatPicker();
+  const day = getDay(key);
+  const todo = day.todos.find(t => t.id === id);
+  if (!todo) return;
+  if (todo.by && currentUser && todo.by !== currentUser.uid) {
+    toast('일정을 만든 사람만 바꿀 수 있어요.');
+    return;
+  }
+  todo.assignee = resolveAssignee(partyId);
+  setDayLocal(key, day);
+  renderAll(); if (modalKey) refreshModal(true);
+  await saveDay(key, day);
+  toast(`👤 '${partyLabel(todo.assignee)}' 일정으로 바꿨어요!`);
+}
+
+// ── 공유 일정 색 지정 ──
+function renderOwnerColors() {
+  const box = document.getElementById('ownerColorBox');
+  const rows = document.getElementById('ownerColorRows');
+  if (!box || !rows) return;
+  if (!isShared()) { box.style.display = 'none'; rows.innerHTML = ''; return; }
+  box.style.display = 'block';
+  const me = currentUser ? currentUser.uid : '';
+  const pUid = partnerUid();
+  const items = [
+    { key: me, name: `${partyLabel(me)} (나)` },
+    ...(pUid ? [{ key: pUid, name: partyLabel(pUid) }] : []),
+    { key: TOGETHER_KEY, name: '함께' }
+  ];
+  rows.innerHTML = items.map(it => `
+    <div class="owner-color-row">
+      <input type="color" value="${escAttr(ownerColorFor(it.key))}" aria-label="${escAttr(it.name)} 색상"
+        onchange="saveOwnerColor('${escAttr(it.key)}', this.value)">
+      <span class="owner-color-name">${esc(it.name)} 일정</span>
+    </div>`).join('');
+}
+
+async function saveOwnerColor(key, color) {
+  if (!spaceId || !spaceData) return;
+  const next = { ...(spaceData.ownerColors || {}), [key]: color };
+  spaceData.ownerColors = next;
+  renderAll();
+  try {
+    await db.collection('spaces').doc(spaceId).update({
+      ownerColors: next,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('🎨 공유 일정 색을 바꿨어요!');
+  } catch (e) {
+    console.error('공유 일정 색 저장 실패:', e);
+    toast('색 저장에 실패했어요.');
+  }
+}
+
 // 완료자 표시 칩 (작성자와 다른 사람이 완료했을 때)
 function doneByChip(t) {
   if (!isShared() || todoScope(t, 'private') !== 'shared' || !t.done || !t.doneBy || t.doneBy === t.by) return '';
@@ -4402,7 +4591,13 @@ function renderCalendarLegend() {
   const catSwatches = getCategories().map(c =>
     `<span><span class="mcal-tag" style="background:${hexToRgba(c.color, 0.16)}; color:${c.color};">${esc(c.name)}</span></span>`
   ).join('');
-  legend.innerHTML = catSwatches +
+  // 공유 중이면 주인별 색(나·배우자·함께)도 함께 안내한다.
+  const partySwatches = isShared()
+    ? partyOptions().map(o =>
+        `<span><span class="owner-badge" style="--owner-color:${ownerColorFor(o.key)}; --owner-bg:${hexToRgba(ownerColorFor(o.key), 0.14)};">${esc(o.label)}</span></span>`
+      ).join('')
+    : '';
+  legend.innerHTML = partySwatches + catSwatches +
     `<span><span class="mcal-tag t-done">완료</span></span>` +
     `<span><span class="mcal-tag t-note">메모</span></span>`;
 }
