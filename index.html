@@ -293,14 +293,20 @@
     font-size: 10.5px; font-weight: 900; line-height: 1.35; white-space: nowrap;
   }
   .owner-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--owner-color); }
-  /* 공유 일정 주인 선택(나/배우자/함께) */
+  /* 공유 일정 주인 선택(나/배우자/우리) — 세 개가 같은 스타일이고, 선택된 것만 테두리로 강조 */
   .party-btns { display: inline-flex; gap: 6px; flex-wrap: wrap; }
   .party-btn {
+    display: inline-flex; align-items: center; gap: 5px;
     border-radius: 999px; padding: 4px 11px; font-size: 11.5px; font-weight: 900;
-    border: 1.5px solid var(--party-color); background: transparent; color: var(--party-color);
+    border: 1.5px solid transparent; background: var(--party-bg); color: var(--party-color);
     cursor: pointer; font-family: inherit; transition: var(--transition); white-space: nowrap;
+    opacity: 0.72;
   }
-  .party-btn.sel { background: var(--party-color); color: #fff; }
+  .party-btn::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--party-color);
+  }
+  .party-btn:hover { opacity: 1; }
+  .party-btn.sel { border-color: var(--party-color); opacity: 1; }
   /* 공유 일정 색 지정 박스 */
   .owner-color-box {
     background: var(--bg); border: 1.5px dashed var(--border); border-radius: 12px;
@@ -4144,7 +4150,7 @@ function renderTodos(day) {
           <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
           <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
           <button class="del" onclick="copyTodoToDateFromKey('${currentKey}', '${t.id}')" title="다른 날짜에 한 번 복사">📋</button>
-          ${isShared() ? `<button class="del" onclick="openPartyPicker(event, '${currentKey}', '${t.id}')" title="누구 일정인지 변경 (나·배우자·함께)">👤</button>` : ''}
+          ${isShared() ? `<button class="del" onclick="openPartyPicker(event, '${currentKey}', '${t.id}')" title="누구 일정인지 변경 (나·배우자·우리)">👤</button>` : ''}
           <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
           <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
           <button class="del" onclick="openRecurSetup('${currentKey}', '${t.id}')" title="이 할 일을 반복 일정으로">🔁</button>
@@ -4207,7 +4213,7 @@ function ownerColorFor(key) {
   return key === TOGETHER_KEY ? DEFAULT_TOGETHER_COLOR : memberSignature(key).color;
 }
 function partyLabel(key) {
-  return key === TOGETHER_KEY ? '함께' : memberFirstName(key);
+  return key === TOGETHER_KEY ? '우리' : memberFirstName(key);
 }
 function partySignature(key) {
   return { label: partyLabel(key), color: ownerColorFor(key) };
@@ -4236,7 +4242,7 @@ function partyOptions() {
   const pUid = partnerUid();
   const opts = [{ id: 'mine', key: me, label: '나' }];
   if (pUid) opts.push({ id: 'partner', key: pUid, label: partyLabel(pUid) });
-  opts.push({ id: 'both', key: TOGETHER_KEY, label: '함께' });
+  opts.push({ id: 'both', key: TOGETHER_KEY, label: partyLabel(TOGETHER_KEY) });
   return opts;
 }
 
@@ -4251,9 +4257,10 @@ function renderPartyRow() {
   if (!on) return;
   const opts = partyOptions();
   if (!opts.some(o => o.id === selectedParty)) selectedParty = 'mine';
-  box.innerHTML = opts.map(o =>
-    `<button type="button" class="party-btn ${o.id === selectedParty ? 'sel' : ''}" style="--party-color:${ownerColorFor(o.key)};" onclick="setSelectedParty('${o.id}')">${esc(o.label)}</button>`
-  ).join('');
+  box.innerHTML = opts.map(o => {
+    const c = ownerColorFor(o.key);
+    return `<button type="button" class="party-btn ${o.id === selectedParty ? 'sel' : ''}" style="--party-color:${c}; --party-bg:${hexToRgba(c, 0.16)};" onclick="setSelectedParty('${o.id}')">${esc(o.label)}</button>`;
+  }).join('');
 }
 function setSelectedParty(id) { selectedParty = id; renderPartyRow(); }
 
@@ -4279,7 +4286,8 @@ function openPartyPicker(ev, key, id) {
   const picker = document.getElementById('catPicker');
   picker.innerHTML = partyOptions().map(o => {
     const isCur = o.key === cur;
-    return `<button class="party-btn ${isCur ? 'sel' : ''}" style="--party-color:${ownerColorFor(o.key)};" onclick="applyPartyChange('${o.id}')">${isCur ? '✓ ' : ''}${esc(o.label)}</button>`;
+    const c = ownerColorFor(o.key);
+    return `<button class="party-btn ${isCur ? 'sel' : ''}" style="--party-color:${c}; --party-bg:${hexToRgba(c, 0.16)};" onclick="applyPartyChange('${o.id}')">${isCur ? '✓ ' : ''}${esc(o.label)}</button>`;
   }).join('');
   picker.classList.add('open');
   const x = Math.min(ev.clientX, window.innerWidth - 260);
@@ -4318,7 +4326,7 @@ function renderOwnerColors() {
   const items = [
     { key: me, name: `${partyLabel(me)} (나)` },
     ...(pUid ? [{ key: pUid, name: partyLabel(pUid) }] : []),
-    { key: TOGETHER_KEY, name: '함께' }
+    { key: TOGETHER_KEY, name: partyLabel(TOGETHER_KEY) }
   ];
   rows.innerHTML = items.map(it => `
     <div class="owner-color-row">
