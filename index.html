@@ -22,6 +22,10 @@
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
 <link rel="dns-prefetch" href="https://asia-northeast3-minb-spanish-study.cloudfunctions.net">
+<!-- Firebase SDK는 body 끝에서 실행되지만, 다운로드는 여기서 미리 시작해 대기 시간을 줄인다 -->
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js" crossorigin>
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js" crossorigin>
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 
 <!-- Twemoji: 기본 이모지를 일관된 고해상도 SVG 이모지로 교체 -->
@@ -1437,6 +1441,20 @@ const db = firebase.firestore();
 // 오프라인 캐시: 재방문 시 네트워크를 기다리지 않고 캐시 데이터를 즉시 표시(이후 실시간 갱신)
 db.enablePersistence({ synchronizeTabs: true }).catch(e => console.warn('오프라인 캐시 비활성:', e && e.code));
 const cloudFunctions = firebase.app().functions('asia-northeast3');
+
+// 서비스워커를 앱 시작 시 등록한다(예전에는 알림을 켤 때만 등록됐다).
+// 앱 셸(HTML·SDK)을 캐시해 두 번째 실행부터는 네트워크를 기다리지 않고 바로 띄운다.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(e => console.warn('서비스워커 등록 실패:', e));
+  });
+  // 캐시를 갱신하다 새 버전을 발견하면 알려준다(캐시된 화면을 먼저 보여주기 때문)
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data && e.data.type === 'shell-updated' && typeof toast === 'function') {
+      toast('✨ 새 버전이 준비됐어요. 새로고침하면 적용돼요.');
+    }
+  });
+}
 
 let currentUser = null;
 let userData = null;        // 개인 일정·카테고리·메모
@@ -3429,17 +3447,24 @@ function renderAll() {
 // 기본 이모지를 Twemoji SVG로 교체해 모든 기기에서 동일한 고품질 디자인으로 표시
 // 전체 문서 파싱은 무겁기 때문에 연속 호출을 하나로 합치고, 브라우저 유휴 시간에 실행한다(멈춤 방지)
 let twemojiPending = false;
+// 이모지 하나하나가 CDN 이미지 요청이라 첫 로딩에 수십 건이 몰린다.
+// lazy 로딩으로 "화면에 보이는 이모지"만 내려받게 해 초기 요청 수를 줄인다.
+const TWEMOJI_OPTS = {
+  folder: 'svg',
+  ext: '.svg',
+  attributes: () => ({ loading: 'lazy', decoding: 'async' })
+};
 function applyTwemoji(root) {
   if (!window.twemoji) return;
   if (root) { // 토스트·검색결과처럼 작은 영역은 즉시
-    try { twemoji.parse(root, { folder: 'svg', ext: '.svg' }); } catch (e) {}
+    try { twemoji.parse(root, TWEMOJI_OPTS); } catch (e) {}
     return;
   }
   if (twemojiPending) return;
   twemojiPending = true;
   const run = () => {
     twemojiPending = false;
-    try { twemoji.parse(document.body, { folder: 'svg', ext: '.svg' }); } catch (e) {}
+    try { twemoji.parse(document.body, TWEMOJI_OPTS); } catch (e) {}
   };
   if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 400 });
   else setTimeout(run, 40);
