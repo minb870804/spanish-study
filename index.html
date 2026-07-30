@@ -17,6 +17,11 @@
 <title>Minb | 나의 대시보드</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Firebase SDK·Firestore 연결을 미리 열어 첫 데이터 표시까지의 지연(DNS·TLS)을 줄인다 -->
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+<link rel="dns-prefetch" href="https://asia-northeast3-minb-spanish-study.cloudfunctions.net">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 
 <!-- Twemoji: 기본 이모지를 일관된 고해상도 SVG 이모지로 교체 -->
@@ -1074,11 +1079,11 @@
           <div class="todo-detail-row">
             <label class="todo-detail-field">
               <span>📅 시작일</span>
-              <input type="date" id="todoStartInput" aria-label="기간 시작일" oninput="todoStartDateEdited=true">
+              <input type="date" id="todoStartInput" aria-label="기간 시작일" oninput="todoStartDateEdited=true; syncTodoEndBound()">
             </label>
             <label class="todo-detail-field">
               <span>🏁 종료일 (기간 일정)</span>
-              <input type="date" id="todoEndInput" aria-label="기간 종료일">
+              <input type="date" id="todoEndInput" aria-label="기간 종료일" oninput="syncTodoEndBound(true)">
             </label>
           </div>
           <div class="reminder-row">
@@ -1635,7 +1640,45 @@ function genCode() {
   return c;
 }
 
+// 재방문 시 첫 화면을 빠르게: 로컬 캐시에 이미 사용자 문서가 있으면
+// 서버 왕복(users.get → spaces.get)을 기다리지 않고 바로 실시간 리스너를 붙인다.
+// 리스너는 캐시 스냅샷을 즉시 내려주므로 데이터가 곧바로 그려지고, 서버 최신값은 뒤이어 자동 반영된다.
 async function ensureSpace() {
+  if (await tryFastStartFromCache()) return;
+  return ensureSpaceFromServer();
+}
+
+async function tryFastStartFromCache() {
+  try {
+    const cached = await db.collection('users').doc(currentUser.uid).get({ source: 'cache' });
+    if (!cached.exists) return false;
+    const data = cached.data() || {};
+    // 마이그레이션이 끝난(v2) 사용자 + 스페이스 ID가 있는 경우에만 빠른 경로를 쓴다
+    if (!data.spaceId || Number(data.dataModelVersion || 0) < 2) return false;
+
+    userData = data;
+    spaceId = data.spaceId;
+    renderStudyStats(userData);
+    subscribeUser();
+    subscribeSpace();
+
+    // 캐시를 믿고 시작했으니, 스페이스가 실제로 유효한지는 뒤에서 확인하고
+    // 문제가 있으면 정식 경로로 복구한다.
+    db.collection('spaces').doc(spaceId).get()
+      .then(sp => {
+        if (!sp.exists || !(sp.data().members || []).includes(currentUser.uid)) {
+          return ensureSpaceFromServer();
+        }
+      })
+      .catch(e => console.warn('스페이스 확인 실패(캐시로 계속 진행):', e && e.code));
+    return true;
+  } catch (e) {
+    // 캐시 미스(unavailable) 등 — 정식 경로로 진행
+    return false;
+  }
+}
+
+async function ensureSpaceFromServer() {
   const userRef = db.collection('users').doc(currentUser.uid);
   const snap = await userRef.get();
   userData = snap.exists ? snap.data() : {};
@@ -1894,7 +1937,8 @@ async function leaveSpace() {
     if (unsubSpace) { unsubSpace(); unsubSpace = null; }
     spaceId = null; spaceData = null;
     userData.spaceId = null;
-    await ensureSpace();
+    // 캐시에는 아직 예전 spaceId가 남아 있을 수 있으므로 반드시 서버 경로로 새 스페이스를 만든다
+    await ensureSpaceFromServer();
     toast('나만의 새 스페이스가 만들어졌어요.');
   } catch (e) { console.error('나가기 실패:', e); toast('나가기에 실패했어요.'); }
 }
@@ -3068,6 +3112,22 @@ function toggleTodoOptions() {
   btn.textContent = willOpen ? '− 세부설정 접기' : '＋ 세부설정 · 시간·장소·기간·알림';
 }
 
+// 기간 일정: 종료일은 시작일보다 앞설 수 없다.
+// 시작일이 바뀌면 종료일의 선택 하한(min)을 맞추고, 이미 더 이른 값이면 시작일로 끌어올린다.
+// fromEnd=true면 사용자가 종료일을 직접 건드린 경우(잘못된 값이면 즉시 안내).
+function syncTodoEndBound(fromEnd) {
+  const startEl = document.getElementById('todoStartInput');
+  const endEl = document.getElementById('todoEndInput');
+  if (!startEl || !endEl) return;
+  const startKey = normalizeDateKey(startEl.value) || dateKey(selectedDate);
+  endEl.min = startKey; // 날짜 선택기가 시작일 이전을 못 고르게
+  const endKey = normalizeDateKey(endEl.value);
+  if (endKey && endKey < startKey) {
+    endEl.value = startKey; // 역순이면 시작일로 보정
+    toast(fromEnd ? '종료일은 시작일보다 빠를 수 없어요.' : `종료일을 ${shortDateLabel(startKey)}로 맞췄어요.`);
+  }
+}
+
 // 할 일 항목의 추가 액션(이동/수정/알림/삭제) 펼치기/접기
 function toggleRowActions(btn) {
   const item = btn.closest('.todo-item');
@@ -3190,6 +3250,11 @@ function promptTodoEdits(todo, startKey) {
   if (rawEnd === null) return null;
   const endKey = normalizeDateKey(rawEnd);
   if (rawEnd.trim() && !endKey) { toast('종료일은 2026-07-03 형식으로 입력해 주세요.'); return null; }
+  // 종료일이 시작일보다 빠르면 저장하지 않는다(조용히 기간만 해제되면 사용자가 눈치채기 어렵다)
+  if (endKey && baseStart && endKey < baseStart) {
+    toast(`종료일이 시작일(${shortDateLabel(baseStart)})보다 빨라요.`);
+    return null;
+  }
 
   // 카테고리 수정 — 번호로 선택 (비우거나 취소하면 기존 유지)
   const cats = getCategories();
@@ -3346,6 +3411,7 @@ function renderAll() {
   // 기간 일정 시작일 기본값 = 선택한 날 (사용자가 아직 안 건드렸을 때만)
   const startEl = document.getElementById('todoStartInput');
   if (startEl && document.activeElement !== startEl && !todoStartDateEdited) startEl.value = key;
+  syncTodoEndBound(); // 종료일 하한을 시작일에 맞춤
 
   // 메모: 카테고리별 칸 렌더 + 입력 중이 아닐 때만 값 덮어쓰기
   renderHomeMemo(day);
