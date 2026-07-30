@@ -1443,16 +1443,13 @@ db.enablePersistence({ synchronizeTabs: true }).catch(e => console.warn('오프�
 const cloudFunctions = firebase.app().functions('asia-northeast3');
 
 // 서비스워커를 앱 시작 시 등록한다(예전에는 알림을 켤 때만 등록됐다).
-// 앱 셸(HTML·SDK)을 캐시해 두 번째 실행부터는 네트워크를 기다리지 않고 바로 띄운다.
+// Firebase SDK·폰트·이모지 같은 정적 자산을 캐시해 재실행 시 다시 받지 않게 한다.
+// (HTML은 워커가 건드리지 않는다 — sw.js 주석 참고)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(e => console.warn('서비스워커 등록 실패:', e));
-  });
-  // 캐시를 갱신하다 새 버전을 발견하면 알려준다(캐시된 화면을 먼저 보여주기 때문)
-  navigator.serviceWorker.addEventListener('message', e => {
-    if (e.data && e.data.type === 'shell-updated' && typeof toast === 'function') {
-      toast('✨ 새 버전이 준비됐어요. 새로고침하면 적용돼요.');
-    }
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => reg.update().catch(() => {})) // 수정된 워커를 곧바로 받아오도록
+      .catch(e => console.warn('서비스워커 등록 실패:', e));
   });
 }
 

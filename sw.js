@@ -1,17 +1,13 @@
-// Minb 서비스워커 — 푸시 알림 + 앱 셸 캐싱
-// 캐싱 목적: 앱을 다시 열 때 HTML·SDK를 네트워크에서 다시 받지 않고 즉시 화면을 띄운다.
-// 데이터(Firestore)는 여기서 건드리지 않는다. SDK가 자체 오프라인 캐시로 처리한다.
+// Minb 서비스워커 — 푸시 알림 + 정적 자산 캐싱
+//
+// 중요: 페이지 이동(HTML)은 절대 가로채지 않는다.
+// 호스팅이 cleanUrls로 /index.html → / 308 리다이렉트를 하는데,
+// 리다이렉트된 응답은 navigation 요청에 사용할 수 없어 페이지가 열리지 않는다(ERR_FAILED).
+// HTML은 브라우저 기본 캐시에 맡기고, 여기서는 용량이 큰 정적 자산만 캐시해
+// 앱 재실행 시 Firebase SDK·폰트·이모지를 네트워크에서 다시 받지 않게 한다.
+// 데이터(Firestore)는 SDK 자체 오프라인 캐시가 처리하므로 건드리지 않는다.
 
-const CACHE_VERSION = 'minb-shell-v1';
-
-// 미리 받아둘 앱 셸. 실패해도 설치는 계속 진행한다(개별 요청으로 처리).
-const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/favicon.svg',
-  '/icons/icon-192.png'
-];
+const CACHE_VERSION = 'minb-assets-v2';
 
 // 캐시해도 안전한 외부 호스트 — URL에 버전이 박혀 있어 내용이 바뀌지 않는다.
 const CACHEABLE_HOSTS = new Set([
@@ -29,18 +25,18 @@ function isApiHost(hostname) {
     || hostname.endsWith('firebaseapp.com');
 }
 
+// 캐시해도 되는 같은 출처 자산(아이콘·매니페스트 등). HTML은 제외한다.
+function isCacheableSameOrigin(pathname) {
+  return /\.(png|svg|ico|webp|jpg|jpeg|woff2?|json)$/i.test(pathname) && pathname !== '/sw.js';
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE_VERSION);
-    await Promise.all(PRECACHE_URLS.map(url =>
-      cache.add(new Request(url, { cache: 'reload' })).catch(() => {})
-    ));
-    await self.skipWaiting();
-  })());
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
+    // 이전 버전(HTML을 캐시했던 v1) 캐시를 모두 지워 확실히 정상화한다.
     const names = await caches.keys();
     await Promise.all(names.filter(n => n !== CACHE_VERSION).map(n => caches.delete(n)));
     await self.clients.claim();
@@ -48,55 +44,46 @@ self.addEventListener('activate', (event) => {
 });
 
 // 캐시를 먼저 주고, 뒤에서 새 버전을 받아 캐시를 갱신한다(stale-while-revalidate).
-async function staleWhileRevalidate(request, notifyOnChange) {
+// 어떤 경우에도 네트워크 응답을 그대로 돌려주도록 해 앱이 멈추지 않게 한다.
+async function cacheFirst(request) {
   const cache = await caches.open(CACHE_VERSION);
-  const cached = await cache.match(request, { ignoreSearch: true });
+  const cached = await cache.match(request);
 
-  const networkUpdate = fetch(request).then(async (res) => {
-    // opaque(type:'opaque')는 status가 0이라 res.ok가 false다.
-    // 폰트·이모지 같은 cross-origin 이미지도 캐시해야 재실행 시 요청이 줄어든다.
-    if (!res || (!res.ok && res.type !== 'opaque')) return null;
-    const copy = res.clone();
-    // HTML이 실제로 바뀌었을 때만 새 버전 안내(매 실행마다 알리면 시끄럽다)
-    if (notifyOnChange && cached) {
-      try {
-        const [oldText, newText] = await Promise.all([cached.clone().text(), res.clone().text()]);
-        if (oldText !== newText) {
-          const clientList = await self.clients.matchAll({ type: 'window' });
-          clientList.forEach(c => c.postMessage({ type: 'shell-updated' }));
-        }
-      } catch (e) {}
-    }
-    await cache.put(request, copy);
-    return res;
-  }).catch(() => null);
+  if (cached) {
+    // 백그라운드 갱신(실패는 무시)
+    fetch(request).then(res => {
+      if (res && (res.ok || res.type === 'opaque') && !res.redirected) {
+        cache.put(request, res.clone()).catch(() => {});
+      }
+    }).catch(() => {});
+    return cached;
+  }
 
-  if (cached) return cached;            // 즉시 표시
-  const fresh = await networkUpdate;    // 첫 방문은 네트워크를 기다림
-  return fresh || Response.error();
+  const res = await fetch(request);
+  // 리다이렉트된 응답은 캐시하지 않는다(재사용 시 문제가 될 수 있다).
+  if (res && (res.ok || res.type === 'opaque') && !res.redirected) {
+    cache.put(request, res.clone()).catch(() => {});
+  }
+  return res;
 }
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
+  // 페이지 이동은 손대지 않는다 — 항상 브라우저·네트워크가 처리한다.
+  if (req.mode === 'navigate' || req.destination === 'document') return;
 
   let url;
   try { url = new URL(req.url); } catch (e) { return; }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
-  if (isApiHost(url.hostname)) return;  // 인증·DB·함수는 그대로 통과
-
-  // 페이지 이동(앱 실행) — 캐시된 HTML로 즉시 띄우고 뒤에서 갱신
-  if (req.mode === 'navigate') {
-    event.respondWith(staleWhileRevalidate(new Request('/index.html'), true));
-    return;
-  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return;
+  if (isApiHost(url.hostname)) return;
 
   const sameOrigin = url.origin === self.location.origin;
-  if (sameOrigin && url.pathname === '/sw.js') return; // 워커 자신은 캐시하지 않는다
+  const cacheable = sameOrigin ? isCacheableSameOrigin(url.pathname) : CACHEABLE_HOSTS.has(url.hostname);
+  if (!cacheable) return;
 
-  if (sameOrigin || CACHEABLE_HOSTS.has(url.hostname)) {
-    event.respondWith(staleWhileRevalidate(req, false));
-  }
+  // 실패 시에도 일반 네트워크 요청으로 되돌아가도록 폴백을 둔다.
+  event.respondWith(cacheFirst(req).catch(() => fetch(req)));
 });
 
 self.addEventListener('push', (event) => {
