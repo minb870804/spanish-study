@@ -278,6 +278,14 @@
   body.dark .todo-scope-row { background: rgba(255,255,255,0.05); }
   .share-check { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12.5px; font-weight: 900; }
   .share-check input { width: 17px; height: 17px; accent-color: var(--blue); }
+  /* 중요 표시 — 빨강 전용 */
+  .important-check { color: var(--red); }
+  .important-check input { accent-color: var(--red); }
+  .important-flag {
+    display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; border-radius: 999px;
+    background: var(--red-light); border: 1px solid var(--red); color: var(--red);
+    font-size: 10px; font-weight: 900; line-height: 1.4; white-space: nowrap;
+  }
   .scope-hint { color: var(--muted); font-size: 10.5px; font-weight: 700; }
   .scope-badge {
     display: inline-flex; align-items: center; padding: 3px 7px; border-radius: 999px;
@@ -1133,6 +1141,10 @@
             <input type="checkbox" id="todoShareInput" onchange="renderPartyRow()">
             <span>👫 배우자와 공유</span>
           </label>
+          <label class="share-check important-check" for="todoImportantInput" title="꼭 챙겨야 하는 일정은 빨간색으로 표시돼요">
+            <input type="checkbox" id="todoImportantInput">
+            <span>❗ 중요</span>
+          </label>
           <span class="scope-hint">체크하지 않으면 나에게만 보여요.</span>
         </div>
         <!-- 공유할 때 "누구 일정인지" 지정 (나 / 배우자 / 함께) -->
@@ -1509,7 +1521,7 @@ let daySaveSeq = 0;
 const DAYS_KO = ['일','월','화','수','목','금','토'];
 const MEMBER_SIGNATURES = [
   { label: '민석', color: '#2563EB', aliases: ['민석', 'minseok', 'minseokkim'] },
-  { label: '단비', color: '#F97316', aliases: ['단비', 'danbi'] }
+  { label: '단비', color: '#EC4899', aliases: ['단비', 'danbi'] }
 ];
 const DEFAULT_DASHBOARD_CATEGORIES = [
   { id: 'study', icon: '🇪🇸', name: '스페인어 스터디', href: 'study.html', color: '#3949ab' },
@@ -3226,6 +3238,8 @@ async function addTodo() {
   const selectedCat = catById(selectedTodoCat);
   // 누구 일정인지 — 공유일 때만 선택값을 쓰고, 개인 일정은 항상 내 것이다.
   const assignee = visibility === 'shared' ? resolveAssignee(selectedParty) : currentUser.uid;
+  const importantEl = document.getElementById('todoImportantInput');
+  const important = !!(importantEl && importantEl.checked);
 
   input.value = '';
   autoSizeTodoInput(input);
@@ -3236,6 +3250,7 @@ async function addTodo() {
   if (endInput) endInput.value = '';
   todoStartDateEdited = false;
   document.getElementById('todoShareInput').checked = false;
+  if (importantEl) importantEl.checked = false;
   selectedParty = 'mine';
   renderPartyRow();
   const day = getDay(key);
@@ -3246,6 +3261,7 @@ async function addTodo() {
     done: false,
     by: currentUser.uid,
     assignee,
+    important,
     cat: selectedTodoCat,
     catName: selectedCat.name,
     catColor: selectedCat.color,
@@ -4067,7 +4083,7 @@ function renderUpcomingTodos() {
       <input type="checkbox" aria-label="완료" ${upMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onclick="event.stopPropagation()" onchange="completeUpcomingTodo('${sourceKey}', '${todo.id}', this.checked)">
       <span class="upcoming-todo-date">${month}/${day}<br>${DAYS_KO[dueDate.getDay()]}</span>
       <span class="upcoming-todo-main">
-        <span class="upcoming-todo-title">${esc(todo.text)}</span>
+        <span class="upcoming-todo-title">${isImportantTodo(todo) ? '<span style="color:var(--red); font-weight:900;">❗</span>' : ''}${esc(todo.text)}</span>
         <span class="upcoming-todo-meta">${meta.join(' · ')}</span>
       </span>
       <span class="tcat-badge" style="background:${cat.color}; cursor:default;">${esc(cat.name)}</span>
@@ -4151,6 +4167,7 @@ function renderTodos(day) {
           <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
           <button class="del" onclick="copyTodoToDateFromKey('${currentKey}', '${t.id}')" title="다른 날짜에 한 번 복사">📋</button>
           ${isShared() ? `<button class="del" onclick="openPartyPicker(event, '${currentKey}', '${t.id}')" title="누구 일정인지 변경 (나·배우자·우리)">👤</button>` : ''}
+          <button class="del" onclick="toggleTodoImportant('${currentKey}', '${t.id}')" title="${isImportantTodo(t) ? '중요 표시 해제' : '중요 표시(빨간색)'}">${isImportantTodo(t) ? '⭕' : '❗'}</button>
           <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
           <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
           <button class="del" onclick="openRecurSetup('${currentKey}', '${t.id}')" title="이 할 일을 반복 일정으로">🔁</button>
@@ -4161,6 +4178,7 @@ function renderTodos(day) {
       <input type="checkbox" ${t.done ? 'checked' : ''} ${mine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleTodo('${t.id}', this.checked)">
       <span class="todo-content"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
       <span class="todo-actions">
+        ${importantFlag(t)}
         ${badge}
         ${scheduleScopeBadge(t, currentKey)}
         ${reminderChip(t)}
@@ -4194,7 +4212,9 @@ function memberFirstName(uid) { return memberSignature(uid).label; }
 // 일정마다 "누구 일정인지"를 assignee에 담는다: 내 uid · 배우자 uid · 'both'(함께).
 // 예전 데이터에는 assignee가 없으므로 작성자(by)를 주인으로 본다.
 const TOGETHER_KEY = 'both';
-const DEFAULT_TOGETHER_COLOR = '#DC2626';
+const DEFAULT_TOGETHER_COLOR = '#16A34A';
+// 빨강은 '중요 표시' 전용으로 비워 둔다(주인 색과 겹치지 않게).
+const IMPORTANT_COLOR = '#DC2626';
 
 function partnerUid() {
   if (!currentUser || !spaceData) return '';
@@ -4234,6 +4254,26 @@ function authorChip(todo) {
   if (currentUser && assigneeOf(todo) === currentUser.uid) return '';
   return `<span class="owner-badge" style="--owner-color:${owner.color}; --owner-bg:${hexToRgba(owner.color, 0.14)};">${owner.label}</span>`;
 }
+// ── 중요 표시 ── 꼭 챙겨야 하는 일정은 빨간색으로 눈에 띄게 한다.
+function isImportantTodo(t) { return !!(t && t.important); }
+function importantFlag(t) {
+  return isImportantTodo(t) ? '<span class="important-flag" title="중요 일정">❗중요</span>' : '';
+}
+async function toggleTodoImportant(key, id) {
+  const day = getDay(key);
+  const todo = day.todos.find(t => t.id === id);
+  if (!todo) return;
+  if (todo.by && currentUser && todo.by !== currentUser.uid) {
+    toast('일정을 만든 사람만 바꿀 수 있어요.');
+    return;
+  }
+  todo.important = !isImportantTodo(todo);
+  setDayLocal(key, day);
+  renderAll(); if (modalKey) refreshModal(true);
+  await saveDay(key, day);
+  toast(todo.important ? '❗ 중요 일정으로 표시했어요.' : '중요 표시를 해제했어요.');
+}
+
 // ── 공유 일정 주인 선택 (입력 영역) ──
 let selectedParty = 'mine'; // mine | partner | both
 
@@ -4404,9 +4444,11 @@ function renderCalendarTags(key, dateObj) {
     const cat = todoCategory(b.todo);
     const owner = todoOwnerSignature(b.todo);
     const showLabel = b.isStart || dateObj.getDay() === 0; // 시작일 또는 주 시작(일)에 제목 표시
+    const impBar = isImportantTodo(b.todo);
     const cls = ['mcal-bar', b.isStart ? 'start' : '', b.isEnd ? 'end' : '', b.todo.done ? 'done' : ''].filter(Boolean).join(' ');
-    const label = showLabel ? esc((b.todo.done ? '✓ ' : '') + (owner ? `${owner.label} · ` : '') + b.todo.text) : '&nbsp;';
-    tags.push(`<span class="${cls}" style="background:${owner ? owner.color : cat.color};" ${calendarDragAttrs('todo', b.startK, b.todo.id)} title="${esc(b.todo.text)} (${shortDateLabel(b.startK)}~${shortDateLabel(b.endK)})">${label}</span>`);
+    const label = showLabel ? esc((b.todo.done ? '✓ ' : '') + (impBar ? '❗' : '') + (owner ? `${owner.label} · ` : '') + b.todo.text) : '&nbsp;';
+    const barColor = impBar ? IMPORTANT_COLOR : (owner ? owner.color : cat.color);
+    tags.push(`<span class="${cls}" style="background:${barColor};" ${calendarDragAttrs('todo', b.startK, b.todo.id)} title="${esc(b.todo.text)} (${shortDateLabel(b.startK)}~${shortDateLabel(b.endK)})">${label}</span>`);
   });
 
   // 기간 일정이 아닌 일반 할 일 + 반복 할 일을 합쳐 미리보기(항상 표시)
@@ -4431,17 +4473,22 @@ function renderCalendarTags(key, dateObj) {
       tags.push(`<span class="mcal-tag" style="${done ? 'opacity:0.55;' : ''}${style}" title="반복 할 일">${esc(label)}</span>`);
     } else {
       const t = obj;
-      const prefix = `${t.done ? '✓ ' : ''}${owner ? `${owner.label} · ` : ''}${t.time ? `${t.time} · ` : ''}`;
+      const imp = isImportantTodo(t);
+      const prefix = `${t.done ? '✓ ' : ''}${imp ? '❗' : ''}${owner ? `${owner.label} · ` : ''}${t.time ? `${t.time} · ` : ''}`;
+      // 주인 색은 왼쪽 띠로 남겨 누구 일정인지 계속 알 수 있게 한다.
+      const ownerAccent = owner ? `box-shadow:inset 3px 0 ${owner.color};` : '';
       const ownerStyle = owner
-        ? `background:${hexToRgba(owner.color, 0.16)}; color:${owner.color}; box-shadow:inset 3px 0 ${owner.color};`
+        ? `background:${hexToRgba(owner.color, 0.16)}; color:${owner.color}; ${ownerAccent}`
         : '';
-      // 완료는 기존대로 녹색, 미완료는 카테고리 색으로 표시
+      // 완료는 기존대로 녹색, 중요는 빨강, 그 외는 주인·카테고리 색
       if (t.done) {
         tags.push(`<span class="mcal-tag t-done" style="${ownerStyle}" ${calendarDragAttrs('todo', key, t.id)}>${esc(prefix + t.text)}</span>`);
       } else {
         const cat = todoCategory(t);
-        const style = ownerStyle || `background:${hexToRgba(cat.color, 0.16)}; color:${cat.color};`;
-        tags.push(`<span class="mcal-tag t-cat" style="${style}" ${calendarDragAttrs('todo', key, t.id)}>${esc(prefix + t.text)}</span>`);
+        const style = imp
+          ? `background:${hexToRgba(IMPORTANT_COLOR, 0.18)}; color:${IMPORTANT_COLOR}; font-weight:900; ${ownerAccent}`
+          : (ownerStyle || `background:${hexToRgba(cat.color, 0.16)}; color:${cat.color};`);
+        tags.push(`<span class="mcal-tag t-cat" style="${style}" ${calendarDragAttrs('todo', key, t.id)}${imp ? ' title="중요 일정"' : ''}>${esc(prefix + t.text)}</span>`);
       }
     }
   });
@@ -4605,7 +4652,9 @@ function renderCalendarLegend() {
         `<span><span class="owner-badge" style="--owner-color:${ownerColorFor(o.key)}; --owner-bg:${hexToRgba(ownerColorFor(o.key), 0.14)};">${esc(o.label)}</span></span>`
       ).join('')
     : '';
-  legend.innerHTML = partySwatches + catSwatches +
+  legend.innerHTML = partySwatches +
+    `<span><span class="mcal-tag" style="background:${hexToRgba(IMPORTANT_COLOR, 0.18)}; color:${IMPORTANT_COLOR}; font-weight:900;">❗중요</span></span>` +
+    catSwatches +
     `<span><span class="mcal-tag t-done">완료</span></span>` +
     `<span><span class="mcal-tag t-note">메모</span></span>`;
 }
