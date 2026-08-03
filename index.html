@@ -624,6 +624,14 @@
   .heat-scale { display: flex; align-items: center; gap: 4px; justify-content: center; margin-top: 8px; font-size: 10px; font-weight: 700; color: var(--muted); }
   .heat-scale i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
   /* 카테고리 가로 막대 */
+  /* 요일별 운동 세로 막대 */
+  .dow-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; max-width: 316px; margin-inline: auto; }
+  .dow-col { display: grid; grid-template-rows: 14px 76px 16px; justify-items: center; gap: 3px; }
+  .dow-label-top { font-size: 10px; font-weight: 900; color: var(--text); font-variant-numeric: tabular-nums; }
+  .dow-bar-slot { width: 100%; height: 76px; display: flex; align-items: flex-end; justify-content: center; }
+  /* 막대는 얇게, 위쪽만 둥글고 바닥은 각지게 */
+  .dow-bar { display: block; width: 60%; max-width: 22px; min-height: 2px; background: var(--green); border-radius: 4px 4px 0 0; }
+  .dow-name { font-size: 10px; font-weight: 800; color: var(--muted); }
   .cbar-row { display: grid; grid-template-columns: minmax(52px, 78px) minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 0; }
   .cbar-name { font-size: 11.5px; font-weight: 800; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cbar-track { display: block; height: 10px; background: var(--border); border-radius: 3px; overflow: hidden; }
@@ -5444,6 +5452,17 @@ function buildMonthReport(baseDate) {
     });
   }
 
+  // ── 중요(❗) 일정 달성 ── 반복 규칙에는 중요 표시가 없으므로 일반 할 일만 센다.
+  let importantPlanned = 0;
+  let importantDone = 0;
+  for (let dd = 1; dd <= info.days; dd++) {
+    const key = dateKey(new Date(info.y, info.m, dd));
+    (getDay(key).todos || []).filter(isScheduleVisible).filter(isImportantTodo).forEach(todo => {
+      importantPlanned += 1;
+      if (todo.done) importantDone += 1;
+    });
+  }
+
   const moveEvents = collectMoveEvents()
     .filter(isScheduleVisible)
     .filter(ev => keyInMonth(ev.from, info) || keyInMonth(ev.to, info));
@@ -5497,6 +5516,12 @@ function buildMonthReport(baseDate) {
     const exText = String((getDay(key).notes || {})[EXERCISE_CAT_ID] || '').trim();
     if (exText) exerciseItems.push({ date: key, text: exText.split(/\n+/).map(cleanNoteLine).filter(Boolean).join(' · ') });
   }
+  // 요일별 운동 횟수 (일~토) — 어느 요일에 습관이 무너지는지 보기 위함
+  const exerciseByDow = [0, 0, 0, 0, 0, 0, 0];
+  exerciseItems.forEach(x => {
+    const [yy, mm, dd2] = x.date.split('-').map(Number);
+    exerciseByDow[new Date(yy, mm - 1, dd2).getDay()] += 1;
+  });
   const exerciseDays = exerciseItems.length;
 
   // ── 음주한 날 목록 + 이달 최장 금주 연속 ──
@@ -5556,6 +5581,10 @@ function buildMonthReport(baseDate) {
     sobriety,
     exerciseItems,
     exerciseDays,
+    exerciseByDow,
+    importantPlanned,
+    importantDone,
+    importantRate: percent(importantDone, importantPlanned),
     drinkDates,
     longestSoberRun,
     elapsedDays,
@@ -5686,6 +5715,24 @@ function monthHeatmap(report) {
       많음</div>`;
 }
 
+// 요일별 운동 세로 막대 — 한 계열이라 색은 하나만 쓴다(값에 따라 색을 바꾸면
+// 막대 길이가 이미 말하는 정보를 색으로 중복 표현하게 된다).
+// 숫자는 가장 많은 요일에만 직접 붙이고, 나머지는 툴팁과 아래 운동 내역으로 읽는다.
+function exerciseDowChart(byDow) {
+  const max = Math.max(...byDow);
+  if (!max) return '<div class="report-muted">이번 달 운동 기록이 아직 없어요.</div>';
+  const peak = byDow.indexOf(max);
+  const bars = byDow.map((n, i) => {
+    const h = (n / max) * 100;
+    return `<div class="dow-col" title="${escAttr(`${DAYS_KO[i]}요일 · 운동 ${n}회`)}">
+      <span class="dow-label-top">${i === peak ? n : ''}</span>
+      <span class="dow-bar-slot"><span class="dow-bar" style="height:${h}%;${n ? '' : ' min-height:0;'}"></span></span>
+      <span class="dow-name">${DAYS_KO[i]}</span>
+    </div>`;
+  }).join('');
+  return `<div class="dow-chart">${bars}</div>`;
+}
+
 // 카테고리 가로 막대 — 계획 대비 완료. 카테고리 색은 앱 전체에서 쓰는 정체성 색을 그대로 쓴다.
 function categoryBars(rows) {
   if (!rows.length) return '<div class="report-muted">카테고리별로 집계할 계획이 아직 없어요.</div>';
@@ -5750,7 +5797,9 @@ function renderMonthReport(report) {
         ${ringChart(report.achievementRate, '#2f7d5e', `${report.achievementRate}%`, '달성률', '계획 달성률')}
         ${report.ownerRows.length > 1 ? ownerDonutChart(report.ownerRows) : ''}
         ${report.sobriety.elapsed ? ringChart(report.sobriety.soberRate, '#38679b', `${report.sobriety.soberRate}%`, '금주율', '금주한 날') : ''}
+        ${report.importantPlanned ? ringChart(report.importantRate, IMPORTANT_COLOR, `${report.importantRate}%`, '달성률', '❗중요 일정') : ''}
       </div>
+      ${report.importantPlanned ? `<div class="chart-sub">중요 일정 ${report.importantDone}/${report.importantPlanned}개 완료</div>` : ''}
       <div class="chart-sub">완료 ${report.completedCount} / 계획 ${report.plannedCount}개${report.sobriety.elapsed ? ` · 금주 ${report.sobriety.sober}일 · 음주 ${report.sobriety.drink}일` : ''}</div>
     </div>
 
@@ -5777,6 +5826,8 @@ function renderMonthReport(report) {
 
     <div class="report-section">
       <h3>💪 운동 내역 (${report.exerciseDays}일)</h3>
+      ${exerciseDowChart(report.exerciseByDow)}
+      ${report.exerciseDays ? '<div class="chart-sub" style="margin-bottom:8px;">요일별 운동 횟수</div>' : ''}
       ${exerciseHtml}
     </div>
 
