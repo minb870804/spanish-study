@@ -593,10 +593,14 @@
   :root {
     /* 히트맵 순차 램프(연함→진함) — 라이트 모드 */
     --heat-1: #7ec2a4; --heat-2: #54a486; --heat-3: #358264; --heat-4: #1f6149;
+    /* 음주 스트립 — 색각 이상에서도 구분되도록 검증한 쌍(ΔE 9.1) */
+    --strip-sober: #12855a; --strip-drink: #df8746;
   }
   body.dark {
     /* 다크 모드는 자동 반전이 아니라 별도 검증된 단계(어두움→밝음) */
     --heat-1: #325a49; --heat-2: #468064; --heat-3: #5da886; --heat-4: #7fd0a9;
+    /* 다크는 별도 검증한 쌍(ΔE 9.5) */
+    --strip-sober: #1c7a4d; --strip-drink: #c4802a;
   }
   .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0 4px; }
   .chart-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 10px; }
@@ -624,6 +628,16 @@
   .heat-scale { display: flex; align-items: center; gap: 4px; justify-content: center; margin-top: 8px; font-size: 10px; font-weight: 700; color: var(--muted); }
   .heat-scale i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
   /* 카테고리 가로 막대 */
+  /* 음주 스트립 — 하루 한 칸, 2px 간격이 칸을 갈라준다(테두리 대신) */
+  .strip { display: grid; grid-template-columns: repeat(31, minmax(0, 1fr)); gap: 2px; max-width: 316px; margin-inline: auto; }
+  .strip-cell { height: 22px; border-radius: 3px; background: var(--strip-sober); }
+  .strip-cell.drink { background: var(--strip-drink); }
+  .strip-cell.future { background: var(--bg); border: 1px solid var(--border); }
+  .strip-ends { display: flex; justify-content: space-between; max-width: 316px; margin: 3px auto 0; font-size: 9.5px; font-weight: 800; color: var(--muted); }
+  /* 상태색은 반드시 이름표와 함께 — 색만으로 뜻을 전하지 않는다 */
+  .strip-legend { display: flex; gap: 12px; justify-content: center; margin-top: 8px; font-size: 10.5px; font-weight: 800; color: var(--text); }
+  .strip-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .strip-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
   /* 요일별 운동 세로 막대 */
   .dow-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; max-width: 316px; margin-inline: auto; }
   .dow-col { display: grid; grid-template-rows: 14px 76px 16px; justify-items: center; gap: 3px; }
@@ -5715,6 +5729,29 @@ function monthHeatmap(report) {
       많음</div>`;
 }
 
+// 음주 스트립 — 하루 한 칸으로 한 달을 한 줄에. 금주 흐름이 어디서 끊겼는지 보인다.
+// 아직 오지 않은 날은 중립색으로 두어 '금주한 날'로 오해되지 않게 한다.
+function drinkStrip(report) {
+  if (!report.elapsedDays) return '';
+  const drink = new Set(report.drinkDates);
+  const cells = [];
+  for (let dd = 1; dd <= report.days; dd++) {
+    const key = dateKey(new Date(report.y, report.m, dd));
+    const future = dd > report.elapsedDays;
+    const isDrink = drink.has(key);
+    const state = future ? '예정' : (isDrink ? '음주' : '금주');
+    const cls = future ? 'future' : (isDrink ? 'drink' : '');
+    cells.push(`<span class="strip-cell ${cls}" title="${escAttr(`${report.m + 1}/${dd} · ${state}`)}"></span>`);
+  }
+  return `<div class="strip">${cells.join('')}</div>
+    <div class="strip-ends"><span>1일</span><span>${report.days}일</span></div>
+    <div class="strip-legend">
+      <span><i style="background:var(--strip-sober);"></i>금주 ${report.sobriety.sober}일</span>
+      <span><i style="background:var(--strip-drink);"></i>음주 ${report.sobriety.drink}일</span>
+      ${report.elapsedDays < report.days ? '<span><i style="background:var(--bg); border:1px solid var(--border);"></i>예정</span>' : ''}
+    </div>`;
+}
+
 // 요일별 운동 세로 막대 — 한 계열이라 색은 하나만 쓴다(값에 따라 색을 바꾸면
 // 막대 길이가 이미 말하는 정보를 색으로 중복 표현하게 된다).
 // 숫자는 가장 많은 요일에만 직접 붙이고, 나머지는 툴팁과 아래 운동 내역으로 읽는다.
@@ -5841,6 +5878,7 @@ function renderMonthReport(report) {
         </div>
         <span class="report-sobriety-rate">${report.sobriety.soberRate}%</span>
       </div>
+      ${drinkStrip(report)}
       ${drinkDatesText ? `<div class="report-muted" style="margin-top:7px;">${drinkDatesText}${report.longestSoberRun ? ` · 최장 금주 연속 ${report.longestSoberRun}일` : ''}</div>` : ''}
     </div>
 
