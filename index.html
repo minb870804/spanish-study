@@ -589,6 +589,47 @@
   }
   .report-meter { height: 9px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; margin: 8px 0 16px; }
   .report-meter span { display: block; height: 100%; background: var(--green); border-radius: inherit; }
+  /* ── 리포트 차트 ── 색은 dataviz 검증(6개 검사·순차 램프)을 통과한 값만 사용 */
+  :root {
+    /* 히트맵 순차 램프(연함→진함) — 라이트 모드 */
+    --heat-1: #7ec2a4; --heat-2: #54a486; --heat-3: #358264; --heat-4: #1f6149;
+  }
+  body.dark {
+    /* 다크 모드는 자동 반전이 아니라 별도 검증된 단계(어두움→밝음) */
+    --heat-1: #325a49; --heat-2: #468064; --heat-3: #5da886; --heat-4: #7fd0a9;
+  }
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0 4px; }
+  .chart-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 10px; }
+  .chart-title { font-size: 11.5px; font-weight: 900; color: var(--muted); text-align: center; margin-bottom: 8px; }
+  .chart-ringwrap { display: flex; justify-content: center; }
+  .ring-value { font-size: 21px; font-weight: 900; fill: var(--text); }
+  .ring-unit { font-size: 10px; font-weight: 800; fill: var(--muted); }
+  .chart-sub { font-size: 10.5px; font-weight: 700; color: var(--muted); text-align: center; margin-top: 7px; }
+  /* 범례 — 색 점이 정체성을 지고, 글자는 텍스트 색을 쓴다 */
+  .chart-legend { display: grid; gap: 4px; margin-top: 9px; }
+  .chart-legend-row { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: var(--text); }
+  .chart-legend-dot { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  .chart-legend-val { margin-left: auto; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+  /* 월간 히트맵 */
+  /* 칸이 과하게 커지지 않도록 폭을 제한하고 가운데 정렬 */
+  .heat-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; max-width: 316px; margin-inline: auto; }
+  .heat-dow { font-size: 9.5px; font-weight: 800; color: var(--muted); text-align: center; padding-bottom: 2px; }
+  .heat-cell {
+    aspect-ratio: 1; border-radius: 4px; background: var(--bg); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: var(--muted);
+  }
+  .heat-cell.filled { border-color: transparent; color: #fff; }
+  .heat-cell.empty-slot { background: none; border: none; }
+  .heat-scale { display: flex; align-items: center; gap: 4px; justify-content: center; margin-top: 8px; font-size: 10px; font-weight: 700; color: var(--muted); }
+  .heat-scale i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  /* 카테고리 가로 막대 */
+  .cbar-row { display: grid; grid-template-columns: minmax(52px, 78px) minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 0; }
+  .cbar-name { font-size: 11.5px; font-weight: 800; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cbar-track { display: block; height: 10px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  /* span은 기본이 inline이라 display를 지정해야 width/height가 먹는다 */
+  .cbar-fill { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+  .cbar-val { font-size: 10.5px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .report-section { margin-top: 16px; }
   .report-section h3 { font-size: 13px; font-weight: 900; margin-bottom: 8px; color: var(--text); }
   .report-list { display: grid; gap: 6px; }
@@ -5427,6 +5468,28 @@ function buildMonthReport(baseDate) {
   const categoryRows = Object.values(categoryMap)
     .sort((a, b) => (b.done - a.done) || (b.planned - a.planned) || a.name.localeCompare(b.name));
 
+  // ── 주인별(나·배우자·우리) 분담 집계 ── 개인 일정은 모두 '나'로 본다.
+  const ownerMap = {};
+  const bumpOwner = (item, field) => {
+    const key = todoScope(item, 'private') === 'shared'
+      ? assigneeOf(item)
+      : (currentUser ? currentUser.uid : '');
+    if (!key) return;
+    if (!ownerMap[key]) ownerMap[key] = { key, label: partyLabel(key), color: ownerColorFor(key), planned: 0, done: 0 };
+    ownerMap[key][field] += 1;
+  };
+  for (let dd = 1; dd <= info.days; dd++) {
+    const key = dateKey(new Date(info.y, info.m, dd));
+    const day = getDay(key);
+    (day.todos || []).filter(isScheduleVisible).forEach(todo => {
+      bumpOwner(todo, 'planned');
+      if (todo.done) bumpOwner(todo, 'done');
+    });
+  }
+  // 나 → 배우자 → 우리 순서로 고정(색이 순위에 따라 바뀌지 않게)
+  const ownerOrder = [currentUser ? currentUser.uid : '', partnerUid(), TOGETHER_KEY].filter(Boolean);
+  const ownerRows = ownerOrder.map(k => ownerMap[k]).filter(Boolean).filter(r => r.planned > 0);
+
   // ── 운동한 날 + 내역 (하루 메모 '운동' 칸) ──
   const exerciseItems = [];
   for (let dd = 1; dd <= info.days; dd++) {
@@ -5485,6 +5548,8 @@ function buildMonthReport(baseDate) {
     longestStreak,
     bestDay,
     categoryRows,
+    ownerRows,
+    daily,
     completedItems,
     remainingItems,
     noteItems,
@@ -5537,17 +5602,108 @@ function reportRows(items, emptyText, limit = 8) {
   return `<div class="report-list">${shown}${rest}</div>`;
 }
 
+// ══════════════════════════════════════
+// 리포트 차트 (외부 라이브러리 없이 인라인 SVG/CSS로 그린다)
+// ══════════════════════════════════════
+
+// 원형 진행률 링 — 단일 비율은 '2조각 파이'가 아니라 방사형 미터로 그린다.
+// 가운데 숫자가 값을 지고, 링은 크기 감각만 보조한다.
+function ringChart(pct, color, centerText, sub, title) {
+  const R = 42, C = 2 * Math.PI * R;
+  const p = Math.max(0, Math.min(100, Number(pct) || 0));
+  const dash = (C * p) / 100;
+  return `<div class="chart-card">
+    <div class="chart-title">${esc(title)}</div>
+    <div class="chart-ringwrap">
+      <svg viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="${escAttr(`${title} ${p}%`)}">
+        <circle cx="50" cy="50" r="${R}" fill="none" stroke="${hexToRgba(color, 0.18)}" stroke-width="10"></circle>
+        <circle cx="50" cy="50" r="${R}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round"
+          stroke-dasharray="${dash.toFixed(2)} ${(C - dash).toFixed(2)}" transform="rotate(-90 50 50)"></circle>
+        <text class="ring-value" x="50" y="52" text-anchor="middle">${esc(centerText)}</text>
+        <text class="ring-unit" x="50" y="66" text-anchor="middle">${esc(sub)}</text>
+      </svg>
+    </div>
+  </div>`;
+}
+
+// 도넛 — 나·배우자·우리 분담(부분-전체, 3조각). 조각 사이 2px 배경 간격.
+function ownerDonutChart(rows) {
+  const total = rows.reduce((s, r) => s + r.planned, 0);
+  if (!total) return '';
+  const R = 42, C = 2 * Math.PI * R, GAP = 2;
+  let offset = 0;
+  const segs = rows.map(r => {
+    const len = Math.max(0, (C * r.planned) / total - GAP);
+    const seg = `<circle cx="50" cy="50" r="${R}" fill="none" stroke="${r.color}" stroke-width="10"
+      stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}"
+      stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 50 50)"><title>${escAttr(`${r.label} ${r.planned}개`)}</title></circle>`;
+    offset += (C * r.planned) / total;
+    return seg;
+  }).join('');
+  // 값은 글자로도 읽을 수 있게 범례에 함께 적는다(색만으로 전달하지 않는다).
+  const legend = rows.map(r => `
+    <div class="chart-legend-row">
+      <span class="chart-legend-dot" style="background:${r.color};"></span>
+      <span>${esc(r.label)}</span>
+      <span class="chart-legend-val">${r.planned}개 · ${percent(r.planned, total)}%</span>
+    </div>`).join('');
+  return `<div class="chart-card">
+    <div class="chart-title">누가 얼마나</div>
+    <div class="chart-ringwrap">
+      <svg viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="주인별 일정 비율">
+        ${segs}
+        <text class="ring-value" x="50" y="52" text-anchor="middle">${total}</text>
+        <text class="ring-unit" x="50" y="66" text-anchor="middle">전체</text>
+      </svg>
+    </div>
+    <div class="chart-legend">${legend}</div>
+  </div>`;
+}
+
+// 월간 히트맵 — 날짜별 완료 개수를 단일 색상 램프로. 달력 모양이라 위치 감각이 그대로다.
+function monthHeatmap(report) {
+  const maxDone = report.daily.reduce((m, d) => Math.max(m, d.done), 0);
+  const firstDow = new Date(report.y, report.m, 1).getDay();
+  const step = done => {
+    if (!done || !maxDone) return 0;
+    return Math.min(4, Math.ceil((done / maxDone) * 4));
+  };
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push('<div class="heat-cell empty-slot"></div>');
+  report.daily.forEach(d => {
+    const s = step(d.done);
+    const style = s ? `background:var(--heat-${s});` : '';
+    const tip = `${report.m + 1}/${d.day} · 완료 ${d.done}/${d.total}${d.notes ? ` · 메모 ${d.notes}` : ''}`;
+    cells.push(`<div class="heat-cell ${s ? 'filled' : ''}" style="${style}" title="${escAttr(tip)}">${d.day}</div>`);
+  });
+  const dows = DAYS_KO.map(x => `<div class="heat-dow">${x}</div>`).join('');
+  return `<div class="heat-grid">${dows}</div>
+    <div class="heat-grid" style="margin-top:3px;">${cells.join('')}</div>
+    <div class="heat-scale">적음
+      <i style="background:var(--bg); border:1px solid var(--border);"></i>
+      <i style="background:var(--heat-1);"></i><i style="background:var(--heat-2);"></i>
+      <i style="background:var(--heat-3);"></i><i style="background:var(--heat-4);"></i>
+      많음</div>`;
+}
+
+// 카테고리 가로 막대 — 계획 대비 완료. 카테고리 색은 앱 전체에서 쓰는 정체성 색을 그대로 쓴다.
+function categoryBars(rows) {
+  if (!rows.length) return '<div class="report-muted">카테고리별로 집계할 계획이 아직 없어요.</div>';
+  const max = rows.reduce((m, r) => Math.max(m, r.planned), 0) || 1;
+  return rows.slice(0, 6).map(r => `
+    <div class="cbar-row">
+      <span class="cbar-name" title="${escAttr(r.name)}">${esc(r.name)}</span>
+      <span class="cbar-track" title="${escAttr(`${r.name} 완료 ${r.done}/${r.planned}`)}">
+        <span class="cbar-fill" style="width:${Math.max(2, (r.done / max) * 100)}%; background:${r.color};"></span>
+      </span>
+      <span class="cbar-val">${r.done}/${r.planned} · ${percent(r.done, r.planned)}%</span>
+    </div>`).join('');
+}
+
 function renderMonthReport(report) {
   const moveText = report.moveEventCount
     ? `일정 변경 ${report.moveEventCount}건 · 미룸 ${report.postponed}건 · 앞당김 ${report.pulledForward}건${report.sameDayMoves ? ` · 동일일 ${report.sameDayMoves}건` : ''}`
     : '이번 달에 기록된 일정 변경이 없어요.';
-  const catRows = report.categoryRows.length
-    ? report.categoryRows.slice(0, 5).map(row => `
-      <div class="report-row">
-        <span class="report-date"><span class="tcat-badge" style="background:${row.color}; cursor:default;">${esc(row.name)}</span></span>
-        <span class="report-text">완료 ${row.done}개 / 계획 ${row.planned}개 · 달성률 ${percent(row.done, row.planned)}%</span>
-      </div>`).join('')
-    : `<div class="report-muted">카테고리별로 집계할 계획이 아직 없어요.</div>`;
   const sobrietyScope = report.sobriety.elapsed === report.sobriety.totalDays
     ? `월 전체 ${report.sobriety.totalDays}일`
     : `오늘까지 ${report.sobriety.elapsed}일`;
@@ -5587,6 +5743,26 @@ function renderMonthReport(report) {
       <div class="report-stat"><div class="num">${report.exerciseDays}일</div><div class="label">운동한 날</div><div class="sub">${report.exerciseDays ? `주 평균 ${Math.round((report.exerciseDays / Math.max(1, report.elapsedDays || report.days)) * 70) / 10}회` : '기록 없음'}</div></div>
     </div>
     <div class="report-meter"><span style="width:${Math.min(100, report.achievementRate)}%;"></span></div>
+
+    <div class="report-section">
+      <h3>📊 한눈에 보기</h3>
+      <div class="chart-grid">
+        ${ringChart(report.achievementRate, '#2f7d5e', `${report.achievementRate}%`, '달성률', '계획 달성률')}
+        ${report.ownerRows.length > 1 ? ownerDonutChart(report.ownerRows) : ''}
+        ${report.sobriety.elapsed ? ringChart(report.sobriety.soberRate, '#38679b', `${report.sobriety.soberRate}%`, '금주율', '금주한 날') : ''}
+      </div>
+      <div class="chart-sub">완료 ${report.completedCount} / 계획 ${report.plannedCount}개${report.sobriety.elapsed ? ` · 금주 ${report.sobriety.sober}일 · 음주 ${report.sobriety.drink}일` : ''}</div>
+    </div>
+
+    <div class="report-section">
+      <h3>🔥 날짜별 활동</h3>
+      ${monthHeatmap(report)}
+    </div>
+
+    <div class="report-section">
+      <h3>🏷 카테고리별 달성</h3>
+      ${categoryBars(report.categoryRows)}
+    </div>
 
     <div class="report-section">
       <h3>✨ 주목할 만한 점</h3>
@@ -5632,10 +5808,6 @@ function renderMonthReport(report) {
       <div class="report-muted">${moveText} 미룬 비율 ${report.postponeRate}% · 전체 변경 비율 ${report.moveRate}%.</div>
     </div>
 
-    <div class="report-section">
-      <h3>🏷 카테고리 통계</h3>
-      <div class="report-list">${catRows}</div>
-    </div>
   `;
 }
 
