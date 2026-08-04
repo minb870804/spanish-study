@@ -777,6 +777,10 @@
     font-family: inherit; line-height: 1.7; resize: vertical; outline: none; transition: var(--transition);
   }
   .note-area:focus { border-color: var(--blue); }
+  /* 운동 기록 — 유산소 / 근육운동 칸을 나눠서 적는다 */
+  .ex-field { display: grid; gap: 5px; margin-bottom: 10px; }
+  .ex-field-label { font-size: 12px; font-weight: 900; color: var(--text); }
+  .ex-field .note-area { min-height: 56px; padding: 9px 12px; font-size: 13.5px; line-height: 1.5; }
   .memo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .memo-box { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
   .memo-box-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--text); }
@@ -1429,19 +1433,19 @@
       <button class="small-btn" onclick="closeExerciseModal()">✕ 닫기</button>
     </div>
     <div id="exerciseDateLabel" class="scope-hint" style="margin-bottom:8px;"></div>
-    <div class="todo-scope-row" style="margin-bottom:10px;">
-      <span class="scope-hint" style="font-weight:800; color:var(--text);">운동 종류</span>
-      <label class="share-check" for="exTypeCardio">
-        <input type="checkbox" id="exTypeCardio">
-        <span>🏃 유산소</span>
-      </label>
-      <label class="share-check" for="exTypeStrength">
-        <input type="checkbox" id="exTypeStrength">
-        <span>🏋️ 무산소</span>
-      </label>
-      <span class="scope-hint">둘 다 했으면 모두 체크</span>
-    </div>
-    <textarea id="exerciseInput" class="note-area" rows="4" placeholder="예: 러닝 5km, 스쿼트 3세트, 헬스 1시간"></textarea>
+    <label class="ex-field">
+      <span class="ex-field-label">🏃 유산소</span>
+      <textarea id="exInputCardio" class="note-area" rows="2" placeholder="예: 러닝 5km, 자전거 30분"></textarea>
+    </label>
+    <label class="ex-field">
+      <span class="ex-field-label">🏋️ 근육운동</span>
+      <textarea id="exInputStrength" class="note-area" rows="2" placeholder="예: 스쿼트 3세트, 벤치프레스 40kg"></textarea>
+    </label>
+    <label class="ex-field" id="exOtherField" style="display:none;">
+      <span class="ex-field-label">📝 종류 미지정 (예전 기록)</span>
+      <textarea id="exInputOther" class="note-area" rows="2"></textarea>
+      <span class="scope-hint">종류를 적기 전에 남긴 기록이에요. 위 칸으로 옮겨 정리할 수 있어요.</span>
+    </label>
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
       <button class="small-btn" onclick="closeExerciseModal()">취소</button>
       <button class="add-btn" onclick="saveExerciseEntry()">저장</button>
@@ -3636,34 +3640,42 @@ function exerciseTextFor(key) {
 }
 let exerciseKey = null;
 
-// ── 운동 종류(유산소·무산소) ──
-// 운동은 하루 메모의 '운동' 칸에 문자열로 저장되므로, 종류는 "[유산소] 러닝 5km"처럼
-// 앞머리에 붙인다. 달력·리포트가 이 문자열을 그대로 보여주기 때문에 따로 손볼 곳이 없고,
-// 종류를 안 적던 예전 기록도 그대로 읽힌다.
+// ── 운동 종류(유산소 · 근육운동) ──
+// 운동은 하루 메모의 '운동' 칸에 문자열로 저장되므로, 종류별로 한 줄씩
+// "[유산소] 러닝 5km" 형태로 적는다. 달력·리포트가 이 문자열을 그대로 보여주고
+// 여러 줄은 ' · '로 이어 붙여 표시되므로 표시 쪽은 손볼 곳이 없다.
+// aliases에 옛 표기('무산소')를 넣어 이전에 저장한 기록도 그대로 읽힌다.
 const EX_TYPES = [
-  { id: 'cardio', label: '유산소', el: 'exTypeCardio' },
-  { id: 'strength', label: '무산소', el: 'exTypeStrength' }
+  { id: 'cardio', label: '유산소', aliases: ['유산소'], input: 'exInputCardio' },
+  { id: 'strength', label: '근육운동', aliases: ['근육운동', '무산소'], input: 'exInputStrength' }
 ];
+
+// 저장된 문자열 → { cardio, strength, other }
+// 알아보지 못한 줄(종류 없이 적어둔 예전 기록 등)은 other에 원문 그대로 남긴다.
 function parseExerciseText(raw) {
-  const src = String(raw || '').trim();
-  const m = /^\[([^\]]{1,20})\]\s*/.exec(src);
-  if (!m) return { types: [], text: src };
-  const names = m[1].split('·').map(s => s.trim());
-  const types = EX_TYPES.filter(t => names.includes(t.label)).map(t => t.id);
-  // 우리가 붙인 종류 표기가 아니면(예전 기록의 다른 대괄호) 원문을 건드리지 않는다
-  if (types.length !== names.length) return { types: [], text: src };
-  return { types, text: src.slice(m[0].length).trim() };
+  const out = { cardio: '', strength: '', other: '' };
+  const push = (field, val) => { out[field] = out[field] ? `${out[field]} ${val}` : val; };
+  String(raw || '').split(/\n+/).forEach(line => {
+    const s = line.trim();
+    if (!s) return;
+    const m = /^\[([^\]]{1,20})\]\s*/.exec(s);
+    const tag = m ? m[1].trim() : '';
+    const type = tag ? EX_TYPES.find(t => t.aliases.includes(tag)) : null;
+    if (type) push(type.id, s.slice(m[0].length).trim());
+    else push('other', s); // 원문 보존
+  });
+  return out;
 }
-function formatExerciseText(types, text) {
-  if (!text) return '';
-  const labels = EX_TYPES.filter(t => types.includes(t.id)).map(t => t.label);
-  return labels.length ? `[${labels.join('·')}] ${text}` : text;
-}
-function selectedExerciseTypes() {
-  return EX_TYPES.filter(t => {
-    const el = document.getElementById(t.el);
-    return el && el.checked;
-  }).map(t => t.id);
+
+function formatExerciseText(vals) {
+  const lines = [];
+  EX_TYPES.forEach(t => {
+    const v = String(vals[t.id] || '').trim();
+    if (v) lines.push(`[${t.label}] ${v}`);
+  });
+  const other = String(vals.other || '').trim();
+  if (other) lines.push(other);
+  return lines.join('\n');
 }
 
 function renderDayExerciseToggle() {
@@ -3679,16 +3691,21 @@ function openExerciseModal(key) {
   exerciseKey = key || modalKey || dateKey(selectedDate);
   const [, m, d] = exerciseKey.split('-').map(Number);
   document.getElementById('exerciseDateLabel').textContent = `${m}월 ${d}일의 운동 — 하루 메모의 '운동' 칸에 저장돼요.`;
-  // 저장된 기록에서 종류와 내용을 갈라 각각 복원한다
+  // 저장된 기록을 종류별 칸으로 나눠 복원한다
   const parsed = parseExerciseText(exerciseTextFor(exerciseKey));
   EX_TYPES.forEach(t => {
-    const el = document.getElementById(t.el);
-    if (el) el.checked = parsed.types.includes(t.id);
+    const el = document.getElementById(t.input);
+    if (el) el.value = parsed[t.id] || '';
   });
-  document.getElementById('exerciseInput').value = parsed.text;
+  // 종류 없이 적어둔 예전 기록이 있을 때만 '미지정' 칸을 보여준다
+  const otherField = document.getElementById('exOtherField');
+  const otherInput = document.getElementById('exInputOther');
+  if (otherInput) otherInput.value = parsed.other || '';
+  if (otherField) otherField.style.display = parsed.other ? 'grid' : 'none';
   document.getElementById('exerciseModal').classList.add('open');
   setTimeout(() => {
-    const t = document.getElementById('exerciseInput');
+    const t = document.getElementById('exInputCardio');
+    if (!t) return;
     try { t.focus({ preventScroll: true }); } catch (e) { t.focus(); }
   }, 80);
 }
@@ -3821,16 +3838,16 @@ async function deleteVaultEntry(id) {
 async function saveExerciseEntry() {
   if (!exerciseKey) return;
   const key = exerciseKey;
-  const text = document.getElementById('exerciseInput').value.trim();
-  const types = selectedExerciseTypes();
-  // 내용을 적었으면 유산소·무산소 중 하나는 골라야 한다(비우고 저장하면 기록 삭제)
-  if (text && !types.length) {
-    toast('유산소 · 무산소 중 하나 이상 체크해 주세요.');
-    return;
-  }
+  // 어느 칸에 적었는지가 곧 운동 종류다(따로 고를 필요 없음)
+  const vals = { other: (document.getElementById('exInputOther') || {}).value || '' };
+  EX_TYPES.forEach(t => {
+    const el = document.getElementById(t.input);
+    vals[t.id] = el ? el.value : '';
+  });
+  const text = formatExerciseText(vals);
   const day = getDay(key);
   const notes = { ...(day.notes || {}) };
-  notes[EXERCISE_CAT_ID] = formatExerciseText(types, text);
+  notes[EXERCISE_CAT_ID] = text;
   day.notes = normalizeNotes(notes);
   day.note = combinedNoteText(day.notes);
   setDayLocal(key, day);
