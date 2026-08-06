@@ -38,12 +38,14 @@
     --red-light: #fbecea;
     --yellow: #f3c95d;
     --gold: #df8746;
-    --dark: #182235;
-    --card: #fffefa;
-    --bg: #f4f7ef;
-    --text: #202936;
-    --muted: #667085;
-    --border: #dde5d9;
+    --dark: #1B1D1F;
+    --card: #FFFFFF;
+    --bg: #F6F6F5;
+    --text: #1B1D1F;
+    --muted: #6B7074;
+    --border: #E4E5E3;
+    --ink: #1B1D1F;
+    --on-ink: #FFFFFF;
     --green: #3b8669;
     --green-light: #e5f3eb;
     --blue: #38679b;
@@ -60,11 +62,13 @@
     --transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   }
   body.dark {
-    --bg: #111717;
-    --card: #1a2224;
-    --text: #f1f3ee;
-    --muted: #aab4ad;
-    --border: #2c3838;
+    --bg: #101112;
+    --card: #191B1D;
+    --text: #F1F2F1;
+    --muted: #9BA0A4;
+    --border: #2B2E30;
+    --ink: #F1F2F1;
+    --on-ink: #16181A;
     /* 강조색을 밝게 보정해 어두운 배경에서도 대비 확보 */
     --red: #ef5e5e;
     --green: #4caf50;
@@ -90,7 +94,7 @@
   }
   body {
     font-family: 'Outfit', 'Noto Sans KR', sans-serif;
-    background: linear-gradient(180deg, var(--bg) 0%, #eef4f0 52%, #f8f6ef 100%);
+    background: var(--bg);
     color: var(--text);
     width: 100%; min-height: 100vh; min-height: 100dvh;
     line-height: 1.5;
@@ -99,7 +103,7 @@
     overflow-wrap: anywhere;
     transition: var(--transition);
   }
-  body.dark { background: linear-gradient(180deg, #111717 0%, #151f22 58%, #101417 100%); }
+  body.dark { background: var(--bg); }
 
   /* ── HEADER ── */
   header {
@@ -191,11 +195,11 @@
 
   /* ── HERO / DATE ── */
   .hero {
-    background: linear-gradient(135deg, #274f56 0%, #38679b 68%, #5b5aa6 100%);
-    color: #fff; border-radius: 18px; padding: 24px 26px;
+    background: var(--card);
+    color: var(--text); border-radius: 18px; padding: 24px 26px;
     margin-bottom: 18px; box-shadow: var(--shadow);
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
-    border: 1px solid rgba(255,255,255,0.16);
+    border: 1px solid var(--border);
   }
   .hero h2 { font-size: 22px; font-weight: 900; letter-spacing: -0.3px; }
   .hero .sub { font-size: 13px; opacity: 0.85; margin-top: 6px; }
@@ -592,8 +596,8 @@
   :root {
     /* 히트맵 순차 램프(연함→진함) — 라이트 모드 */
     --heat-1: #7ec2a4; --heat-2: #54a486; --heat-3: #358264; --heat-4: #1f6149;
-    /* 음주 스트립 — 색각 이상에서도 구분되도록 검증한 쌍(ΔE 9.1) */
-    --strip-sober: #12855a; --strip-drink: #df8746;
+    /* 음주 스트립 — 흰 배경 기준으로 다시 검증한 쌍(CVD ΔE 13.8, 대비 3:1 이상) */
+    --strip-sober: #0a6b47; --strip-drink: #cf7d33;
     /* 운동 종류 2계열 — 검증한 쌍(ΔE 21.0) */
     --ex-cardio: #0d9488; --ex-strength: #7c3aed;
   }
@@ -670,7 +674,7 @@
   .report-sobriety {
     display: flex; align-items: center; gap: 12px; padding: 13px 14px;
     border: 1px solid var(--border); border-radius: 12px;
-    background: linear-gradient(135deg, var(--green-light), var(--blue-light));
+    background: var(--bg);
   }
   .report-sobriety-icon { font-size: 24px; line-height: 1; }
   .report-sobriety-copy { flex: 1; min-width: 0; }
@@ -681,10 +685,10 @@
     background: var(--card); color: var(--green); font-size: 12px; font-weight: 900;
   }
   .add-btn {
-    background: linear-gradient(135deg, var(--green), var(--blue)); color: white; border: none; border-radius: 12px;
+    background: var(--ink); color: var(--on-ink); border: none; border-radius: 12px;
     padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
     font-family: inherit; transition: var(--transition); white-space: nowrap;
-    box-shadow: 0 8px 20px rgba(56,103,155,0.18);
+    box-shadow: 0 6px 16px rgba(27,29,31,0.16);
   }
   .add-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
   .todo-item {
@@ -850,7 +854,7 @@
   .week-card { overflow: hidden; }
   .week-range { font-size: 11px; font-weight: 800; color: var(--muted); white-space: nowrap; }
   .week-summary {
-    background: linear-gradient(135deg, var(--blue-light), var(--purple-light));
+    background: var(--bg);
     border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; margin-bottom: 16px;
   }
   .week-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -927,8 +931,8 @@
   .fab {
     position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom));
     width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
-    background: linear-gradient(135deg, var(--green), var(--blue)); color: #fff; font-size: 28px; font-weight: 700; line-height: 1;
-    box-shadow: 0 12px 28px rgba(56,103,155,0.34); z-index: 900;
+    background: var(--ink); color: var(--on-ink); font-size: 28px; font-weight: 700; line-height: 1;
+    box-shadow: 0 10px 24px rgba(27,29,31,0.28); z-index: 900;
     display: flex; align-items: center; justify-content: center; transition: var(--transition);
   }
   .fab:hover { transform: translateY(-2px) scale(1.05); filter: brightness(1.1); }
