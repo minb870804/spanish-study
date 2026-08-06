@@ -124,17 +124,16 @@
     max-width: 1220px; margin: 0 auto;
   }
   .logo { display: flex; align-items: center; gap: 12px; }
-  .logo-flag {
-    width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
-    display: inline-flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, #538f72 0%, #38679b 58%, #202850 100%);
-    color: var(--cream); font-size: 0; position: relative;
-    box-shadow: 0 8px 20px rgba(37, 56, 72, 0.2), inset 0 0 0 1px rgba(255,255,255,0.16);
+  /* 앱 아이콘과 같은 마크 — 흰 바탕에 먹색 m (favicon.svg와 동일한 패스) */
+  .app-mark {
+    background-color: #FFFFFF;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg transform='translate(50,50) scale(0.84) translate(-46,-51)' fill='none' stroke='%231B1D1F' stroke-width='9.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 72 L20 42 C20 35 26 30 33 30 C40 30 46 35 46 42 L46 72'/%3E%3Cpath d='M46 42 C46 35 52 30 59 30 C66 30 72 35 72 42 L72 72'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 100% 100%; background-repeat: no-repeat;
+    border: 1px solid #E3E5E2;
   }
-  .logo-flag::before { content: 'm'; font-size: 28px; font-weight: 900; line-height: 1; transform: translateY(-1px); }
-  .logo-flag::after {
-    content: ''; position: absolute; width: 5px; height: 5px; border-radius: 50%;
-    right: 8px; bottom: 8px; background: #ffb253; box-shadow: 8px 0 0 #7fcda6;
+  .logo-flag {
+    width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(37, 56, 72, 0.14);
   }
   .logo-text h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
   .logo-text p { font-size: 12px; color: var(--muted); margin-top: 3px; }
@@ -897,16 +896,8 @@
     box-shadow: 0 18px 50px rgba(24,34,53,0.22);
   }
   .login-mark {
-    width: 70px; height: 70px; margin: 0 auto 20px; border-radius: 20px;
-    display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, #538f72 0%, #38679b 58%, #202850 100%);
-    color: var(--cream); font-size: 50px; font-weight: 900; line-height: 1;
-    box-shadow: 0 12px 28px rgba(37,56,72,0.22), inset 0 0 0 1px rgba(255,255,255,0.16);
-    position: relative;
-  }
-  .login-mark::after {
-    content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%;
-    right: 15px; bottom: 14px; background: #ffb253; box-shadow: 11px 0 0 #7fcda6;
+    width: 70px; height: 70px; margin: 0 auto 20px; border-radius: 19px;
+    box-shadow: 0 10px 24px rgba(37,56,72,0.16);
   }
   .google-btn {
     background: var(--dark); color: var(--card); border: none; padding: 14px 28px;
@@ -1072,7 +1063,7 @@
 <!-- 로그인 오버레이 -->
 <div id="loginOverlay" style="display:none;">
   <div class="login-card">
-    <div class="login-mark">m</div>
+    <div class="login-mark app-mark" role="img" aria-label="Minb"></div>
     <h2 style="font-size: 22px; font-weight: 900; margin-bottom: 8px; color: var(--dark);">Minb 대시보드</h2>
     <p style="font-size: 13.5px; color: var(--muted); margin-bottom: 28px; line-height: 1.6;">
       할 일·일기·스터디 기록을 어디서나 동기화하고,<br>소중한 사람과 공유하려면 구글 로그인이 필요해요.
@@ -1087,7 +1078,7 @@
 <header>
   <div class="header-top">
     <div class="logo">
-      <span class="logo-flag" aria-hidden="true"></span>
+      <span class="logo-flag app-mark" aria-hidden="true"></span>
       <div class="logo-text">
         <h1>Minb</h1>
         <p>나의 하루를 한곳에서 — 할 일 · 스터디 · 일기</p>
@@ -1662,14 +1653,6 @@ function setLoginBusy(busy, text = '로그인 확인 중…') {
   label.textContent = busy ? text : 'Google 계정으로 시작하기';
 }
 
-function shouldUseRedirectLogin() {
-  const ua = navigator.userAgent || '';
-  const isTouchMac = /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;
-  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || isTouchMac;
-  const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
-  return isMobile || isStandalone;
-}
-
 async function finishSignedInUser(user) {
   if (!user) return;
   currentUser = user;
@@ -1754,17 +1737,20 @@ async function loginWithGoogle() {
     return;
   }
   const provider = new firebase.auth.GoogleAuthProvider();
-  if (shouldUseRedirectLogin()) {
-    setLoginBusy(true, 'Google 로그인으로 이동 중…');
-    try { await auth.signInWithRedirect(provider); return; } catch (e) { setLoginBusy(false); }
-  }
-  // 데스크톱 웹은 팝업 우선, 팝업 차단 환경에서는 리다이렉트로 전환한다
+  // 어느 환경에서든 팝업을 먼저 시도한다.
+  // 홈 화면에 추가한 앱(standalone)에서 리다이렉트를 쓰면 인증이 Safari에서 끝나고
+  // 앱 컨테이너로 세션이 돌아오지 않아 로그인 화면이 계속 다시 뜬다.
+  // 팝업이 막히는 환경에서만 리다이렉트로 넘어간다.
   try {
     const userCred = await auth.signInWithPopup(provider);
     await finishSignedInUser(userCred.user || auth.currentUser);
+    return;
   } catch (e) {
-    // 팝업이 차단되면 리다이렉트로 자동 전환
-    if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') {
+    if (e.code === 'auth/popup-closed-by-user') { setLoginBusy(false); return; } // 사용자가 닫음
+    // 팝업을 못 쓰는 환경이면 리다이렉트로 자동 전환
+    if (e.code === 'auth/popup-blocked'
+      || e.code === 'auth/operation-not-supported-in-this-environment'
+      || e.code === 'auth/cancelled-popup-request') {
       setLoginBusy(true, 'Google 로그인으로 이동 중…');
       try { await auth.signInWithRedirect(provider); return; } catch (e2) { e = e2; }
     }
