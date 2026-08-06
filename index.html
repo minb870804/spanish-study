@@ -595,12 +595,16 @@
     --heat-1: #7ec2a4; --heat-2: #54a486; --heat-3: #358264; --heat-4: #1f6149;
     /* 음주 스트립 — 색각 이상에서도 구분되도록 검증한 쌍(ΔE 9.1) */
     --strip-sober: #12855a; --strip-drink: #df8746;
+    /* 운동 종류 2계열 — 검증한 쌍(ΔE 21.0) */
+    --ex-cardio: #0d9488; --ex-strength: #7c3aed;
   }
   body.dark {
     /* 다크 모드는 자동 반전이 아니라 별도 검증된 단계(어두움→밝음) */
     --heat-1: #325a49; --heat-2: #468064; --heat-3: #5da886; --heat-4: #7fd0a9;
     /* 다크는 별도 검증한 쌍(ΔE 9.5) */
     --strip-sober: #1c7a4d; --strip-drink: #c4802a;
+    /* 운동 종류도 다크용을 따로 검증(ΔE 20.0, 대비 3:1 이상) */
+    --ex-cardio: #0fa392; --ex-strength: #8b5cf6;
   }
   .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0 4px; }
   .chart-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 10px; }
@@ -640,11 +644,15 @@
   .strip-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
   /* 요일별 운동 세로 막대 */
   .dow-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; max-width: 316px; margin-inline: auto; }
-  .dow-col { display: grid; grid-template-rows: 14px 76px 16px; justify-items: center; gap: 3px; }
-  .dow-label-top { font-size: 10px; font-weight: 900; color: var(--text); font-variant-numeric: tabular-nums; }
-  .dow-bar-slot { width: 100%; height: 76px; display: flex; align-items: flex-end; justify-content: center; }
+  .dow-col { display: grid; grid-template-rows: 14px 76px 16px; justify-items: center; gap: 3px; width: 100%; }
+  /* 숫자 칸을 막대와 같은 폭·간격으로 두어 어느 막대의 값인지 헷갈리지 않게 한다 */
+  .dow-labels, .dow-bar-slot { width: 100%; display: flex; justify-content: center; gap: 2px; }
+  .dow-labels span { width: 42%; max-width: 11px; text-align: center; font-size: 9.5px; font-weight: 900; color: var(--text); font-variant-numeric: tabular-nums; }
+  .dow-bar-slot { height: 76px; align-items: flex-end; }
   /* 막대는 얇게, 위쪽만 둥글고 바닥은 각지게 */
-  .dow-bar { display: block; width: 60%; max-width: 22px; min-height: 2px; background: var(--green); border-radius: 4px 4px 0 0; }
+  .dow-bar { display: block; width: 42%; max-width: 11px; min-height: 2px; border-radius: 4px 4px 0 0; }
+  .dow-bar.c { background: var(--ex-cardio); }
+  .dow-bar.s { background: var(--ex-strength); }
   .dow-name { font-size: 10px; font-weight: 800; color: var(--muted); }
   .cbar-row { display: grid; grid-template-columns: minmax(52px, 78px) minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 0; }
   .cbar-name { font-size: 11.5px; font-weight: 800; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -5609,16 +5617,20 @@ function buildMonthReport(baseDate) {
   });
   const exerciseDays = exerciseItems.length;
 
-  // 유산소 / 근육운동을 각각 며칠 했는지 (하루에 둘 다 했으면 양쪽에 모두 센다)
+  // 유산소 / 근육운동을 각각 며칠 했는지 + 요일별 분포
+  // (하루에 둘 다 했으면 양쪽에 모두 센다)
   let cardioDays = 0;
   let strengthDays = 0;
+  const cardioByDow = [0, 0, 0, 0, 0, 0, 0];
+  const strengthByDow = [0, 0, 0, 0, 0, 0, 0];
   for (let dd = 1; dd <= info.days; dd++) {
     const key = dateKey(new Date(info.y, info.m, dd));
     const raw = String((getDay(key).notes || {})[EXERCISE_CAT_ID] || '').trim();
     if (!raw) continue;
     const parsed = parseExerciseText(raw);
-    if (parsed.cardio) cardioDays += 1;
-    if (parsed.strength) strengthDays += 1;
+    const dow = new Date(info.y, info.m, dd).getDay();
+    if (parsed.cardio) { cardioDays += 1; cardioByDow[dow] += 1; }
+    if (parsed.strength) { strengthDays += 1; strengthByDow[dow] += 1; }
   }
 
   // ── 음주한 날 목록 + 이달 최장 금주 연속 ──
@@ -5681,6 +5693,8 @@ function buildMonthReport(baseDate) {
     exerciseByDow,
     cardioDays,
     strengthDays,
+    cardioByDow,
+    strengthByDow,
     importantPlanned,
     importantDone,
     importantRate: percent(importantDone, importantPlanned),
@@ -5837,22 +5851,34 @@ function drinkStrip(report) {
     </div>`;
 }
 
-// 요일별 운동 세로 막대 — 한 계열이라 색은 하나만 쓴다(값에 따라 색을 바꾸면
-// 막대 길이가 이미 말하는 정보를 색으로 중복 표현하게 된다).
-// 숫자는 가장 많은 요일에만 직접 붙이고, 나머지는 툴팁과 아래 운동 내역으로 읽는다.
-function exerciseDowChart(byDow) {
-  const max = Math.max(...byDow);
+// 요일별 운동 세로 막대 — 유산소·근육운동 두 계열을 나란히(그룹형) 그린다.
+// 하루에 둘 다 한 날은 양쪽에 모두 잡히므로 쌓아 올리면 합계가 '운동한 날'을
+// 넘어 잘못 읽힌다. 그래서 누적이 아니라 나란히 놓는다.
+// 숫자는 각 계열의 최다 요일에만 그 막대 위에 붙이고, 나머지는 툴팁으로 읽는다.
+function exerciseDowChart(cardioByDow, strengthByDow) {
+  const cardio = cardioByDow || [0, 0, 0, 0, 0, 0, 0];
+  const strength = strengthByDow || [0, 0, 0, 0, 0, 0, 0];
+  const max = Math.max(...cardio, ...strength);
   if (!max) return '<div class="report-muted">이번 달 운동 기록이 아직 없어요.</div>';
-  const peak = byDow.indexOf(max);
-  const bars = byDow.map((n, i) => {
-    const h = (n / max) * 100;
-    return `<div class="dow-col" title="${escAttr(`${DAYS_KO[i]}요일 · 운동 ${n}회`)}">
-      <span class="dow-label-top">${i === peak ? n : ''}</span>
-      <span class="dow-bar-slot"><span class="dow-bar" style="height:${h}%;${n ? '' : ' min-height:0;'}"></span></span>
-      <span class="dow-name">${DAYS_KO[i]}</span>
+  const cPeak = cardio.indexOf(Math.max(...cardio));
+  const sPeak = strength.indexOf(Math.max(...strength));
+  const cols = DAYS_KO.map((name, i) => {
+    const c = cardio[i], s = strength[i];
+    const bar = (n, cls) => `<span class="dow-bar ${cls}" style="height:${(n / max) * 100}%;${n ? '' : ' min-height:0;'}"></span>`;
+    return `<div class="dow-col" title="${escAttr(`${name}요일 · 유산소 ${c}회 · 근육운동 ${s}회`)}">
+      <span class="dow-labels">
+        <span>${c && i === cPeak ? c : ''}</span>
+        <span>${s && i === sPeak ? s : ''}</span>
+      </span>
+      <span class="dow-bar-slot">${bar(c, 'c')}${bar(s, 's')}</span>
+      <span class="dow-name">${name}</span>
     </div>`;
   }).join('');
-  return `<div class="dow-chart">${bars}</div>`;
+  return `<div class="dow-chart">${cols}</div>
+    <div class="strip-legend" style="margin-top:6px;">
+      <span><i style="background:var(--ex-cardio);"></i>🏃 유산소</span>
+      <span><i style="background:var(--ex-strength);"></i>🏋️ 근육운동</span>
+    </div>`;
 }
 
 // 카테고리 가로 막대 — 계획 대비 완료. 카테고리 색은 앱 전체에서 쓰는 정체성 색을 그대로 쓴다.
@@ -5952,7 +5978,7 @@ function renderMonthReport(report) {
         <div class="report-stat"><div class="num">${report.cardioDays}일</div><div class="label">🏃 유산소</div></div>
         <div class="report-stat"><div class="num">${report.strengthDays}일</div><div class="label">🏋️ 근육운동</div></div>
       </div>` : ''}
-      ${exerciseDowChart(report.exerciseByDow)}
+      ${exerciseDowChart(report.cardioByDow, report.strengthByDow)}
       ${report.exerciseDays ? '<div class="chart-sub" style="margin-bottom:8px;">요일별 운동 횟수</div>' : ''}
       ${exerciseHtml}
     </div>
