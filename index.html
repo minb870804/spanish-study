@@ -5609,6 +5609,18 @@ function buildMonthReport(baseDate) {
   });
   const exerciseDays = exerciseItems.length;
 
+  // 유산소 / 근육운동을 각각 며칠 했는지 (하루에 둘 다 했으면 양쪽에 모두 센다)
+  let cardioDays = 0;
+  let strengthDays = 0;
+  for (let dd = 1; dd <= info.days; dd++) {
+    const key = dateKey(new Date(info.y, info.m, dd));
+    const raw = String((getDay(key).notes || {})[EXERCISE_CAT_ID] || '').trim();
+    if (!raw) continue;
+    const parsed = parseExerciseText(raw);
+    if (parsed.cardio) cardioDays += 1;
+    if (parsed.strength) strengthDays += 1;
+  }
+
   // ── 음주한 날 목록 + 이달 최장 금주 연속 ──
   const todayK = dateKey(new Date());
   const elapsedDays = todayK < info.firstKey ? 0 : (todayK > info.lastKey ? info.days : Number(todayK.split('-')[2]));
@@ -5667,6 +5679,8 @@ function buildMonthReport(baseDate) {
     exerciseItems,
     exerciseDays,
     exerciseByDow,
+    cardioDays,
+    strengthDays,
     importantPlanned,
     importantDone,
     importantRate: percent(importantDone, importantPlanned),
@@ -5934,6 +5948,10 @@ function renderMonthReport(report) {
 
     <div class="report-section">
       <h3>💪 운동 내역 (${report.exerciseDays}일)</h3>
+      ${report.exerciseDays ? `<div class="report-stats" style="margin:0 0 12px;">
+        <div class="report-stat"><div class="num">${report.cardioDays}일</div><div class="label">🏃 유산소</div></div>
+        <div class="report-stat"><div class="num">${report.strengthDays}일</div><div class="label">🏋️ 근육운동</div></div>
+      </div>` : ''}
       ${exerciseDowChart(report.exerciseByDow)}
       ${report.exerciseDays ? '<div class="chart-sub" style="margin-bottom:8px;">요일별 운동 횟수</div>' : ''}
       ${exerciseHtml}
@@ -5979,7 +5997,7 @@ function buildMonthReportText(report) {
     `- 계획 달성률: ${report.achievementRate}% (${report.completedCount}/${report.plannedCount})`,
     `- 미룬 비율: ${report.postponeRate}% (뒤로 미룸 ${report.postponed}건)`,
     `- 금주한 날: ${report.sobriety.sober}일 / 음주 ${report.sobriety.drink}일 (금주율 ${report.sobriety.soberRate}%)`,
-    `- 운동한 날: ${report.exerciseDays}일`,
+    `- 운동한 날: ${report.exerciseDays}일 (유산소 ${report.cardioDays}일 · 근육운동 ${report.strengthDays}일)`,
     `- 기록한 날: ${report.activeDays}일 / 최장 기록 흐름: ${report.longestStreak}일`
   ];
   const highlights = buildReportHighlights(report);
