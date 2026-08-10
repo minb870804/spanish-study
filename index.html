@@ -53,11 +53,13 @@
     --purple: #6b5aa6;
     --purple-light: #f0edf8;
     --cream: #fff0c8;
-    --surface: rgba(255, 254, 250, 0.78);
+    --surface: rgba(255, 255, 255, 0.86);
 
     /* 종이 결: 화면이 텅 빈 흰색이 아니라 재질로 읽히게 하는 아주 옅은 노이즈 */
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
-    --grain-opacity: 0.055;
+    --grain-opacity: 0.10;
+    /* 카드 위에 직접 얹는 결 — 카드가 반투명·블러라 뒤쪽 결이 뭉개진다 */
+    --grain-card: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.10'/%3E%3C/svg%3E");
 
     --radius: 14px;
     --radius-sm: 8px;
@@ -73,7 +75,8 @@
     --border: #2B2E30;
     --ink: #F1F2F1;
     --on-ink: #16181A;
-    --grain-opacity: 0.03;
+    --grain-opacity: 0.055;
+    --grain-card: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E");
     /* 강조색을 밝게 보정해 어두운 배경에서도 대비 확보 */
     --red: #ef5e5e;
     --green: #4caf50;
@@ -87,7 +90,7 @@
     --shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
     --shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.4);
     --dark: #ffffff;
-    --surface: rgba(26, 34, 36, 0.78);
+    --surface: rgba(25, 27, 29, 0.86);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -181,7 +184,8 @@
   /* ── LAYOUT ── */
   main { max-width: 1180px; margin: 28px auto; padding: 0 20px; }
   .card {
-    background: var(--surface); border: 1px solid rgba(221, 229, 217, 0.86);
+    background-color: var(--surface); background-image: var(--grain-card);
+    border: 1px solid var(--border);
     border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow);
     transition: var(--transition);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -207,7 +211,7 @@
 
   /* ── HERO / DATE ── */
   .hero {
-    background: var(--card);
+    background-color: var(--card); background-image: var(--grain-card);
     color: var(--text); border-radius: 18px; padding: 24px 26px 24px 30px;
     margin-bottom: 18px; box-shadow: var(--shadow);
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
