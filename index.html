@@ -1211,7 +1211,7 @@
               <input type="date" id="todoStartInput" aria-label="기간 시작일" oninput="todoStartDateEdited=true; syncTodoEndBound()">
             </label>
             <label class="todo-detail-field">
-              <span>🏁 종료일 (기간 일정)</span>
+              <span>🏁 종료일 (같으면 하루)</span>
               <input type="date" id="todoEndInput" aria-label="기간 종료일" oninput="syncTodoEndBound(true)">
             </label>
           </div>
@@ -3215,7 +3215,7 @@ async function applyCatChange(catId) {
     const arr = [...getAllRecurring()];
     const r = arr.find(r => r.id === id);
     if (!r) return;
-    if (r.by && r.by !== currentUser.uid) { toast('카테고리는 일정을 만든 사람만 바꿀 수 있어요.'); return; }
+    if (isOthersTodo(r)) { toast('배우자의 일정은 바꿀 수 없어요.'); return; }
     const cat = catById(catId);
     r.cat = catId;
     r.catName = cat.name;
@@ -3226,7 +3226,7 @@ async function applyCatChange(catId) {
     const day = getDay(key);
     const t = day.todos.find(t => t.id === id);
     if (!t) return;
-    if (t.by && t.by !== currentUser.uid) { toast('카테고리는 일정을 만든 사람만 바꿀 수 있어요.'); return; }
+    if (isOthersTodo(t)) { toast('배우자의 일정은 바꿀 수 없어요.'); return; }
     const cat = catById(catId);
     t.cat = catId;
     t.catName = cat.name;
@@ -3285,7 +3285,15 @@ function syncTodoEndBound(fromEnd) {
   const startKey = normalizeDateKey(startEl.value) || dateKey(selectedDate);
   endEl.min = startKey; // 날짜 선택기가 시작일 이전을 못 고르게
   const endKey = normalizeDateKey(endEl.value);
-  if (endKey && endKey < startKey) {
+  if (!endKey) {
+    // 종료일이 비어 있으면 시작일과 같은 날로 채워 둔다.
+    // 빈 칸이면 날짜 선택기가 늘 '오늘' 달을 열어서, 9월 일정을 잡을 때 8월 달력이 떠 스와이프해야 했다.
+    // 종료일 == 시작일은 기간 일정이 아니라 하루 일정이라(isPeriod는 endKey > startKey),
+    // 저장 결과는 비워 둘 때와 완전히 같다.
+    if (!fromEnd) endEl.value = startKey;
+    return;
+  }
+  if (endKey < startKey) {
     endEl.value = startKey; // 역순이면 시작일로 보정
     toast(fromEnd ? '종료일은 시작일보다 빠를 수 없어요.' : `종료일을 ${shortDateLabel(startKey)}로 맞췄어요.`);
   }
@@ -3381,9 +3389,17 @@ async function addTodo() {
   else if (scheduleTime || scheduleLocation) toast('✅ 시간·장소와 함께 할 일을 추가했어요!');
 }
 
-// 배우자(타인)가 만든 일정인지 — 타인의 일정은 어떤 변경도 불가
+// 내가 만든 일정인지 — 삭제·주인 변경·공유 해제처럼 되돌리기 어려운 동작의 기준
+function isTodoAuthor(item) {
+  return !!item && (!item.by || !!(currentUser && item.by === currentUser.uid));
+}
+// 내가 고칠 수 있는 일정인지 — 내가 만들었거나 '우리(함께)' 일정이면 두 사람 다 고칠 수 있다.
+function canEditTodo(item) {
+  return isTodoAuthor(item) || assigneeOf(item) === TOGETHER_KEY;
+}
+// 배우자만의 일정인지 — 내가 손댈 수 없는 일정
 function isOthersTodo(item) {
-  return !!(item && item.by && currentUser && item.by !== currentUser.uid);
+  return !!item && !canEditTodo(item);
 }
 
 async function toggleTodo(id, checked) {
@@ -3472,6 +3488,7 @@ async function deleteTodo(id) {
   const key = dateKey(selectedDate);
   const day = getDay(key);
   const removed = day.todos.find(t => t.id === id);
+  if (removed && !isTodoAuthor(removed)) { toast('일정을 만든 사람만 삭제할 수 있어요.'); return; }
   day.todos = day.todos.filter(t => t.id !== id);
   setDayLocal(key, day);
   renderTodos(day);
@@ -3520,7 +3537,7 @@ function notifyScheduleShared(dayKey, text) {
 
 function scheduleScopeBadge(todo, key = '', kind = 'todo') {
   const shared = todoScope(todo, 'private') === 'shared';
-  const mine = !todo.by || !!(currentUser && todo.by === currentUser.uid);
+  const mine = isTodoAuthor(todo);
   if (!mine) return `<span class="scope-badge shared">👫 공유</span>`;
   const action = kind === 'rec'
     ? `toggleRecurringSharing('${todo.id}')`
@@ -4228,7 +4245,7 @@ function renderUpcomingTodos() {
     if (owner) meta.push(owner.label);
     if (isPeriodTodo(todo)) meta.push(`기간 ${shortDateLabel(todo.startDate || sourceKey)}–${shortDateLabel(todo.endDate)}`);
     if (!meta.length) meta.push(esc(cat.name));
-    const upMine = !todo.by || !!(currentUser && todo.by === currentUser.uid);
+    const upMine = canEditTodo(todo);
     return `<div class="upcoming-todo" role="button" tabindex="0" onclick="openWeekAgendaDay('${sourceKey}')" aria-label="${escAttr(todo.text)} 일정 열기">
       <input type="checkbox" aria-label="완료" ${upMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onclick="event.stopPropagation()" onchange="completeUpcomingTodo('${sourceKey}', '${todo.id}', this.checked)">
       <span class="upcoming-todo-date">${month}/${day}<br>${DAYS_KO[dueDate.getDay()]}</span>
@@ -4285,7 +4302,7 @@ function renderTodos(day) {
     const done = !!day.recDone[r.id];
     const cat = todoCategory(r);
     const borderStyle = sharedOwnerBorderStyle(r);
-    const rMine = !r.by || !!(currentUser && r.by === currentUser.uid);
+    const rMine = canEditTodo(r);
     return `<div class="todo-item recurring ${done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${done ? 'checked' : ''} ${rMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleRecurringDone('${r.id}', this.checked)">
       <span class="todo-content"><span class="txt">${esc(r.text)}</span></span>
@@ -4301,8 +4318,10 @@ function renderTodos(day) {
   const todoHtml = sortTodosByTime(todos).map(t => {
     const cat = todoCategory(t);
     const borderStyle = sharedOwnerBorderStyle(t);
-    const mine = !t.by || !!(currentUser && t.by === currentUser.uid);
-    // 본인 일정만 편집 가능. 타인의 공유 일정은 읽기 전용(완료 체크는 가능).
+    // '우리' 일정은 배우자도 내용·시간을 고칠 수 있다.
+    // 되돌리기 어려운 삭제·주인 변경·반복 전환만 만든 사람 몫으로 남긴다.
+    const mine = canEditTodo(t);
+    const author = isTodoAuthor(t);
     const handle = mine
       ? `<button class="del move-handle" onpointerdown="startTodoItemDrag(event, '${currentKey}', '${t.id}')" title="드래그해서 날짜 이동">↕</button>`
       : `<span class="move-handle" style="visibility:hidden;">↕</span>`;
@@ -4316,12 +4335,12 @@ function renderTodos(day) {
           <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
           <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
           <button class="del" onclick="copyTodoToDateFromKey('${currentKey}', '${t.id}')" title="다른 날짜에 한 번 복사">📋</button>
-          ${isShared() ? `<button class="del" onclick="openPartyPicker(event, '${currentKey}', '${t.id}')" title="누구 일정인지 변경 (나·배우자·우리)">👤</button>` : ''}
+          ${isShared() && author ? `<button class="del" onclick="openPartyPicker(event, '${currentKey}', '${t.id}')" title="누구 일정인지 변경 (나·배우자·우리)">👤</button>` : ''}
           <button class="del" onclick="toggleTodoImportant('${currentKey}', '${t.id}')" title="${isImportantTodo(t) ? '중요 표시 해제' : '중요 표시(빨간색)'}">${isImportantTodo(t) ? '⭕' : '❗'}</button>
           <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
           <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
-          <button class="del" onclick="openRecurSetup('${currentKey}', '${t.id}')" title="이 할 일을 반복 일정으로">🔁</button>
-          <button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>
+          ${author ? `<button class="del" onclick="openRecurSetup('${currentKey}', '${t.id}')" title="이 할 일을 반복 일정으로">🔁</button>` : ''}
+          ${author ? `<button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>` : ''}
         </span>` : '';
     return `<div class="todo-item ${mine ? 'swipeable' : ''} ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
       ${handle}
@@ -4413,8 +4432,8 @@ async function toggleTodoImportant(key, id) {
   const day = getDay(key);
   const todo = day.todos.find(t => t.id === id);
   if (!todo) return;
-  if (todo.by && currentUser && todo.by !== currentUser.uid) {
-    toast('일정을 만든 사람만 바꿀 수 있어요.');
+  if (isOthersTodo(todo)) {
+    toast('배우자의 일정은 바꿀 수 없어요.');
     return;
   }
   todo.important = !isImportantTodo(todo);
@@ -5120,8 +5139,8 @@ async function copyCalendarTodo(sourceKey, targetKey, id) {
   const sourceDay = getDay(sourceKey);
   const todo = sourceDay.todos.find(t => t.id === id);
   if (!todo) return;
-  if (todo.by && todo.by !== currentUser.uid) {
-    toast('내가 만든 일정만 복사할 수 있어요.');
+  if (isOthersTodo(todo)) {
+    toast('배우자의 일정은 복사할 수 없어요.');
     return;
   }
   const targetDay = getDay(targetKey);
@@ -5342,6 +5361,7 @@ async function mDeleteTodo(id) {
   const key = modalKey;
   const day = getDay(key);
   const removed = day.todos.find(t => t.id === id);
+  if (removed && !isTodoAuthor(removed)) { toast('일정을 만든 사람만 삭제할 수 있어요.'); return; }
   day.todos = day.todos.filter(t => t.id !== id);
   setDayLocal(key, day);
   refreshModal(true); renderAll();
