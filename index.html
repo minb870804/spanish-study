@@ -3539,6 +3539,12 @@ function scheduleScopeBadge(todo, key = '', kind = 'todo') {
   const shared = todoScope(todo, 'private') === 'shared';
   const mine = isTodoAuthor(todo);
   if (!mine) return `<span class="scope-badge shared">👫 공유</span>`;
+  // 배우자가 있는 할 일은 공유 여부와 주인(나·배우자·우리)을 한 번에 고른다.
+  // '🔒 나만'은 상태처럼 보여 눌러볼 생각을 하기 어려웠던 터라 할 일을 라벨에 적는다.
+  if (kind !== 'rec' && isShared()) {
+    const pickLabel = shared ? '👫 공유 중 · 변경' : '🔒 나만 · 공유하기';
+    return `<button type="button" class="scope-badge scope-control ${shared ? 'shared' : ''}" onclick="openSharePicker(event, '${key}', '${todo.id}')" title="공유 범위와 주인 고르기">${pickLabel}</button>`;
+  }
   const action = kind === 'rec'
     ? `toggleRecurringSharing('${todo.id}')`
     : `toggleTodoSharing('${key}', '${todo.id}')`;
@@ -4335,7 +4341,7 @@ function renderTodos(day) {
           <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
           <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
           <button class="del" onclick="copyTodoToDateFromKey('${currentKey}', '${t.id}')" title="다른 날짜에 한 번 복사">📋</button>
-          ${isShared() && author ? `<button class="del" onclick="openPartyPicker(event, '${currentKey}', '${t.id}')" title="누구 일정인지 변경 (나·배우자·우리)">👤</button>` : ''}
+          ${isShared() && author ? `<button class="del" onclick="openSharePicker(event, '${currentKey}', '${t.id}')" title="공유 범위·주인 변경 (나·배우자·우리)">👤</button>` : ''}
           <button class="del" onclick="toggleTodoImportant('${currentKey}', '${t.id}')" title="${isImportantTodo(t) ? '중요 표시 해제' : '중요 표시(빨간색)'}">${isImportantTodo(t) ? '⭕' : '❗'}</button>
           <button class="del" onclick="editTodo('${t.id}')" title="내용·시간·장소 수정">✏️</button>
           <button class="del" onclick="editTodoReminder('${t.id}')" title="알림 설정">🔔</button>
@@ -4481,22 +4487,26 @@ function resolveAssignee(party) {
   return me;
 }
 
-// ── 기존 일정의 주인 변경 (⋯ 메뉴의 👤) ──
+// ── 이미 만든 일정의 공유 범위 + 주인을 한 번에 고르기 (공유 배지 · ⋯ 메뉴의 👤) ──
+// 예전에는 '공유 켜기' 다음에 👤로 주인을 또 골라야 했고, 비공개 일정에서 👤를 누르면
+// "먼저 공유해 주세요"로 막혀서 이미 만든 일정을 '우리' 일정으로 돌리기가 번거로웠다.
 let partyPickCtx = null; // { key, id }
-function openPartyPicker(ev, key, id) {
+function openSharePicker(ev, key, id) {
   ev.stopPropagation();
   const todo = getDay(key).todos.find(t => t.id === id);
   if (!todo) return;
+  if (!isTodoAuthor(todo)) { toast('공유 범위는 일정을 만든 사람만 바꿀 수 있어요.'); return; }
   if (!isShared()) { toast('배우자와 연결된 뒤에 사용할 수 있어요.'); return; }
-  if (todoScope(todo, 'private') !== 'shared') { toast('먼저 이 일정을 배우자와 공유해 주세요.'); return; }
   partyPickCtx = { key, id };
   catPickCtx = null; memoCatPickCtx = null;
+  const shared = todoScope(todo, 'private') === 'shared';
   const cur = assigneeOf(todo);
   const picker = document.getElementById('catPicker');
-  picker.innerHTML = partyOptions().map(o => {
-    const isCur = o.key === cur;
+  const privateBtn = `<button class="party-btn ${!shared ? 'sel' : ''}" style="--party-color:var(--muted); --party-bg:rgba(102,112,128,0.16);" onclick="applySharePick('private')">${!shared ? '✓ ' : ''}🔒 나만</button>`;
+  picker.innerHTML = privateBtn + partyOptions().map(o => {
+    const isCur = shared && o.key === cur;
     const c = ownerColorFor(o.key);
-    return `<button class="party-btn ${isCur ? 'sel' : ''}" style="--party-color:${c}; --party-bg:${hexToRgba(c, 0.16)};" onclick="applyPartyChange('${o.id}')">${isCur ? '✓ ' : ''}${esc(o.label)}</button>`;
+    return `<button class="party-btn ${isCur ? 'sel' : ''}" style="--party-color:${c}; --party-bg:${hexToRgba(c, 0.16)};" onclick="applySharePick('${o.id}')">${isCur ? '✓ ' : ''}👫 ${esc(o.label)}</button>`;
   }).join('');
   picker.classList.add('open');
   const x = Math.min(ev.clientX, window.innerWidth - 260);
@@ -4504,7 +4514,7 @@ function openPartyPicker(ev, key, id) {
   picker.style.left = Math.max(8, x) + 'px';
   picker.style.top = Math.max(8, y) + 'px';
 }
-async function applyPartyChange(partyId) {
+async function applySharePick(optId) {
   if (!partyPickCtx) return;
   const { key, id } = partyPickCtx;
   partyPickCtx = null;
@@ -4512,15 +4522,29 @@ async function applyPartyChange(partyId) {
   const day = getDay(key);
   const todo = day.todos.find(t => t.id === id);
   if (!todo) return;
-  if (todo.by && currentUser && todo.by !== currentUser.uid) {
-    toast('일정을 만든 사람만 바꿀 수 있어요.');
-    return;
+  if (!isTodoAuthor(todo)) { toast('공유 범위는 일정을 만든 사람만 바꿀 수 있어요.'); return; }
+  const wasShared = todoScope(todo, 'private') === 'shared';
+  if (optId === 'private') {
+    if (!wasShared) return; // 이미 나만 보는 일정
+    if (!confirm('이 일정의 공유를 취소할까요?\n상대방 달력에서는 사라지고 내 일정에는 그대로 남아요.')) return;
+    todo.visibility = 'private';
+    todo.assignee = currentUser.uid;
+  } else {
+    // 카테고리 이름·색을 값으로 박아 둔다 — 상대방 화면에서도 같은 색으로 보이게(기존 공유와 동일).
+    const cat = todoCategory(todo);
+    todo.visibility = 'shared';
+    todo.assignee = resolveAssignee(optId);
+    todo.catName = cat.name;
+    todo.catColor = cat.color;
   }
-  todo.assignee = resolveAssignee(partyId);
   setDayLocal(key, day);
   renderAll(); if (modalKey) refreshModal(true);
   await saveDay(key, day);
-  toast(`👤 '${partyLabel(todo.assignee)}' 일정으로 바꿨어요!`);
+  if (optId === 'private') { toast('🔒 공유를 취소했어요. 이제 나에게만 보여요.'); return; }
+  if (!wasShared) notifyScheduleShared(key, todo.text);
+  toast(wasShared
+    ? `👤 '${partyLabel(todo.assignee)}' 일정으로 바꿨어요!`
+    : `👫 '${partyLabel(todo.assignee)}' 일정으로 공유했어요!`);
 }
 
 // ── 공유 일정 색 지정 ──
