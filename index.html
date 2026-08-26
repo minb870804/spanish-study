@@ -670,6 +670,10 @@
   .strip-cell { height: 22px; border-radius: 3px; background: var(--strip-sober); }
   .strip-cell.drink { background: var(--strip-drink); }
   .strip-cell.future { background: var(--bg); border: 1px solid var(--border); }
+  /* 생리 스트립 — 기록한 날과 예상일은 같은 색조로, 나머지 날은 중립색으로 둔다 */
+  .strip.period-strip .strip-cell { background: var(--bg); border: 1px solid var(--border); }
+  .strip.period-strip .strip-cell.on { background: var(--period); border-color: transparent; }
+  .strip.period-strip .strip-cell.pred { background: var(--period-pred); border-color: transparent; }
   .strip-ends { display: flex; justify-content: space-between; max-width: 316px; margin: 3px auto 0; font-size: 9.5px; font-weight: 800; color: var(--muted); }
   /* 상태색은 반드시 이름표와 함께 — 색만으로 뜻을 전하지 않는다 */
   .strip-legend { display: flex; gap: 12px; justify-content: center; margin-top: 8px; font-size: 10.5px; font-weight: 800; color: var(--text); }
@@ -5844,6 +5848,20 @@ function buildMonthReport(baseDate) {
     else { soberRun += 1; longestSoberRun = Math.max(longestSoberRun, soberRun); }
   }
 
+  // ── 이 달의 생리 기록 + 주기 요약 ──
+  const periodDates = [];
+  for (let dd = 1; dd <= info.days; dd++) {
+    const key = dateKey(new Date(info.y, info.m, dd));
+    if (isPeriodDay(key)) periodDates.push(key);
+  }
+  // 달 경계를 넘는 구간은 잘라 보여주면 며칠짜리였는지 알 수 없으므로 원래 시작~끝 그대로 둔다.
+  const periodSpans = periodGroups()
+    .filter(g => g.some(k => keyInMonth(k, info)))
+    .map(g => ({ start: g[0], end: g[g.length - 1], len: g.length }));
+  const periodInfo = periodPrediction();
+  // 예상일만 있는 달(아직 기록이 없는 다음 달)에도 스트립을 보여줘야 예측이 쓸모가 있다.
+  const periodPredicted = Object.keys(predictedPeriodDays()).filter(k => keyInMonth(k, info)).sort();
+
   // ── 이벤트: 이 달과 겹치는 기간 일정 ──
   const eventSeen = new Set();
   const events = [];
@@ -5899,6 +5917,10 @@ function buildMonthReport(baseDate) {
     importantDone,
     importantRate: percent(importantDone, importantPlanned),
     drinkDates,
+    periodDates,
+    periodSpans,
+    periodInfo,
+    periodPredicted,
     longestSoberRun,
     elapsedDays,
     events,
@@ -6051,6 +6073,27 @@ function drinkStrip(report) {
     </div>`;
 }
 
+// 생리 스트립 — 음주 스트립과 같은 형태로 한 달을 한 줄에. 예상일은 옅은 색으로 함께 깐다.
+function periodStrip(report) {
+  const actual = new Set(report.periodDates);
+  const pred = new Set(report.periodPredicted);
+  const cells = [];
+  for (let dd = 1; dd <= report.days; dd++) {
+    const key = dateKey(new Date(report.y, report.m, dd));
+    const on = actual.has(key);
+    const isPred = !on && pred.has(key);
+    const state = on ? '생리' : (isPred ? '예상' : '기록 없음');
+    cells.push(`<span class="strip-cell ${on ? 'on' : (isPred ? 'pred' : '')}" title="${escAttr(`${report.m + 1}/${dd} · ${state}`)}"></span>`);
+  }
+  const hasPred = report.periodPredicted.length > 0;
+  return `<div class="strip period-strip">${cells.join('')}</div>
+    <div class="strip-ends"><span>1일</span><span>${report.days}일</span></div>
+    <div class="strip-legend">
+      <span><i style="background:var(--period);"></i>생리 ${report.periodDates.length}일</span>
+      ${hasPred ? '<span><i style="background:var(--period-pred);"></i>예상</span>' : ''}
+    </div>`;
+}
+
 // 요일별 운동 세로 막대 — 유산소·근육운동 두 계열을 나란히(그룹형) 그린다.
 // 하루에 둘 다 한 날은 양쪽에 모두 잡히므로 쌓아 올리면 합계가 '운동한 날'을
 // 넘어 잘못 읽힌다. 그래서 누적이 아니라 나란히 놓는다.
@@ -6105,6 +6148,11 @@ function renderMonthReport(report) {
   const sobrietyDescription = report.sobriety.elapsed
     ? `${sobrietyScope} 중 음주 ${report.sobriety.drink}일 · 금주 ${report.sobriety.sober}일`
     : '아직 집계할 날짜가 시작되지 않았어요.';
+  const periodSpansText = report.periodSpans.length
+    ? '기록 ' + report.periodSpans.map(s => s.start === s.end
+        ? shortDateLabel(s.start)
+        : `${shortDateLabel(s.start)}~${shortDateLabel(s.end)} (${s.len}일)`).join(' · ')
+    : '';
   const drinkDatesText = report.elapsedDays
     ? (report.drinkDates.length ? `음주한 날: ${report.drinkDates.map(shortDateLabel).join(', ')}` : '이번 달 음주 기록이 없어요 🎉')
     : '';
@@ -6196,6 +6244,19 @@ function renderMonthReport(report) {
       ${drinkStrip(report)}
       ${drinkDatesText ? `<div class="report-muted" style="margin-top:7px;">${drinkDatesText}${report.longestSoberRun ? ` · 최장 금주 연속 ${report.longestSoberRun}일` : ''}</div>` : ''}
     </div>
+
+    ${report.periodDates.length || report.periodPredicted.length ? `
+    <div class="report-section">
+      <h3>🩸 생리 주기</h3>
+      ${report.periodInfo ? `<div class="report-stats" style="margin:0 0 12px;">
+        <div class="report-stat"><div class="num">${report.periodInfo.cycle}일</div><div class="label">평균 주기</div><div class="sub">최근 ${report.periodInfo.samples}회 평균</div></div>
+        <div class="report-stat"><div class="num">${report.periodInfo.span}일</div><div class="label">평균 기간</div></div>
+        <div class="report-stat"><div class="num">${shortDateLabel(report.periodInfo.next)}</div><div class="label">다음 예상</div></div>
+      </div>` : ''}
+      ${report.periodDates.length || report.periodPredicted.length ? periodStrip(report) : ''}
+      ${periodSpansText ? `<div class="report-muted" style="margin-top:7px;">${periodSpansText}</div>` : ''}
+      ${report.periodInfo ? '' : '<div class="report-muted" style="margin-top:7px;">기록이 두 번 이상 쌓이면 평균 주기와 다음 예상일이 나와요.</div>'}
+    </div>` : ''}
 
     <div class="report-section">
       <h3>✅ 완료한 계획 (${report.completedCount})</h3>
