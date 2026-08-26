@@ -52,6 +52,9 @@
     --blue-light: #e7f0fa;
     --purple: #6b5aa6;
     --purple-light: #f0edf8;
+    /* 생리 표시 — 기록한 날과 예상일을 같은 색조의 진하기 차이로 구분한다 */
+    --period: #d1607d;
+    --period-pred: #e9a7b8;
     --cream: #fff0c8;
     --surface: rgba(255, 255, 255, 0.86);
 
@@ -78,6 +81,8 @@
     --grain-opacity: 0.055;
     --grain-card: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E");
     /* 강조색을 밝게 보정해 어두운 배경에서도 대비 확보 */
+    --period: #e07a95;
+    --period-pred: #7d4d5b;
     --red: #ef5e5e;
     --green: #4caf50;
     --blue: #4d90e0;
@@ -471,6 +476,7 @@
     color: var(--muted); font-size: 10.5px; font-weight: 900; line-height: 1.2; white-space: nowrap;
   }
   .calendar-summary-chip.sober { background: var(--green-light); border-color: transparent; color: var(--green); }
+  .calendar-summary-chip.period { background: rgba(209,96,125,0.14); border-color: transparent; color: var(--period); }
   .calendar-summary-chip.exercise { background: var(--blue-light); border-color: transparent; color: var(--blue); }
   .schedule-filter-bar {
     display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
@@ -512,6 +518,12 @@
   /* 운동 기록 버튼: 같은 형태의 녹색 변형 */
   .dm-ex-toggle { border-color: var(--green); background: rgba(46,125,50,0.10); color: var(--green); }
   .dm-ex-toggle:hover { background: rgba(46,125,50,0.18); }
+  .dm-period-toggle { border-color: var(--period); background: rgba(209,96,125,0.10); color: var(--period); }
+  .dm-period-toggle:hover { background: rgba(209,96,125,0.18); }
+  .dm-period-toggle.sel { background: var(--period); color: #fff; box-shadow: 0 3px 10px rgba(209,96,125,0.28); }
+  .dm-love-toggle { border-color: var(--red); background: var(--red-light); color: var(--red); }
+  .dm-love-toggle:hover { filter: brightness(0.97); }
+  .dm-love-toggle.sel { background: var(--red); color: #fff; box-shadow: 0 3px 10px rgba(199,83,72,0.28); }
   .dm-ex-toggle.sel { background: var(--green); color: #fff; box-shadow: 0 3px 10px rgba(46,125,50,0.28); }
   #dmBody > .card { box-shadow: none; border: none; background: transparent; padding: 0; }
   #dmBody > .card + .card { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 16px; }
@@ -868,6 +880,16 @@
   /* 달력 음주일 마커 */
   .mcal-drink-mark { position: absolute; top: 3px; right: 4px; font-size: 11px; line-height: 1; pointer-events: none; }
   .mcal-ex-mark { position: absolute; top: 3px; right: 19px; font-size: 11px; line-height: 1; pointer-events: none; }
+  .mcal-love-mark { position: absolute; top: 3px; right: 34px; font-size: 11px; line-height: 1; pointer-events: none; }
+  /* 생리는 며칠 이어지는 기간이라 이모지 대신 셀 아래 띠로 그린다.
+     마커 자리를 안 먹고, 한 달을 훑을 때 기간이 한눈에 읽힌다. 예상일은 점선으로. */
+  .mcal-day.period::after, .mcal-day.period-pred::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; pointer-events: none;
+  }
+  .mcal-day.period::after { background: var(--period); }
+  .mcal-day.period-pred::after {
+    background: repeating-linear-gradient(90deg, var(--period-pred) 0 5px, transparent 5px 10px);
+  }
 
   .week-card { overflow: hidden; }
   .week-range { font-size: 11px; font-weight: 800; color: var(--muted); white-space: nowrap; }
@@ -1055,6 +1077,12 @@
     .mcal-dow { font-size: 10px; padding: 2px 0; }
     .mcal-day { min-height: 72px; padding: 4px; border-radius: 7px; gap: 2px; }
     .mcal-num { font-size: 10px; }
+    /* 셀 폭이 44px뿐이라(날짜 숫자가 15px까지 차지) 마커 3개를 넣으려면
+       8.5px로 줄이고 간격을 8.5px로 붙여야 숫자와 안 겹친다. */
+    .mcal-drink-mark { right: 2px; font-size: 8.5px; }
+    .mcal-ex-mark { right: 10.5px; font-size: 8.5px; }
+    .mcal-love-mark { right: 19px; font-size: 8.5px; }
+    .mcal-day.period::after, .mcal-day.period-pred::after { height: 3px; }
     .mcal-tag { font-size: 9.5px; line-height: 1.45; padding: 0 3px; }
     .calendar-legend { display: none !important; }
     .invite-code-box { padding: 10px 12px; }
@@ -1369,6 +1397,8 @@
       <span class="dm-header-actions">
         <button type="button" class="dm-drink-toggle dm-ex-toggle" id="dmExerciseBtn" onclick="openExerciseModal()" aria-pressed="false">💪 운동 기록</button>
         <button type="button" class="dm-drink-toggle" id="dmDrinkToggle" onclick="toggleDrinkDay(modalKey)" aria-pressed="false">🍺 음주 표시</button>
+        <button type="button" class="dm-drink-toggle dm-period-toggle" id="dmPeriodToggle" onclick="togglePeriodDay(modalKey)" aria-pressed="false">🩸 생리</button>
+        <button type="button" class="dm-drink-toggle dm-love-toggle" id="dmLoveToggle" onclick="toggleLoveDay(modalKey)" aria-pressed="false">❤️ 기록</button>
         <button class="small-btn" onclick="closeDayModal()">✕ 닫기</button>
       </span>
     </div>
@@ -3669,6 +3699,116 @@ function renderDayDrinkToggle() {
   btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
   btn.setAttribute('aria-label', selected ? '이 날짜의 음주 기록 해제' : '이 날짜를 음주일로 표시');
   renderDayExerciseToggle();
+  renderDayPeriodToggle();
+  renderDayLoveToggle();
+}
+
+// ══════════════════════════════════════
+// 생리 · 함께한 날 (둘 다 공유 space 문서에 저장 — 서로 볼 수 있어야 하는 기록)
+// 음주는 users 문서라 나만 보지만, 이 둘은 부부가 같이 보는 게 목적이라 space에 둔다.
+// ══════════════════════════════════════
+function getPeriodDays() { return (spaceData && spaceData.periodDays) || {}; }
+function isPeriodDay(key) { return !!getPeriodDays()[key]; }
+function getLoveDays() { return (spaceData && spaceData.loveDays) || {}; }
+function isLoveDay(key) { return !!getLoveDays()[key]; }
+
+// 공유 문서의 '날짜 → true' 맵 하나를 켜고 끈다.
+async function toggleSpaceDayMark(field, key, onMsg, offMsg) {
+  if (!spaceId || !spaceData || !key) return;
+  const next = { ...(spaceData[field] || {}) };
+  const on = !next[key];
+  if (on) next[key] = true; else delete next[key];
+  spaceData[field] = next;
+  renderAll();
+  try {
+    await db.collection('spaces').doc(spaceId).update({
+      [field]: next,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast(on ? onMsg : offMsg);
+  } catch (e) {
+    console.error(field + ' 저장 실패:', e);
+    toast('저장에 실패했어요.');
+  }
+}
+
+function togglePeriodDay(key) {
+  return toggleSpaceDayMark('periodDays', key, '🩸 생리일로 표시했어요.', '생리 표시를 지웠어요.');
+}
+function toggleLoveDay(key) {
+  return toggleSpaceDayMark('loveDays', key, '❤️ 기록했어요.', '기록을 지웠어요.');
+}
+
+function renderDayPeriodToggle() {
+  const btn = document.getElementById('dmPeriodToggle');
+  if (!btn || !modalKey) return;
+  const on = isPeriodDay(modalKey);
+  btn.textContent = on ? '✓ 🩸 생리' : '🩸 생리';
+  btn.classList.toggle('sel', on);
+  btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  btn.setAttribute('aria-label', on ? '이 날짜의 생리 표시 해제' : '이 날짜를 생리일로 표시');
+}
+
+function renderDayLoveToggle() {
+  const btn = document.getElementById('dmLoveToggle');
+  if (!btn || !modalKey) return;
+  const on = isLoveDay(modalKey);
+  btn.textContent = on ? '✓ ❤️ 기록' : '❤️ 기록';
+  btn.classList.toggle('sel', on);
+  btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  btn.setAttribute('aria-label', on ? '이 날짜의 기록 해제' : '이 날짜에 기록');
+}
+
+// ── 생리 주기 예측 ──
+// 표시한 날들을 이어지는 구간으로 묶고, 각 구간의 첫날을 '시작일'로 본다.
+// 시작일 사이의 간격 평균이 주기, 구간 길이의 평균이 기간이 된다.
+function periodGroups() {
+  const map = getPeriodDays();
+  const keys = Object.keys(map).filter(k => map[k]).sort();
+  const groups = [];
+  keys.forEach(k => {
+    const last = groups[groups.length - 1];
+    if (last && keyPlusDays(last[last.length - 1], 1) === k) last.push(k);
+    else groups.push([k]);
+  });
+  return groups;
+}
+
+// 주기를 계산할 만큼 기록이 쌓였을 때만 값을 준다(시작일 2번 이상).
+function periodPrediction() {
+  const groups = periodGroups();
+  if (groups.length < 2) return null;
+  const starts = groups.map(g => g[0]);
+  const recent = starts.slice(-7); // 최근 6주기까지만 — 오래된 기록이 평균을 끌지 않게
+  const gaps = [];
+  for (let i = 1; i < recent.length; i++) {
+    const gap = dayDiff(recent[i - 1], recent[i]);
+    if (gap >= 15 && gap <= 60) gaps.push(gap); // 빠뜨린 달·중복 기록 같은 이상치는 제외
+  }
+  if (!gaps.length) return null;
+  const cycle = Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length);
+  const lens = groups.slice(-6).map(g => g.length);
+  const span = Math.max(2, Math.round(lens.reduce((a, b) => a + b, 0) / lens.length));
+  const lastStart = starts[starts.length - 1];
+  // 마지막 시작일에 주기를 더해 오늘 이후 첫 예상일을 찾는다.
+  const todayK = dateKey(new Date());
+  let next = keyPlusDays(lastStart, cycle);
+  let guard = 0;
+  while (next < todayK && guard++ < 36) next = keyPlusDays(next, cycle);
+  return { cycle, span, lastStart, next, samples: gaps.length };
+}
+
+// 달력에 옅게 깔아 줄 예상 생리일 — 다음 두 주기까지만.
+function predictedPeriodDays() {
+  const p = periodPrediction();
+  const out = {};
+  if (!p) return out;
+  let start = p.next;
+  for (let c = 0; c < 2; c++) {
+    for (let i = 0; i < p.span; i++) out[keyPlusDays(start, i)] = true;
+    start = keyPlusDays(start, p.cycle);
+  }
+  return out;
 }
 
 // ── 운동 기록 (하루 메모의 '운동' 칸에 저장) ──
@@ -3965,10 +4105,15 @@ function renderCalendarDaySummary(baseDate) {
   const cutoffKey = stats.elapsed === 0 ? null : (stats.elapsed === stats.totalDays ? info.lastKey : dateKey(new Date()));
   const exerciseStats = monthExerciseStats(baseDate, cutoffKey);
   const scope = stats.elapsed < stats.totalDays ? `오늘까지 ${stats.elapsed}일 집계` : '월 전체 집계';
+  // 다음 생리 예상 — 기록이 두 번 이상 쌓여 주기를 잡을 수 있을 때만 보인다.
+  const pred = periodPrediction();
+  const predChip = pred
+    ? `<span class="calendar-summary-chip period" title="평균 주기 ${pred.cycle}일 · 평균 기간 ${pred.span}일 · 최근 시작 ${shortDateLabel(pred.lastStart)} (${pred.samples}회 평균)">🩸 다음 예상 ${shortDateLabel(pred.next)}</span>`
+    : '';
   el.innerHTML = `
     <span class="calendar-summary-chip">전체 ${stats.totalDays}일</span>
     <span class="calendar-summary-chip sober">🌿 금주 ${stats.sober}일</span>
-    <span class="calendar-summary-chip exercise">💪 운동 ${exerciseStats.exercise}일</span>`;
+    <span class="calendar-summary-chip exercise">💪 운동 ${exerciseStats.exercise}일</span>${predChip}`;
   el.title = `${stats.label} · ${scope} · 음주 ${stats.drink}일 · 운동 ${exerciseStats.exercise}일`;
 }
 
@@ -4631,6 +4776,7 @@ function renderCalendarTags(key, dateObj) {
   const tags = [];
   if (isDrinkDay(key)) tags.push('<span class="mcal-drink-mark" title="음주일">🍺</span>');
   if (String((day.notes || {})[EXERCISE_CAT_ID] || '').trim()) tags.push('<span class="mcal-ex-mark" title="운동한 날">💪</span>');
+  if (isLoveDay(key)) tags.push('<span class="mcal-love-mark" title="함께한 날">❤️</span>');
 
   // 기간 일정 막대 — 시작일~종료일을 가로질러 표시
   (periodIndex[key] || []).forEach(b => {
@@ -4783,6 +4929,7 @@ function renderMonthCal() {
   const todayK = dateKey(new Date());
   const selK = dateKey(selectedDate);
 
+  const predPeriod = predictedPeriodDays(); // 예상 생리일은 한 번만 계산해 셀마다 조회
   let html = '<div class="mcal-grid">';
   html += DAYS_KO.map(d => `<div class="mcal-dow">${d}</div>`).join('');
   for (let i = 0; i < first; i++) html += '<div class="mcal-day empty"></div>';
@@ -4795,6 +4942,7 @@ function renderMonthCal() {
       key === todayK ? 'today' : '',
       key === selK ? 'sel' : '',
       holName ? 'holiday' : '',
+      isPeriodDay(key) ? 'period' : (predPeriod[key] ? 'period-pred' : ''),
       d.getDay() === 0 ? 'sun' : d.getDay() === 6 ? 'sat' : ''
     ].join(' ');
     const holLabel = holName ? `<span class="mcal-holiday-name" title="${esc(holName)}">${esc(holName)}</span>` : '';
