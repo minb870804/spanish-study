@@ -3507,6 +3507,19 @@ function promptTodoEdits(todo, startKey) {
   return result;
 }
 
+function openTodoDetail(key, id) {
+  const day = getDay(key); const todo = day.todos.find(item => item.id === id);
+  if (!todo || !canEditTodo(todo)) { toast("수정 권한을 확인할 수 없습니다."); return; }
+  const modal = document.createElement("div"); modal.className = "modal open"; modal.style.cssText = "z-index:5000;overflow:auto;padding:16px;align-items:flex-start";
+  modal.innerHTML = `<div class="modal-box" style="width:min(760px,100%);margin:12px auto 88px;max-height:none"><div class="modal-head"><strong>일정 수정</strong><button class="del" type="button" data-close>닫기</button></div><form style="display:grid;gap:13px"><label>제목<input required maxlength="160" name="text" class="modal-input"></label><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label>날짜<input required type="date" name="date" class="modal-input"></label><label>종일<input type="checkbox" name="allDay"></label></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label>시작 시간<input type="time" name="time" class="modal-input"></label><label>종료 시간<input type="time" name="endTime" class="modal-input"></label></div><label>장소<input maxlength="160" name="location" class="modal-input"></label><label>반복<input name="recurrence" class="modal-input"></label><label>카테고리<input name="category" class="modal-input"></label><div><label>공유<input type="checkbox" name="shared"></label><label>중요<input type="checkbox" name="important"></label></div><label>알림<input name="reminder" class="modal-input"></label><label>메모<textarea name="notes" class="modal-input" rows="4"></textarea></label><div style="position:sticky;bottom:0;background:var(--card);padding:10px 0;display:flex;gap:8px;justify-content:flex-end"><button type="button" class="small-btn" data-close>취소</button><button type="submit" class="add-btn">저장</button></div></form></div>`;
+  const form = modal.querySelector("form"); const set = (name, value) => { form.elements[name].value = value || ""; };
+  set("text", todo.text); set("date", key); set("time", todo.time); set("endTime", todo.endTime); set("location", todo.location); set("recurrence", todo.recurrence); set("category", todo.catName || todo.cat); set("reminder", todo.reminder || todo.remindAt); set("notes", todo.notes);
+  form.elements.allDay.checked = !!todo.allDay; form.elements.shared.checked = todoScope(todo, "private") === "shared"; form.elements.important.checked = !!todo.important;
+  const close = () => modal.remove(); modal.querySelectorAll("[data-close]").forEach(button => button.onclick = close); modal.onclick = event => { if (event.target === modal) close(); };
+  form.onsubmit = async event => { event.preventDefault(); const value = Object.fromEntries(new FormData(form)); if (!value.text.trim()) return; const category = getCategories().find(item => item.name === value.category.trim() || item.id === value.category.trim()); const changed = {...todo, text:value.text.trim(), time:value.allDay ? "" : value.time, endTime:value.allDay ? "" : value.endTime, allDay:!!value.allDay, location:value.location.trim(), recurrence:value.recurrence.trim(), cat:category ? category.id : todo.cat, catName:category ? category.name : value.category.trim(), catColor:category ? category.color : todo.catColor, notes:value.notes.trim(), reminder:value.reminder.trim(), important:!!value.important, visibility:value.shared ? "shared" : "private"}; const targetKey = value.date; if (targetKey !== key) { day.todos = day.todos.filter(item => item.id !== id); setDayLocal(key, day); const target = getDay(targetKey); target.todos.push(changed); setDayLocal(targetKey, target); await Promise.all([saveDay(key, day), saveDay(targetKey, target)]); } else { Object.assign(todo, changed); setDayLocal(key, day); await saveDay(key, day); } selectedDate = new Date(`${targetKey}T12:00:00`); renderAll(); close(); toast("일정을 저장했습니다."); };
+  document.body.appendChild(modal); setTimeout(() => form.elements.text.focus(), 0);
+}
+
 async function editTodo(id) {
   const key = dateKey(selectedDate);
   const day = getDay(key);
@@ -4502,7 +4515,7 @@ function renderTodos(day) {
     return `<div class="todo-item ${mine ? 'swipeable' : ''} ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
       ${handle}
       <input type="checkbox" ${t.done ? 'checked' : ''} ${mine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleTodo('${t.id}', this.checked)">
-      <span class="todo-content"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
+      <span class="todo-content" role="button" tabindex="0" onclick="openTodoDetail('${currentKey}', '${t.id}')" onkeydown="if(event.key==='Enter') openTodoDetail('${currentKey}', '${t.id}')"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
       <span class="todo-actions">
         ${importantFlag(t)}
         ${badge}
