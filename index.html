@@ -1109,22 +1109,82 @@
     .calendar-tools { width: 100%; justify-content: center; }
   }
 
-  /* Todo editor: standalone overlay because this app has no shared .modal base rule. */
-  .todo-editor-modal { position:fixed; inset:0; z-index:6000; display:flex; align-items:center; justify-content:center; padding:clamp(16px,4vh,40px) 16px; overflow:hidden; background:rgba(18,18,20,.60); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
-  .todo-editor-box { width:min(680px,100%); max-height:calc(100dvh - 32px); margin:0; display:flex; flex-direction:column; overflow:hidden; background:var(--card); border:1px solid var(--border); border-radius:18px; box-shadow:0 18px 50px rgba(24,34,53,.22); }
-  .todo-editor-box .modal-head { flex:0 0 auto; padding:18px 20px 14px; border-bottom:1px solid var(--border); }
-  .todo-editor-form { min-height:0; display:grid; gap:13px; overflow:auto; overscroll-behavior:contain; padding:18px 20px 0; }
-  .todo-editor-form label { display:grid; gap:6px; min-width:0; font-weight:700; }
-  .todo-editor-form .modal-input { min-width:0; width:100%; box-sizing:border-box; }
-  .todo-editor-form textarea.modal-input { resize:vertical; overflow-wrap:anywhere; }
-  .todo-editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .todo-editor-check { display:flex !important; align-items:center; gap:7px; }
-  .todo-editor-save { position:sticky; bottom:0; z-index:1; display:flex; justify-content:flex-end; gap:8px; margin-top:2px; padding:14px 0 calc(14px + env(safe-area-inset-bottom)); background:var(--card); border-top:1px solid var(--border); }
-  @media (max-width:520px) { .todo-editor-modal { align-items:flex-end; padding:0; } .todo-editor-box { width:100%; max-height:min(88dvh,760px); border-radius:18px 18px 0 0; border-bottom:0; } .todo-editor-box .modal-head { padding:16px 16px 12px; } .todo-editor-form { padding:16px 16px 0; } .todo-editor-grid { grid-template-columns:1fr; } .todo-editor-time { grid-template-columns:1fr 1fr; } }
+  /* 일정 편집·삭제 확인: 앱의 종이 카드와 색상 토큰을 그대로 쓰는 독립 오버레이. */
+  .todo-editor-modal, .schedule-confirm-modal {
+    position:fixed; inset:0; z-index:6000; display:flex; align-items:center; justify-content:center;
+    padding:clamp(16px,4vh,40px) 16px; overflow:hidden; background:rgba(27,29,31,.56);
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  }
+  .todo-editor-box {
+    width:min(680px,100%); max-height:calc(100dvh - 32px); margin:0; display:flex; flex-direction:column;
+    overflow:hidden; background-color:var(--card); background-image:var(--grain-card); border:1px solid var(--border);
+    border-radius:var(--radius); box-shadow:var(--shadow-hover); animation:fadeIn .22s ease;
+  }
+  .todo-editor-box .modal-head {
+    flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:18px 20px 14px; border-bottom:1px solid var(--border);
+  }
+  .todo-editor-box .modal-head strong { display:flex; align-items:center; gap:9px; font-size:17px; font-weight:900; letter-spacing:-.2px; }
+  .todo-editor-box .modal-head strong::before { content:"✦"; display:grid; place-items:center; width:30px; height:30px; border-radius:10px; background:var(--blue-light); color:var(--blue); }
+  .todo-editor-form { min-height:0; display:grid; gap:14px; overflow:auto; overscroll-behavior:contain; padding:18px 20px 0; scrollbar-gutter:stable; }
+  .todo-editor-form label { display:grid; gap:7px; min-width:0; color:var(--text); font-size:12.5px; font-weight:900; letter-spacing:-.1px; }
+  .todo-editor-form .modal-input {
+    min-width:0; width:100%; min-height:44px; box-sizing:border-box; padding:10px 12px; appearance:none; -webkit-appearance:none;
+    border:1.5px solid var(--border); border-radius:11px; background-color:var(--bg); color:var(--text);
+    font:700 14px/1.45 'Outfit','Noto Sans KR',sans-serif; outline:none; transition:var(--transition);
+  }
+  .todo-editor-form .modal-input:hover { border-color:color-mix(in srgb, var(--blue) 48%, var(--border)); }
+  .todo-editor-form .modal-input:focus { border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-light); }
+  .todo-editor-form select.modal-input {
+    padding-right:42px; cursor:pointer; background-repeat:no-repeat; background-position:right 14px center; background-size:12px 8px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%2338679b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  .todo-editor-form textarea.modal-input { min-height:104px; resize:vertical; overflow-wrap:anywhere; }
+  .todo-editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+  .todo-editor-check { display:flex !important; align-items:center; gap:9px; width:max-content; max-width:100%; cursor:pointer; }
+  .todo-editor-check input {
+    appearance:none; -webkit-appearance:none; width:21px; height:21px; flex:0 0 21px; margin:0; cursor:pointer;
+    border:1.5px solid var(--border); border-radius:7px; background-color:var(--bg); background-position:center; background-repeat:no-repeat; transition:var(--transition);
+  }
+  .todo-editor-check input:checked { border-color:var(--blue); background-color:var(--blue); background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='10' viewBox='0 0 13 10'%3E%3Cpath d='m1 5 3.5 3.5L12 1' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+  .todo-editor-check input:focus-visible { border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-light); outline:none; }
+  .todo-editor-recur { width:100%; min-height:42px; border-style:dashed; color:var(--blue); background:var(--blue-light); }
+  .todo-editor-save {
+    position:sticky; bottom:0; z-index:2; display:flex; justify-content:flex-end; gap:9px; margin:4px -20px 0;
+    padding:14px 20px calc(14px + env(safe-area-inset-bottom)); background-color:var(--card); background-image:var(--grain-card);
+    border-top:1px solid var(--border); box-shadow:0 -8px 18px rgba(62,52,40,.05);
+  }
+  .todo-content { cursor:pointer; border-radius:8px; }
+  .todo-content:focus-visible { outline:3px solid var(--blue-light); outline-offset:3px; }
+  .todo-content .txt { text-decoration:underline; text-decoration-color:transparent; text-underline-offset:3px; transition:var(--transition); }
+  .todo-content:hover .txt { color:var(--blue); text-decoration-color:var(--blue); }
+  .schedule-confirm-card {
+    width:min(390px,100%); padding:24px; background-color:var(--card); background-image:var(--grain-card);
+    border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-hover); animation:fadeIn .22s ease;
+  }
+  .schedule-confirm-icon { display:grid; place-items:center; width:44px; height:44px; margin-bottom:14px; border-radius:13px; background:var(--red-light); color:var(--red); font-size:20px; }
+  .schedule-confirm-card h2 { margin:0; font-size:18px; font-weight:900; letter-spacing:-.3px; }
+  .schedule-confirm-card p { margin:8px 0 21px; color:var(--muted); font-size:13px; font-weight:700; line-height:1.65; }
+  .schedule-confirm-actions { display:flex; justify-content:flex-end; gap:9px; }
+  .schedule-confirm-actions button { min-height:42px; padding:9px 17px; }
+  .schedule-confirm-delete { border:1px solid var(--red); border-radius:10px; background:var(--red); color:#fff; cursor:pointer; font:800 13px/1 'Outfit','Noto Sans KR',sans-serif; transition:var(--transition); }
+  .schedule-confirm-delete:hover { background:var(--red-hover); transform:translateY(-1px); }
+  .schedule-confirm-delete:focus-visible { outline:3px solid var(--red-light); outline-offset:2px; }
+  @media (max-width:520px) {
+    .todo-editor-modal, .schedule-confirm-modal { align-items:flex-end; padding:0; }
+    .todo-editor-box { width:100%; max-height:min(90dvh,760px); border-radius:20px 20px 0 0; border-bottom:0; }
+    .todo-editor-box .modal-head { padding:16px 16px 13px; }
+    .todo-editor-form { padding:16px 16px 0; }
+    .todo-editor-save { margin-left:-16px; margin-right:-16px; padding-left:16px; padding-right:16px; }
+    .todo-editor-grid { grid-template-columns:1fr; }
+    .todo-editor-time { grid-template-columns:1fr 1fr; }
+    .schedule-confirm-card { width:100%; padding:23px 20px calc(22px + env(safe-area-inset-bottom)); border-radius:20px 20px 0 0; border-bottom:0; }
+  }
   @media (max-width: 330px) {
     .todo-detail-row { grid-template-columns: 1fr; }
   }
 </style>
+
 </head>
 <body>
 
@@ -2977,7 +3037,8 @@ async function addRecurring() {
 }
 
 async function deleteRecurring(id) {
-  if (!confirm('이 반복 할 일을 삭제할까요?')) return;
+  const recurring = getAllRecurring().find(r => r.id === id);
+  if (!recurring || !(await confirmScheduleDeletion(recurring.text))) return;
   const arr = getAllRecurring().filter(r => r.id !== id);
   await saveRecurring(arr);
   renderRecurList(); renderAll();
@@ -3348,9 +3409,17 @@ function syncTodoEndBound(fromEnd) {
 }
 
 // 할 일 항목의 추가 액션(이동/수정/알림/삭제) 펼치기/접기
-function toggleRowActions(btn) {
+function toggleRowActions(event, btn) {
+  event.stopPropagation();
   const item = btn.closest('.todo-item');
   if (item) item.classList.toggle('menu-open');
+}
+
+function openTodoDetailFromKey(event, key, id, kind = 'todo') {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  if (event.repeat) return;
+  openTodoDetail(key, id, kind);
 }
 
 async function addTodo() {
@@ -3519,7 +3588,7 @@ function promptTodoEdits(todo, startKey) {
   return result;
 }
 
-function openTodoDetail(key,id){const day=getDay(key),todo=day.todos.find(x=>x.id===id);if(!todo||!canEditTodo(todo)){toast("수정 권한을 확인할 수 없습니다.");return;}const cats=getCategories(),current=assigneeOf(todo),party=current===TOGETHER_KEY?"both":current===partnerUid()?"partner":"mine";const modal=document.createElement("div");modal.className="modal open todo-editor-modal";modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.innerHTML=`<div class="modal-box todo-editor-box"><div class="modal-head"><strong>일정 수정</strong><button class="small-btn" type="button" data-close>닫기</button></div><form class="todo-editor-form"><label>제목<input required maxlength="160" name="text" class="modal-input"></label><div class="todo-editor-grid"><label>시작일<input required type="date" name="date" class="modal-input"></label><label>종료일<input type="date" name="endDate" class="modal-input"></label></div><label class="todo-editor-check"><input type="checkbox" name="allDay"> 종일</label><div class="todo-editor-grid todo-editor-time"><label>시작 시간<input type="time" name="time" class="modal-input"></label><label>종료 시간<input type="time" name="endTime" class="modal-input"></label></div><label>장소<input maxlength="160" name="location" class="modal-input"></label><label>카테고리<select name="cat" class="modal-input">${cats.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("")}</select></label><label>공유·주인<select name="party" class="modal-input"><option value="private">나만</option>${partyOptions().map(o=>`<option value="${o.id}">${esc(o.label)}</option>`).join("")}</select></label><label class="todo-editor-check"><input type="checkbox" name="important"> 중요 일정</label><label>알림 시간<input type="time" name="reminderTime" class="modal-input"></label><button type="button" class="small-btn todo-editor-recur" data-recur>반복 설정 열기</button><label>메모<textarea name="notes" class="modal-input" rows="4"></textarea></label><div class="todo-editor-save"><button type="button" class="small-btn" data-close>취소</button><button type="submit" class="add-btn">저장</button></div></form></div>`;const f=modal.querySelector("form"),set=(n,v)=>f.elements[n].value=v||"";set("text",todo.text);set("date",todo.startDate||key);set("endDate",todo.endDate);set("time",todo.time);set("endTime",todo.endTime);set("location",todo.location);set("cat",todo.cat||cats[0]?.id);set("reminderTime",todo.reminderTime||formatReminder(todo));set("notes",todo.notes);f.elements.allDay.checked=!!todo.allDay;f.elements.important.checked=!!todo.important;f.elements.party.value=todoScope(todo,"private")==="shared"?party:"private";let dirty=false;const mark=()=>dirty=true;f.addEventListener("input",mark);f.addEventListener("change",mark);const close=force=>{if(!force&&dirty&&!confirm("변경 내용을 저장하지 않고 닫을까요?"))return;window.removeEventListener("popstate",onBack);modal.remove();};const onBack=e=>{if(dirty&&!confirm("변경 내용을 저장하지 않고 닫을까요?")){history.pushState({todoEditor:true},"");return;}modal.remove();};modal.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>close(false));modal.onclick=e=>{if(e.target===modal)close(false);};modal.querySelector("[data-recur]").onclick=()=>{if(dirty&&!confirm("반복 설정을 열면 저장하지 않은 변경은 사라집니다. 계속할까요?"))return;close(true);openRecurSetup(key,id);};f.onsubmit=async e=>{e.preventDefault();const v=Object.fromEntries(new FormData(f));const start=v.date,end=v.endDate;if(!v.text.trim())return;if(end&&end<start){toast("종료일이 시작일보다 빠를 수 없습니다.");return;}if(!f.elements.allDay.checked&&(!end||end===start)&&v.time&&v.endTime&&v.endTime<v.time){toast("종료시간이 시작시간보다 빠를 수 없습니다.");return;}const cat=cats.find(c=>c.id===v.cat)||todoCategory(todo),rem=v.reminderTime?buildReminderFields(start,v.reminderTime):{};if(rem===null)return;await cancelLocalReminder(todo.id);const shared=v.party!=="private",changed={...todo,text:v.text.trim(),time:f.elements.allDay.checked?"":v.time,endTime:f.elements.allDay.checked?"":v.endTime,allDay:f.elements.allDay.checked,location:normalizeTodoText(v.location),notes:v.notes.trim(),important:f.elements.important.checked,cat:cat.id,catName:cat.name,catColor:cat.color,visibility:shared?"shared":"private",assignee:shared?resolveAssignee(v.party):currentUser.uid,...rem};if(!v.reminderTime){delete changed.reminderTime;delete changed.remindAtMs;delete changed.reminderSentAt;delete changed.reminderSkippedAt;}if(end&&end>start){changed.startDate=start;changed.endDate=end;}else{delete changed.startDate;delete changed.endDate;}if(start!==key){day.todos=day.todos.filter(x=>x.id!==id);setDayLocal(key,day);const target=getDay(start);target.todos.push(changed);setDayLocal(start,target);await Promise.all([saveDay(key,day),saveDay(start,target)]);}else{Object.assign(todo,changed);setDayLocal(key,day);await saveDay(key,day);}if(changed.remindAtMs)scheduleLocalReminder(changed);selectedDate=new Date(`${start}T12:00:00`);renderAll();dirty=false;close(true);toast("일정을 저장했습니다.");};document.body.appendChild(modal);history.pushState({todoEditor:true},"");window.addEventListener("popstate",onBack);setTimeout(()=>f.elements.text.focus(),0);}
+function openTodoDetail(key,id,kind="todo"){const recurring=kind==="rec",day=getDay(key),todo=recurring?getAllRecurring().find(x=>x.id===id):day.todos.find(x=>x.id===id);if(!todo||!canEditTodo(todo)){toast("수정 권한을 확인할 수 없습니다.");return;}const cats=getCategories(),current=assigneeOf(todo),party=current===TOGETHER_KEY?"both":current===partnerUid()?"partner":"mine";const modal=document.createElement("div");modal.className="modal open todo-editor-modal";modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.innerHTML=`<div class="modal-box todo-editor-box"><div class="modal-head"><strong>일정 수정</strong><button class="small-btn" type="button" data-close>닫기</button></div><form class="todo-editor-form"><label>제목<input required maxlength="160" name="text" class="modal-input"></label><div class="todo-editor-grid"><label>시작일<input required type="date" name="date" class="modal-input"></label><label>종료일<input type="date" name="endDate" class="modal-input"></label></div><label class="todo-editor-check"><input type="checkbox" name="allDay"> 종일</label><div class="todo-editor-grid todo-editor-time"><label>시작 시간<input type="time" name="time" class="modal-input"></label><label>종료 시간<input type="time" name="endTime" class="modal-input"></label></div><label>장소<input maxlength="160" name="location" class="modal-input"></label><label>카테고리<select name="cat" class="modal-input">${cats.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("")}</select></label><label>공유·주인<select name="party" class="modal-input"><option value="private">나만</option>${partyOptions().map(o=>`<option value="${o.id}">${esc(o.label)}</option>`).join("")}</select></label><label class="todo-editor-check"><input type="checkbox" name="important"> 중요 일정</label><label>알림 시간<input type="time" name="reminderTime" class="modal-input"></label><button type="button" class="small-btn todo-editor-recur" data-recur>반복 설정 열기</button><label>메모<textarea name="notes" class="modal-input" rows="4"></textarea></label><div class="todo-editor-save"><button type="button" class="small-btn" data-close>취소</button><button type="submit" class="add-btn">저장</button></div></form></div>`;const f=modal.querySelector("form"),set=(n,v)=>f.elements[n].value=v||"";set("text",todo.text);set("date",todo.startDate||key);set("endDate",todo.endDate);set("time",todo.time);set("endTime",todo.endTime);set("location",todo.location);set("cat",todo.cat||cats[0]?.id);set("reminderTime",todo.reminderTime||formatReminder(todo));set("notes",todo.notes);f.elements.allDay.checked=!!todo.allDay;f.elements.important.checked=!!todo.important;f.elements.party.value=todoScope(todo,"private")==="shared"?party:"private";let dirty=false;const mark=()=>dirty=true;f.addEventListener("input",mark);f.addEventListener("change",mark);const close=force=>{if(!force&&dirty&&!confirm("변경 내용을 저장하지 않고 닫을까요?"))return;window.removeEventListener("popstate",onBack);modal.remove();};const onBack=e=>{if(dirty&&!confirm("변경 내용을 저장하지 않고 닫을까요?")){history.pushState({todoEditor:true},"");return;}modal.remove();};modal.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>close(false));modal.onclick=e=>{if(e.target===modal)close(false);};modal.querySelector("[data-recur]").onclick=()=>{if(dirty&&!confirm("반복 설정을 열면 저장하지 않은 변경은 사라집니다. 계속할까요?"))return;close(true);openRecurSetup(key,id);};f.onsubmit=async e=>{e.preventDefault();const v=Object.fromEntries(new FormData(f));const start=v.date,end=v.endDate;if(!v.text.trim())return;if(end&&end<start){toast("종료일이 시작일보다 빠를 수 없습니다.");return;}if(!f.elements.allDay.checked&&(!end||end===start)&&v.time&&v.endTime&&v.endTime<v.time){toast("종료시간이 시작시간보다 빠를 수 없습니다.");return;}const cat=cats.find(c=>c.id===v.cat)||todoCategory(todo),rem=v.reminderTime?buildReminderFields(start,v.reminderTime):{};if(rem===null)return;await cancelLocalReminder(todo.id);const shared=v.party!=="private",changed={...todo,text:v.text.trim(),time:f.elements.allDay.checked?"":v.time,endTime:f.elements.allDay.checked?"":v.endTime,allDay:f.elements.allDay.checked,location:normalizeTodoText(v.location),notes:v.notes.trim(),important:f.elements.important.checked,cat:cat.id,catName:cat.name,catColor:cat.color,visibility:shared?"shared":"private",assignee:shared?resolveAssignee(v.party):currentUser.uid,...rem};if(!v.reminderTime){delete changed.reminderTime;delete changed.remindAtMs;delete changed.reminderSentAt;delete changed.reminderSkippedAt;}if(end&&end>start){changed.startDate=start;changed.endDate=end;}else{delete changed.startDate;delete changed.endDate;}if(recurring){Object.assign(todo,changed);await saveRecurring(getAllRecurring());renderRecurList();renderAll();dirty=false;close(true);toast("일정을 저장했습니다.");return;}if(start!==key){day.todos=day.todos.filter(x=>x.id!==id);setDayLocal(key,day);const target=getDay(start);target.todos.push(changed);setDayLocal(start,target);await Promise.all([saveDay(key,day),saveDay(start,target)]);}else{Object.assign(todo,changed);setDayLocal(key,day);await saveDay(key,day);}if(changed.remindAtMs)scheduleLocalReminder(changed);selectedDate=new Date(`${start}T12:00:00`);renderAll();dirty=false;close(true);toast("일정을 저장했습니다.");};document.body.appendChild(modal);history.pushState({todoEditor:true},"");window.addEventListener("popstate",onBack);setTimeout(()=>f.elements.text.focus(),0);}
 
 async function editTodo(id) {
   const key = dateKey(selectedDate);
@@ -3534,7 +3603,36 @@ async function editTodo(id) {
   await saveDay(key, day);
 }
 
+function confirmScheduleDeletion(title) {
+  return new Promise(resolve => {
+    const modal = document.createElement("div");
+    modal.className = "schedule-confirm-modal";
+    modal.setAttribute("role", "alertdialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", "scheduleConfirmTitle");
+    modal.innerHTML = `<div class="schedule-confirm-card"><div class="schedule-confirm-icon" aria-hidden="true">🗑</div><h2 id="scheduleConfirmTitle">일정을 삭제하시겠습니까?</h2><p>${esc(title || "이 일정")}은(는) 삭제 후 되돌리기 버튼으로만 복구할 수 있습니다.</p><div class="schedule-confirm-actions"><button type="button" class="small-btn" data-cancel>취소</button><button type="button" class="schedule-confirm-delete" data-confirm>삭제</button></div></div>`;
+    let settled = false;
+    const close = answer => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener("keydown", onKey);
+      modal.remove();
+      resolve(answer);
+    };
+    const onKey = event => { if (event.key === "Escape") close(false); };
+    modal.addEventListener("click", event => { if (event.target === modal) close(false); });
+    modal.querySelector("[data-cancel]").onclick = () => close(false);
+    modal.querySelector("[data-confirm]").onclick = () => close(true);
+    document.body.appendChild(modal);
+    document.addEventListener("keydown", onKey);
+    setTimeout(() => modal.querySelector("[data-cancel]").focus(), 0);
+  });
+}
+
 async function deleteTodo(id) {
+  const initial = getDay(dateKey(selectedDate)).todos.find(t => t.id === id);
+  if (!initial || !(await confirmScheduleDeletion(initial.text))) return;
+
   const key = dateKey(selectedDate);
   const day = getDay(key);
   const removed = day.todos.find(t => t.id === id);
@@ -4476,8 +4574,8 @@ function renderTodos(day) {
     const rMine = canEditTodo(r);
     return `<div class="todo-item recurring ${done ? 'done' : ''}" style="${borderStyle}">
       <input type="checkbox" ${done ? 'checked' : ''} ${rMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleRecurringDone('${r.id}', this.checked)">
-      <span class="todo-content"><span class="txt">${esc(r.text)}</span></span>
-      <span class="todo-actions">
+      <span class="todo-content" role="button" tabindex="0" onclick="openTodoDetail('${currentKey}', '${r.id}', 'rec')" onkeydown="openTodoDetailFromKey(event, '${currentKey}', '${r.id}', 'rec')"><span class="txt">${esc(r.text)}</span>${todoMetaHtml(r)}</span>
+      <span class="todo-actions" onclick="event.stopPropagation()">
         <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
         ${scheduleScopeBadge(r, '', 'rec')}
         ${authorChip(r)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
@@ -4500,19 +4598,19 @@ function renderTodos(day) {
       ? `<button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>`
       : `<span class="tcat-badge" style="background:${cat.color}; cursor:default;">${esc(cat.name)}</span>`;
     const menu = mine ? `
-        <button class="todo-menu-btn" onclick="toggleRowActions(this)" title="더보기" aria-label="더보기">⋯</button>
+        <button type="button" class="todo-menu-btn" onclick="toggleRowActions(event, this)" title="더보기" aria-label="더보기">⋯</button>
         <span class="todo-btns">
-          <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 1)" title="내일로 이동">내일</button>
-          <button class="quick-move-btn" onclick="quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
-          <button class="del" onclick="moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
-          <button class="del" onclick="copyTodoToDateFromKey('${currentKey}', '${t.id}')" title="다른 날짜에 한 번 복사">📋</button>
-          ${author ? `<button class="del" onclick="deleteTodo('${t.id}')" title="삭제">✕</button>` : ''}
+          <button type="button" class="quick-move-btn" onclick="event.stopPropagation(); quickMoveTodo('${currentKey}', '${t.id}', 1)" title="내일로 이동">내일</button>
+          <button type="button" class="quick-move-btn" onclick="event.stopPropagation(); quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
+          <button type="button" class="del" onclick="event.stopPropagation(); moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
+          <button type="button" class="del" onclick="event.stopPropagation(); copyTodoToDateFromKey('${currentKey}', '${t.id}')" title="다른 날짜에 한 번 복사">📋</button>
+          ${author ? `<button type="button" class="del" onclick="event.stopPropagation(); deleteTodo('${t.id}')" title="삭제">✕</button>` : ''}
         </span>` : '';
     return `<div class="todo-item ${mine ? 'swipeable' : ''} ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
       ${handle}
       <input type="checkbox" ${t.done ? 'checked' : ''} ${mine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleTodo('${t.id}', this.checked)">
-      <span class="todo-content" role="button" tabindex="0" onclick="openTodoDetail('${currentKey}', '${t.id}')" onkeydown="if(event.key==='Enter') openTodoDetail('${currentKey}', '${t.id}')"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
-      <span class="todo-actions">
+      <span class="todo-content" role="button" tabindex="0" onclick="openTodoDetail('${currentKey}', '${t.id}')" onkeydown="openTodoDetailFromKey(event, '${currentKey}', '${t.id}')"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</span>
+      <span class="todo-actions" onclick="event.stopPropagation()">
         ${importantFlag(t)}
         ${badge}
         ${scheduleScopeBadge(t, currentKey)}
@@ -5549,7 +5647,8 @@ async function confirmMoveDate() {
 }
 
 async function mDeleteTodo(id) {
-  if (!confirm('이 할 일을 삭제할까요?')) return;
+  const initial = getDay(modalKey).todos.find(t => t.id === id);
+  if (!initial || !(await confirmScheduleDeletion(initial.text))) return;
   const key = modalKey;
   const day = getDay(key);
   const removed = day.todos.find(t => t.id === id);
