@@ -429,6 +429,8 @@
   body.dark .mcal-day { background: rgba(255,255,255,0.035); }
   .mcal-day:hover { border-color: var(--blue); box-shadow: var(--shadow-hover); }
   .mcal-day.empty { border: none; cursor: default; box-shadow: none; }
+  .mcal-day.outside-month { opacity: 0.56; background: transparent; }
+  .mcal-day.outside-month:hover { opacity: 0.9; }
   .mcal-day.today { border-color: var(--green); background: var(--green-light); }
   .mcal-day.sel { outline: 2px solid var(--blue); box-shadow: 0 0 0 4px rgba(56,103,155,0.12); }
   .mcal-day.drop-target { outline: 2px dashed var(--blue); background: var(--blue-light); }
@@ -445,7 +447,7 @@
     border-radius: 5px; padding: 0 4px; line-height: 1.6; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; font-weight: 700;
   }
-  .mcal-tag[role="button"] { cursor: grab; touch-action: none; user-select: none; }
+  .mcal-tag[role="button"] { cursor: grab; touch-action: pan-y; user-select: none; }
   .mcal-tag[role="button"]:active { cursor: grabbing; }
   .mcal-tag.t-todo { background: var(--red-light); color: var(--red); }
   .mcal-tag.t-done { background: var(--green-light); color: var(--green); }
@@ -455,7 +457,7 @@
   .mcal-bar {
     display: block; font-size: 9.5px; font-weight: 800; line-height: 1.55;
     padding: 1px 5px; margin: 0 -3px; color: #fff; white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis; cursor: grab; touch-action: none; user-select: none;
+    overflow: hidden; text-overflow: ellipsis; cursor: grab; touch-action: pan-y; user-select: none;
   }
   .mcal-bar.start { border-top-left-radius: 6px; border-bottom-left-radius: 6px; margin-left: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
   .mcal-bar.end { border-top-right-radius: 6px; border-bottom-right-radius: 6px; margin-right: 0; }
@@ -4771,8 +4773,8 @@ function dayCounts(d) {
 
 function moveCalMonth(delta) { calMonth.setMonth(calMonth.getMonth() + delta); renderMonthCal(); }
 
-function calendarDragAttrs(kind, key, id = '') {
-  return `role="button" tabindex="0" onpointerdown="startMonthItemDrag(event, '${key}', '${kind}', '${id}')" title="드래그해서 다른 날짜로 이동"`;
+function calendarDragAttrs(kind, key, id = "") {
+  return `role="button" tabindex="0" onpointerdown="startMonthItemDrag(event, &quot;${key}&quot;, &quot;${kind}&quot;, &quot;${id}&quot;)" title="길게 누르면 일정 이동"`;
 }
 
 function renderCalendarTags(key, dateObj) {
@@ -4789,7 +4791,7 @@ function renderCalendarTags(key, dateObj) {
     const showLabel = b.isStart || dateObj.getDay() === 0; // 시작일 또는 주 시작(일)에 제목 표시
     const impBar = isImportantTodo(b.todo);
     const cls = ['mcal-bar', b.isStart ? 'start' : '', b.isEnd ? 'end' : '', b.todo.done ? 'done' : ''].filter(Boolean).join(' ');
-    const label = showLabel ? esc((b.todo.done ? '✓ ' : '') + (impBar ? '❗' : '') + (owner ? `${owner.label} · ` : '') + b.todo.text) : '&nbsp;';
+    const label = showLabel ? esc((b.todo.done ? "✓ " : "") + (impBar ? "❗" : "") + b.todo.text) : "&nbsp;";
     const barColor = impBar ? IMPORTANT_COLOR : (owner ? owner.color : cat.color);
     tags.push(`<span class="${cls}" style="background:${barColor};" ${calendarDragAttrs('todo', b.startK, b.todo.id)} title="${esc(b.todo.text)} (${shortDateLabel(b.startK)}~${shortDateLabel(b.endK)})">${label}</span>`);
   });
@@ -4812,12 +4814,12 @@ function renderCalendarTags(key, dateObj) {
       const style = owner
         ? `background:${hexToRgba(owner.color, 0.16)}; color:${owner.color}; box-shadow:inset 3px 0 ${owner.color};`
         : `background:${hexToRgba(cat.color, 0.16)}; color:${cat.color};`;
-      const label = `${done ? '✓ ' : ''}${owner ? `${owner.label} · ` : ''}🔁 ${obj.text}`;
+      const label = `${done ? "✓ " : ""}🔁 ${obj.text}`;
       tags.push(`<span class="mcal-tag" style="${done ? 'opacity:0.55;' : ''}${style}" title="반복 할 일">${esc(label)}</span>`);
     } else {
       const t = obj;
       const imp = isImportantTodo(t);
-      const prefix = `${t.done ? '✓ ' : ''}${imp ? '❗' : ''}${owner ? `${owner.label} · ` : ''}${t.time ? `${t.time} · ` : ''}`;
+      const prefix = `${t.done ? "✓ " : ""}${imp ? "❗" : ""}${t.time ? `${t.time} · ` : ""}`;
       // 주인 색은 왼쪽 띠로 남겨 누구 일정인지 계속 알 수 있게 한다.
       const ownerAccent = owner ? `box-shadow:inset 3px 0 ${owner.color};` : '';
       const ownerStyle = owner
@@ -4928,31 +4930,27 @@ function renderMonthCal() {
   ensureHolidays(y).then(loaded => { if (loaded) renderMonthCal(); });
   document.getElementById('calMonthLabel').textContent = `${y}년 ${m+1}월`;
   renderCalendarDaySummary(calMonth);
-  const first = new Date(y, m, 1).getDay();
-  const total = new Date(y, m+1, 0).getDate();
+  // 월요일부터 일요일까지의 완전한 주 단위로 렌더해 전월·다음 월 일정도 함께 확인한다.
+  const firstDow = new Date(y, m, 1).getDay();
+  const mondayOffset = (firstDow + 6) % 7;
+  const total = new Date(y, m + 1, 0).getDate();
+  const cellCount = Math.ceil((mondayOffset + total) / 7) * 7;
+  const gridStart = new Date(y, m, 1 - mondayOffset);
   const todayK = dateKey(new Date());
   const selK = dateKey(selectedDate);
-
-  const predPeriod = predictedPeriodDays(); // 예상 생리일은 한 번만 계산해 셀마다 조회
-  let html = '<div class="mcal-grid">';
-  html += DAYS_KO.map(d => `<div class="mcal-dow">${d}</div>`).join('');
-  for (let i = 0; i < first; i++) html += '<div class="mcal-day empty"></div>';
-  for (let dd = 1; dd <= total; dd++) {
-    const d = new Date(y, m, dd);
+  const predPeriod = predictedPeriodDays();
+  let html = "<div class=\"mcal-grid\">";
+  html += DAYS_KO.map(d => `<div class="mcal-dow">${d}</div>`).join("");
+  for (let i = 0; i < cellCount; i++) {
+    const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
     const key = dateKey(d);
     const holName = holidayMap[key];
-    const cls = [
-      'mcal-day',
-      key === todayK ? 'today' : '',
-      key === selK ? 'sel' : '',
-      holName ? 'holiday' : '',
-      isPeriodDay(key) ? 'period' : (predPeriod[key] ? 'period-pred' : ''),
-      d.getDay() === 0 ? 'sun' : d.getDay() === 6 ? 'sat' : ''
-    ].join(' ');
-    const holLabel = holName ? `<span class="mcal-holiday-name" title="${esc(holName)}">${esc(holName)}</span>` : '';
-    html += `<div class="${cls}" data-date="${key}" onclick="onCalDayClick('${key}')"><span class="mcal-num">${dd}</span>${holLabel}${renderCalendarTags(key, d)}</div>`;
+    const outsideMonth = d.getMonth() !== m;
+    const cls = ["mcal-day", outsideMonth ? "outside-month" : "", key === todayK ? "today" : "", key === selK ? "sel" : "", holName ? "holiday" : "", isPeriodDay(key) ? "period" : (predPeriod[key] ? "period-pred" : ""), d.getDay() === 0 ? "sun" : d.getDay() === 6 ? "sat" : ""].join(" ");
+    const holLabel = holName ? `<span class="mcal-holiday-name" title="${esc(holName)}">${esc(holName)}</span>` : "";
+    html += `<div class="${cls}" data-date="${key}" onclick="onCalDayClick(&quot;${key}&quot;)"><span class="mcal-num">${d.getDate()}</span>${holLabel}${renderCalendarTags(key, d)}</div>`;
   }
-  html += '</div>';
+  html += "</div>";
   box.innerHTML = html;
   renderCalendarLegend();
   initCalendarSwipe();
@@ -5142,16 +5140,25 @@ async function moveCalendarItem(sourceKey, targetKey, kind, id, opts = {}) {
 let monthDragState = null;
 let todoSwipeState = null;
 
-function startMonthItemDrag(event, sourceKey, kind, id = '') {
+function startMonthItemDrag(event, sourceKey, kind, id = "") {
   const tag = event.currentTarget;
-  startMoveDrag(event, {
-    sourceKey,
-    kind,
-    id,
-    label: tag.textContent.trim(),
-    sourceEl: tag.closest('.mcal-day'),
-    openSourceOnTap: true
-  });
+  const dragInfo = { sourceKey, kind, id, label: tag.textContent.trim(), sourceEl: tag.closest(".mcal-day"), openSourceOnTap: true };
+  if (event.pointerType === "mouse") { startMoveDrag(event, dragInfo); return; }
+
+  let holding = true;
+  let timer = null;
+  const clearHold = () => { holding = false; clearTimeout(timer); tag.removeEventListener("pointermove", cancelOnMove); };
+  const cancelOnMove = moveEvent => {
+    if (Math.hypot(moveEvent.clientX - event.clientX, moveEvent.clientY - event.clientY) > 10) clearHold();
+  };
+  tag.addEventListener("pointerup", clearHold, { once: true });
+  tag.addEventListener("pointercancel", clearHold, { once: true });
+  tag.addEventListener("pointermove", cancelOnMove);
+  timer = setTimeout(() => {
+    if (!holding) return;
+    clearHold();
+    if (window.confirm("일정을 이동하시겠습니까?")) startMoveDrag(event, dragInfo);
+  }, 900);
 }
 
 function startTodoItemDrag(event, sourceKey, id) {
