@@ -1314,11 +1314,11 @@
           <div class="todo-detail-row">
             <label class="todo-detail-field">
               <span>📅 시작일</span>
-              <input type="date" id="todoStartInput" aria-label="기간 시작일" oninput="todoStartDateEdited=true; syncTodoEndBound()">
+              <input type="date" id="todoStartInput" aria-label="기간 시작일" oninput="todoStartDateEdited=true; syncTodoEndBound()" onchange="todoStartDateEdited=true; syncTodoEndBound()">
             </label>
             <label class="todo-detail-field">
               <span>🏁 종료일 (같으면 하루)</span>
-              <input type="date" id="todoEndInput" aria-label="기간 종료일" oninput="syncTodoEndBound(true)">
+              <input type="date" id="todoEndInput" aria-label="기간 종료일" oninput="todoEndDateEdited=true; syncTodoEndBound(true)" onchange="todoEndDateEdited=true; syncTodoEndBound(true)">
             </label>
           </div>
           <div class="reminder-row">
@@ -1722,6 +1722,8 @@ let unsubUser = null;
 let selectedDate = initialSelectedDate();
 let scheduleFilter = 'all'; // all | mine | shared
 let todoStartDateEdited = false;
+// 종료일을 직접 고친 뒤에는 화면 갱신 또는 시작일 동기화가 해당 값을 덮어쓰지 않는다.
+let todoEndDateEdited = false;
 const pendingDayWrites = new Map();
 const daySaveQueues = new Map();
 let daySaveSeq = 0;
@@ -3394,12 +3396,10 @@ function syncTodoEndBound(fromEnd) {
   const startKey = normalizeDateKey(startEl.value) || dateKey(selectedDate);
   endEl.min = startKey; // 날짜 선택기가 시작일 이전을 못 고르게
   const endKey = normalizeDateKey(endEl.value);
-  if (!endKey) {
-    // 종료일이 비어 있으면 시작일과 같은 날로 채워 둔다.
-    // 빈 칸이면 날짜 선택기가 늘 '오늘' 달을 열어서, 9월 일정을 잡을 때 8월 달력이 떠 스와이프해야 했다.
-    // 종료일 == 시작일은 기간 일정이 아니라 하루 일정이라(isPeriod는 endKey > startKey),
-    // 저장 결과는 비워 둘 때와 완전히 같다.
-    if (!fromEnd) endEl.value = startKey;
+  // 새 일정은 종료일도 시작일과 같은 날로 기본 설정한다. 종료일을 직접 편집한 뒤에는
+  // 렌더링이나 시작일 동기화가 편집값을 덮어쓰지 않는다.
+  if (!endKey || (!fromEnd && !todoEndDateEdited)) {
+    endEl.value = startKey;
     return;
   }
   if (endKey < startKey) {
@@ -3462,6 +3462,7 @@ async function addTodo() {
   if (startInput) startInput.value = '';
   if (endInput) endInput.value = '';
   todoStartDateEdited = false;
+  todoEndDateEdited = false;
   document.getElementById('todoShareInput').checked = false;
   if (importantEl) importantEl.checked = false;
   selectedParty = 'mine';
@@ -3702,9 +3703,9 @@ function scheduleScopeBadge(todo, key = '', kind = 'todo') {
 // ══════════════════════════════════════
 // DATE NAV
 // ══════════════════════════════════════
-function moveDate(delta) { selectedDate.setDate(selectedDate.getDate() + delta); calMonth = new Date(selectedDate); todoStartDateEdited = false; showAllUpcomingTodos = false; renderAll(); }
-function goToday() { selectedDate = new Date(); calMonth = new Date(); todoStartDateEdited = false; showAllUpcomingTodos = false; renderAll(); }
-function onDatePick(v) { if (v) { const [y,m,d] = v.split('-').map(Number); selectedDate = new Date(y, m-1, d); calMonth = new Date(selectedDate); todoStartDateEdited = false; showAllUpcomingTodos = false; renderAll(); } }
+function moveDate(delta) { selectedDate.setDate(selectedDate.getDate() + delta); calMonth = new Date(selectedDate); todoStartDateEdited = false; todoEndDateEdited = false; showAllUpcomingTodos = false; renderAll(); }
+function goToday() { selectedDate = new Date(); calMonth = new Date(); todoStartDateEdited = false; todoEndDateEdited = false; showAllUpcomingTodos = false; renderAll(); }
+function onDatePick(v) { if (v) { const [y,m,d] = v.split('-').map(Number); selectedDate = new Date(y, m-1, d); calMonth = new Date(y, m-1, d); todoStartDateEdited = false; todoEndDateEdited = false; showAllUpcomingTodos = false; renderAll(); } }
 
 // ══════════════════════════════════════
 // RENDER
@@ -4382,6 +4383,7 @@ function openWeekAgendaDay(key) {
   selectedDate = new Date(y, m - 1, d);
   calMonth = new Date(selectedDate);
   todoStartDateEdited = false;
+  todoEndDateEdited = false;
   showAllUpcomingTodos = false;
   renderAll();
   openDayDetail(key);
@@ -5440,6 +5442,7 @@ async function copyCalendarTodo(sourceKey, targetKey, id) {
     selectedDate = new Date(+targetKey.slice(0, 4), +targetKey.slice(5, 7) - 1, +targetKey.slice(8, 10));
     calMonth = new Date(selectedDate);
     todoStartDateEdited = false;
+    todoEndDateEdited = false;
     showAllUpcomingTodos = false;
   }
   renderAll();
@@ -5522,6 +5525,7 @@ async function onCalDayClick(key) {
   const [y, m, d] = key.split('-').map(Number);
   selectedDate = new Date(y, m-1, d);
   todoStartDateEdited = false;
+  todoEndDateEdited = false;
   showAllUpcomingTodos = false;
   openDayDetail(key);
 }
@@ -5534,6 +5538,7 @@ function openDayDetail(key) {
   const dateObj = new Date(y, m-1, d);
   selectedDate = new Date(y, m-1, d); // 팝업 안 할 일·메모 카드는 selectedDate 기준으로 동작
   todoStartDateEdited = false;
+  todoEndDateEdited = false;
   showAllUpcomingTodos = false;
   document.getElementById('dmDate').textContent = `📅 ${m}월 ${d}일 (${DAYS_KO[dateObj.getDay()]})`;
   renderAll(); // 팝업으로 옮긴 할 일·메모 카드를 해당 날짜로 채움
