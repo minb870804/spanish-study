@@ -1,0 +1,103 @@
+:root {
+  --ui-bg:#F5F3EE; --ui-card:#fff; --ui-text:#1B1D1F; --ui-muted:#62676B; --ui-border:#E6E3DC;
+  --ui-accent:#38679b; --ui-soft:#e7f0fa; --ui-ink:#1B1D1F; --ui-on-ink:#fff;
+  --ui-caption:12px; --ui-small:14px; --ui-body:16px; --ui-title:20px; --ui-display:28px;
+  --ui-s1:4px; --ui-s2:8px; --ui-s3:12px; --ui-s4:16px; --ui-s5:20px; --ui-s6:24px; --ui-s8:32px;
+  --ui-radius:14px; --ui-radius-sm:8px; --ui-control:44px; --ui-nav-height:68px; --ui-content:1140px;
+  --ui-shadow:0 8px 24px rgba(62,52,40,.07),0 1px 2px rgba(62,52,40,.04); --ui-motion:160ms ease-out;
+}
+body.dark {
+  --ui-bg:#101112; --ui-card:#191B1D; --ui-text:#F1F2F1; --ui-muted:#A8ADB1; --ui-border:#2B2E30;
+  --ui-accent:#91B9EC; --ui-soft:#203148; --ui-ink:#F1F2F1; --ui-on-ink:#16181A;
+}
+body { background:var(--ui-bg); color:var(--ui-text); }
+body.dark { background:var(--ui-bg); }
+[hidden] { display:none !important; }
+:where(button,a,input,textarea,select,summary):focus-visible { outline:2px solid var(--ui-accent); outline-offset:3px; }
+:where(button,a,summary) { -webkit-tap-highlight-color:transparent; }
+:is(.small-btn,.hbtn,.nexus-link,.add-btn,.ui-button) { min-height:var(--ui-control); border-radius:var(--ui-radius-sm); font-size:var(--ui-small); }
+:is(.small-btn,.hbtn,.nexus-link) { color:var(--ui-text); }
+:is(.card,.section-card) { border-radius:var(--ui-radius); box-shadow:var(--ui-shadow); }
+.ui-button { display:inline-flex; align-items:center; justify-content:center; gap:var(--ui-s2); padding:var(--ui-s2) var(--ui-s4); background:var(--ui-card); border:1px solid var(--ui-border); color:var(--ui-text); font:700 var(--ui-small)/1.5 'Noto Sans KR',sans-serif; cursor:pointer; text-decoration:none; }
+.ui-button.primary { background:var(--ui-ink); color:var(--ui-on-ink); border-color:var(--ui-ink); }
+.ui-button:hover { box-shadow:var(--ui-shadow); }
+.ui-button:active,.app-nav a:active { transform:translateY(1px); }
+.ui-button:disabled { opacity:.5; cursor:wait; }
+.ui-icon { width:var(--ui-s6); height:var(--ui-s6); flex:none; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.app-nav { display:flex; justify-content:center; gap:var(--ui-s2); padding:var(--ui-s2) var(--ui-s4); background:var(--ui-card); border-bottom:1px solid var(--ui-border); position:relative; z-index:20; }
+.app-nav a { display:flex; align-items:center; justify-content:center; gap:var(--ui-s2); min-height:var(--ui-control); padding:var(--ui-s2) var(--ui-s4); color:var(--ui-muted); text-decoration:none; font-size:var(--ui-small); font-weight:700; border-radius:var(--ui-radius-sm); transition:background var(--ui-motion),transform var(--ui-motion); }
+.app-nav a:hover,.app-nav a[aria-current] { background:var(--ui-soft); color:var(--ui-accent); }
+.app-nav .ui-icon { width:var(--ui-s5); height:var(--ui-s5); }
+body:has(.app-nav) .header-right > a.hbtn,body:has(.app-nav) .header-right > a.nexus-link[href='./'] { display:none; }
+.ui-section-head { display:flex; align-items:center; justify-content:space-between; gap:var(--ui-s3); flex-wrap:wrap; margin-bottom:var(--ui-s4); }
+.ui-section-head h2,.ui-section-head h3 { margin:0; font-size:var(--ui-title); color:var(--ui-text); }
+.ui-eyebrow,.ui-meta { color:var(--ui-muted); font-size:var(--ui-small); line-height:1.6; }
+.ui-eyebrow { margin:0 0 var(--ui-s1); font-weight:700; }
+.ui-agenda { display:grid; gap:var(--ui-s2); }
+.ui-agenda-row { display:flex; align-items:center; gap:var(--ui-s3); width:100%; text-align:left; padding:var(--ui-s3); border:1px solid var(--ui-border); border-radius:var(--ui-radius-sm); background:var(--ui-card); color:var(--ui-text); font:inherit; cursor:pointer; }
+.ui-agenda-row:hover { background:var(--ui-soft); }
+.ui-agenda-time { flex:0 0 48px; color:var(--ui-accent); font-size:var(--ui-small); font-weight:700; font-variant-numeric:tabular-nums; }
+.ui-agenda-main { flex:1; min-width:0; }
+.ui-agenda-title { display:block; font-size:var(--ui-body); font-weight:700; word-break:keep-all; overflow-wrap:anywhere; }
+.ui-agenda-row.done .ui-agenda-title { text-decoration:line-through; color:var(--ui-muted); }
+.ui-agenda-status { font-size:var(--ui-caption); color:var(--ui-muted); flex:none; }
+.ui-empty { padding:var(--ui-s4) 0; color:var(--ui-muted); line-height:1.7; font-size:var(--ui-small); word-break:keep-all; }
+.today-card { border-top:3px solid var(--ui-accent); }
+.today-card .ui-section-head { align-items:flex-end; }
+.today-card .ui-section-head h2 { font-size:var(--ui-display); }
+#todayAgenda { max-height:360px; overflow-y:auto; }
+.calendar-mode { display:flex; gap:var(--ui-s1); }
+.calendar-mode [aria-pressed=true] { color:var(--ui-accent); background:var(--ui-soft); border-color:var(--ui-accent); }
+.selected-agenda { margin-top:var(--ui-s5); padding-top:var(--ui-s5); border-top:1px solid var(--ui-border); }
+.mcal-date-hit { border:0; background:transparent; color:inherit; font:inherit; font-weight:700; padding:var(--ui-s1); min-height:var(--ui-control); min-width:32px; cursor:pointer; }
+.mcal-date-hit[aria-pressed=true] { color:var(--ui-accent); }
+#monthCal.calendar-week .mcal-day { min-height:90px; }
+#settingsView { max-width:var(--ui-content); margin:auto; }
+#settingsView .share-card { margin-bottom:var(--ui-s6); }
+#settingsView .category-section { margin-top:var(--ui-s6); }
+.settings-intro { margin-bottom:var(--ui-s6); }
+#homeView .hero { padding:var(--ui-s4) var(--ui-s5); margin-bottom:var(--ui-s4); }
+#homeView .hero h2 { font-size:var(--ui-title); }
+#homeView .hero .sub { display:none; }
+#homeView .dashboard-grid { gap:var(--ui-s5); }
+#homeView .dash-cards { display:block; }
+#homeView .dash-col:empty { display:none; }
+.shared-summary { display:flex; align-items:center; justify-content:space-between; gap:var(--ui-s3); padding:var(--ui-s4) var(--ui-s5); }
+.todo-editor-options { border-top:1px solid var(--ui-border); padding-top:var(--ui-s3); }
+.todo-editor-options summary { cursor:pointer; min-height:var(--ui-control); font-size:var(--ui-small); font-weight:700; color:var(--ui-accent); line-height:1.6; padding:var(--ui-s2) 0; }
+.todo-editor-options[open] > :not(summary) { margin-top:var(--ui-s4); }
+.todo-editor-form :where(input:not([type=checkbox]),select,textarea) { font-size:var(--ui-body); }
+.todo-editor-form label { word-break:keep-all; }
+.todo-editor-options label { display:grid; gap:var(--ui-s2); }
+.todo-editor-options label.todo-editor-check { display:flex; }
+@media (max-width:767px) {
+  body { padding-bottom:calc(var(--ui-nav-height) + env(safe-area-inset-bottom) + var(--ui-s4)); }
+  .app-nav { position:fixed; bottom:0; left:0; right:0; padding:var(--ui-s1) var(--ui-s1) calc(var(--ui-s1) + env(safe-area-inset-bottom)); height:calc(var(--ui-nav-height) + env(safe-area-inset-bottom)); border-top:1px solid var(--ui-border); border-bottom:0; gap:0; box-sizing:border-box; box-shadow:var(--ui-shadow); }
+  .app-nav a { flex:1; min-width:0; flex-direction:column; gap:var(--ui-s1); padding:var(--ui-s1); font-size:var(--ui-caption); }
+  .app-nav .ui-icon { width:var(--ui-s6); height:var(--ui-s6); }
+  body .fab { bottom:calc(var(--ui-nav-height) + env(safe-area-inset-bottom) + var(--ui-s4)); }
+  #homeView .hero { margin-bottom:var(--ui-s3); }
+  #homeView .hero h2 { font-size:var(--ui-small); }
+  .today-card { padding:var(--ui-s4); }
+  .today-card .ui-section-head h2 { font-size:var(--ui-title); }
+  .calendar-card { padding:var(--ui-s4); }
+  .calendar-tools { flex-wrap:wrap; }
+  .calendar-heading { width:100%; justify-content:space-between; }
+  .calendar-heading > span { font-size:var(--ui-body); }
+  .calendar-mode .ui-button { padding:var(--ui-s2) var(--ui-s3); }
+  .calendar-day-summary { display:none; }
+  .mcal-date-hit { min-width:0; width:100%; }
+  .mcal-day { padding:var(--ui-s1); }
+  #monthCal.calendar-week .mcal-day { min-height:80px; }
+  #monthCal.calendar-week .mcal-tag,#monthCal.calendar-week .mcal-bar { font-size:10px; }
+  .ui-agenda-row { gap:var(--ui-s2); padding:var(--ui-s3) var(--ui-s2); }
+  .ui-agenda-status { max-width:44px; }
+  .shared-summary { align-items:flex-start; }
+}
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; } }
+.todo-editor-options-fields { display:grid; gap:var(--ui-s4); }
+.todo-editor-options-summary { display:block; font-weight:400; color:var(--ui-muted); font-size:var(--ui-small); }
+.ui-agenda-time { white-space:nowrap; }
+#homeView .today-card { margin-bottom:var(--ui-s5); }
+@media(max-width:767px) { #homeView .today-card { margin-bottom:0; } }
+body,body.dark { --bg:var(--ui-bg); --card:var(--ui-card); --text:var(--ui-text); --muted:var(--ui-muted); --border:var(--ui-border); }

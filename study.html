@@ -150,19 +150,19 @@
   }
   .logout-btn:hover { color: var(--red); }
 
-  nav {
+  .study-tabs {
     display: flex; padding: 0 16px; overflow-x: auto; scrollbar-width: none;
     max-width: 1100px; margin: 0 auto;
   }
-  nav::-webkit-scrollbar { display: none; }
-  nav button {
+  .study-tabs::-webkit-scrollbar { display: none; }
+  .study-tabs button {
     background: none; border: none; color: var(--muted);
     padding: 11px 16px; cursor: pointer; font-size: 13.5px; font-weight: 600;
     border-bottom: 3px solid transparent; transition: var(--transition);
     white-space: nowrap; font-family: inherit;
   }
-  nav button.active { color: var(--red); border-bottom-color: var(--red); font-weight: 800; }
-  nav button:hover:not(.active) { color: var(--text); }
+  .study-tabs button.active { color: var(--red); border-bottom-color: var(--red); font-weight: 800; }
+  .study-tabs button:hover:not(.active) { color: var(--text); }
 
   /* ══════════════════════════════════════
      LAYOUT & CARDS
@@ -207,6 +207,18 @@
   .hero-stat { background: rgba(255,255,255,0.15); border-radius: 12px; padding: 10px 18px; text-align: center; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.12); flex: 1; min-width: 100px; }
   .hero-stat .val { font-size: 24px; font-weight: 800; display: block; color: var(--cream); }
   .hero-stat .lbl { font-size: 11px; opacity: .85; margin-top: 3px; font-weight: 600; }
+
+  .today-learning { border-top: var(--ui-s1, 4px) solid var(--red); }
+  .study-continue { margin-top: var(--ui-s4, 16px); width: 100%; min-height: var(--ui-control, 44px); background: var(--red); color: white; border: none; padding: var(--ui-s3, 12px); border-radius: var(--ui-radius-sm, 8px); font-family: inherit; font-size: var(--ui-small, 14px); font-weight: 700; cursor: pointer; transition: background var(--ui-motion, 160ms ease-out); }
+  .study-continue:hover { background: var(--red-hover); }
+  .study-continue:active { transform: translateY(1px); }
+  .home-expression { margin-bottom: var(--ui-s5, 20px); }
+  .study-guide > summary { min-height: var(--ui-control, 44px); padding: var(--ui-s2, 8px) 0; cursor: pointer; font-size: var(--ui-small, 14px); font-weight: 700; }
+  .study-guide[open] > summary { margin-bottom: var(--ui-s3, 12px); }
+  .study-guide .notice a { color: var(--blue); font-weight: 700; text-decoration: none; }
+  .study-tips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ui-s3, 12px); font-size: var(--ui-small, 14px); }
+  .study-tips .tip-box { margin: 0; }
+  @media (max-width: 640px) { .study-tips { grid-template-columns: 1fr; } }
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
   @media(max-width:640px){ .grid-2 { grid-template-columns: 1fr; } }
@@ -437,6 +449,22 @@
   .card-nav button:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; box-shadow: none; }
   .card-count { font-size: 14px; font-weight: 700; color: var(--muted); min-width: 60px; text-align: center; }
 
+  .study-table-region { max-width: 100%; overflow-x: auto; }
+  .study-table-region th, .study-table-region td { word-break: keep-all; overflow-wrap: normal; }
+  .study-table-region .vocab-table th, .study-table-region .vocab-table td,
+  .study-table-region .conjugation-table .pronoun,
+  .study-table-region .conjugation-table .es-form { white-space: nowrap; }
+  .grammar-section { word-break: keep-all; overflow-wrap: normal; }
+  .grammar-section .tip-box { display: block; }
+  @media (max-width: 640px) {
+    .study-table-region::before { content: '표를 좌우로 밀어 전체 내용 보기'; display: block; color: var(--muted); font-size: var(--ui-caption, 12px); padding: var(--ui-s2, 8px) 0; }
+    .study-table-region .conjugation-table { width: max-content; min-width: 100%; }
+    .study-table-region .conjugation-table th, .study-table-region .conjugation-table td { white-space: nowrap; }
+    #dia-progress-list .dia-progress-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--ui-s2, 8px) var(--ui-s3, 12px); }
+    .dia-progress-item .dp-info { grid-column: 2 / -1; word-break: keep-all; overflow-wrap: normal; }
+    .dia-progress-item .dp-bar-wrap { grid-column: 2; width: 100%; }
+  }
+
   .vocab-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 10px; }
   .vocab-table th { text-align: left; padding: 12px; background: rgba(0,0,0,0.03); border-bottom: 2px solid var(--border); font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
   body.dark .vocab-table th { background: rgba(255,255,255,0.04); }
@@ -592,6 +620,7 @@
   /* NOTICE BOX */
   .notice { background: var(--blue-light); border: 1px solid rgba(56, 103, 155, 0.15); border-radius: 12px; padding: 14px 18px; font-size: 13.5px; color: var(--blue); margin-bottom: 18px; display: flex; gap: 12px; align-items: flex-start; line-height: 1.6; }
   body.dark .notice { color: #90caf9; }
+  .notice, .tip-box { word-break: keep-all; }
 
   /* ══════════════════════════════════════
      LOGIN OVERLAY (메인과 동일)
@@ -637,7 +666,8 @@
     .header-right { gap: 6px; }
     .theme-toggle-btn, .nexus-link { padding: 5px 10px; font-size: 11px; }
     .today-badge { display: none; }
-    nav button { padding: 10px 12px; font-size: 12.5px; }
+    .study-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; padding: 0 var(--ui-s2, 8px); }
+    .study-tabs button { min-height: var(--ui-control, 44px); padding: var(--ui-s2, 8px) var(--ui-s1, 4px); font-size: var(--ui-caption, 12px); white-space: normal; word-break: keep-all; }
     main { margin: 12px auto 20px; padding: 0 10px; }
     .card { padding: 14px; border-radius: 12px; margin-bottom: 12px; }
     .card-title { font-size: 14px; margin-bottom: 10px; }
@@ -658,6 +688,8 @@
     .progress-overview { gap: 8px; margin-bottom: 12px; }
   }
 </style>
+<link rel="stylesheet" href="css/ui.css">
+<script src="js/app-shell.js" defer></script>
 </head>
 <body>
 
@@ -697,7 +729,7 @@
       <span class="today-badge" id="todayBadge"></span>
     </div>
   </div>
-  <nav>
+  <nav class="study-tabs" aria-label="스페인어 학습 메뉴">
     <button class="active" onclick="showTab('home')">🏠 홈</button>
     <button onclick="showTab('plan')">📅 학습 계획</button>
     <button onclick="showTab('vocab')">📖 단어장</button>
@@ -713,21 +745,21 @@
 
 <!-- ══ HOME ══ -->
 <div id="tab-home" class="tab-content active">
+    <div class="card today-learning">
+      <div class="card-title">
+        <div class="card-title-left">📋 오늘의 학습</div>
+      </div>
+      <div id="home-today"></div>
+    </div>
+
   <div class="hero">
-    <h2>¡Hola! 스페인어 공부 시작해요 👋</h2>
+    <h2>나의 학습 기록</h2>
     <p>넥서스 교재 Día 01~16 · 주 3일 · 하루 1~2시간</p>
     <div class="hero-stats">
       <div class="hero-stat"><span class="val" id="stat-days">0</span><div class="lbl">공부한 날</div></div>
       <div class="hero-stat"><span class="val" id="stat-words">0</span><div class="lbl">암기 단어</div></div>
       <div class="hero-stat"><span class="val" id="stat-dias">0</span><div class="lbl">완료한 Día</div></div>
       <div class="hero-stat"><span class="val" id="stat-streak">0</span><div class="lbl">연속 🔥</div></div>
-    </div>
-  </div>
-
-  <div class="notice">
-    <span>ℹ️</span>
-    <div>
-      <strong>진도 체크 방법:</strong> <a href="#" onclick="showTab('plan');return false;" style="color:var(--blue);font-weight:700;text-decoration:none;">학습 계획 탭</a>에서 각 Día를 열고 학습 항목에 체크하세요. 체크할수록 자동으로 진도·달력·통계가 업데이트됩니다. 별도로 완료 버튼을 누를 필요가 없어요.
     </div>
   </div>
 
@@ -738,13 +770,7 @@
     <div class="quick-btn" onclick="showTab('nexus')"><div class="icon">🔊</div><div class="name">음원·부록</div></div>
   </div>
 
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">
-        <div class="card-title-left">📋 오늘의 학습</div>
-      </div>
-      <div id="home-today"></div>
-    </div>
+  <div class="home-expression">
     <div class="phrase-of-day">
       <div>
         <div class="label">⭐ 오늘의 표현</div>
@@ -783,17 +809,21 @@
     <div class="practice-solution" id="practiceSolution"></div>
   </div>
 
-  <div class="card">
-    <div class="card-title">
-      <div class="card-title-left">💡 스페인어 학습 팁</div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
-      <div class="tip-box" style="margin:0;"><span>🔊</span><div><strong>음원을 반드시 활용</strong><br>넥서스 부록 페이지에서 각 Día의 MP3 + 동영상 강의를 무료로 들을 수 있어요. 소리 없이 눈으로만 공부하면 발음이 굳어집니다.</div></div>
-      <div class="tip-box" style="margin:0;"><span>🔄</span><div><strong>복습용 동영상 활용</strong><br>각 Día에는 복습용 동영상이 따로 있어요. 다음 Día로 넘어가기 전에 꼭 복습 영상으로 확인하세요.</div></div>
-      <div class="tip-box" style="margin:0;"><span>🃏</span><div><strong>단어 암기 동영상</strong><br>Día 02~16에는 단어 암기 동영상이 제공돼요. 플래시카드와 함께 활용하면 효과가 2배예요.</div></div>
-      <div class="tip-box" style="margin:0;"><span>📅</span><div><strong>주 3일 리듬 유지</strong><br>매일보다 규칙적인 주 3회가 더 중요해요. 학습 계획 탭에서 체크하며 리듬을 만들어가세요.</div></div>
+  <details class="card study-guide">
+    <summary>진도 체크 방법 · 학습 팁</summary>
+  <div class="notice">
+    <span>ℹ️</span>
+    <div>
+      <strong>진도 체크 방법:</strong> <a href="#" onclick="showTab('plan');return false;">학습 계획 탭</a>에서 각 Día를 열고 학습 항목에 체크하세요. 체크할수록 자동으로 진도·달력·통계가 업데이트됩니다. 별도로 완료 버튼을 누를 필요가 없어요.
     </div>
   </div>
+    <div class="study-tips">
+      <div class="tip-box"><span>🔊</span><div><strong>음원을 반드시 활용</strong><br>넥서스 부록 페이지에서 각 Día의 MP3 + 동영상 강의를 무료로 <span style="white-space:nowrap;">들을 수 있어요.</span> 소리 없이 눈으로만 공부하면 발음이 굳어집니다.</div></div>
+      <div class="tip-box"><span>🔄</span><div><strong>복습용 동영상 활용</strong><br>각 Día에는 복습용 동영상이 따로 있어요. 다음 Día로 넘어가기 전에 꼭 복습 영상으로 확인하세요.</div></div>
+      <div class="tip-box"><span>🃏</span><div><strong>단어 암기 동영상</strong><br>Día 02~16에는 단어 암기 동영상이 제공돼요. 플래시카드와 함께 활용하면 효과가 2배예요.</div></div>
+      <div class="tip-box"><span>📅</span><div><strong>주 3일 리듬 유지</strong><br>매일보다 규칙적인 주 3회가 더 중요해요. 학습 계획 탭에서 체크하며 리듬을 만들어가세요.</div></div>
+    </div>
+  </details>
 </div>
 
 <!-- ══ PLAN ══ -->
@@ -906,10 +936,12 @@
       <button class="filter-btn" id="review-needed" onclick="filterByReview('needed',this)">복습 필요</button>
       <button class="filter-btn" id="review-done" onclick="filterByReview('done',this)">암기 완료</button>
     </div>
-    <table class="vocab-table">
+    <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
+<table class="vocab-table">
       <thead><tr><th>스페인어</th><th>발음</th><th>뜻</th><th>Día</th><th>암기/삭제</th></tr></thead>
       <tbody id="vocab-body"></tbody>
     </table>
+</div>
   </div>
 </div>
 
@@ -933,7 +965,8 @@
     <div class="grammar-section">
       <h3>📌 2. SER 현재형 — Día 03</h3>
       <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">정체성, 직업, 국적, 성격 등 쉽게 변하지 않는 본질적인 상태를 나타냅니다.</div>
-      <table class="conjugation-table">
+      <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
+<table class="conjugation-table">
         <thead><tr><th>주어</th><th>SER 변화형</th><th>예문 및 번역</th></tr></thead>
         <tbody>
           <tr><td class="pronoun">yo (나)</td><td class="es-form" style="color:var(--red);">soy</td><td>Yo <strong>soy</strong> coreano. (나는 한국인이다.)</td></tr>
@@ -944,12 +977,14 @@
           <tr><td class="pronoun">ellos/ellas/ustedes (그들/당신들)</td><td class="es-form" style="color:var(--red);">son</td><td>Ellos <strong>son</strong> muy simpáticos. (그들은 참 친절하다.)</td></tr>
         </tbody>
       </table>
+</div>
     </div>
     
     <div class="grammar-section">
       <h3>📌 3. ESTAR 현재형 — Día 05</h3>
       <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">지리적 위치나 일시적인 감정, 기분, 신체적 상태를 나타냅니다.</div>
-      <table class="conjugation-table">
+      <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
+<table class="conjugation-table">
         <thead><tr><th>주어</th><th>ESTAR 변화형</th><th>예문 및 번역</th></tr></thead>
         <tbody>
           <tr><td class="pronoun">yo</td><td class="es-form" style="color:var(--red);">estoy</td><td><strong>Estoy</strong> en casa. (나는 집에 있다 — 위치)</td></tr>
@@ -960,6 +995,7 @@
           <tr><td class="pronoun">ellos/ellas/ustedes</td><td class="es-form" style="color:var(--red);">están</td><td>Ellos <strong>están</strong> contentos. (그들은 만족하고 있다.)</td></tr>
         </tbody>
       </table>
+</div>
       <div class="rule-box" style="margin-top:12px;">
         <div class="rule-title">SER vs ESTAR 결정적 차이 예문</div>
         • <strong>SER:</strong> El chico <strong>es</strong> aburrido. ➔ 그 소년은 본래 따분한 성격의 사람이다.<br>
@@ -970,7 +1006,8 @@
     <div class="grammar-section">
       <h3>📌 4. -AR 규칙동사 — Día 06</h3>
       <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">동사원형의 어미 <strong>-ar</strong>을 떼어내고 주어에 맞춰 변화시킵니다. (예: hablar 말하다)</div>
-      <table class="conjugation-table">
+      <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
+<table class="conjugation-table">
         <thead><tr><th>주어</th><th>어미 변화 패턴</th><th>hablar 변화</th><th>예문</th></tr></thead>
         <tbody>
           <tr><td class="pronoun">yo</td><td style="color:var(--red); font-weight:700;">-o</td><td class="es-form">habl<span style="color:var(--red);">o</span></td><td>Yo <strong>hablo</strong> español.</td></tr>
@@ -981,12 +1018,14 @@
           <tr><td class="pronoun">ellos/ellas</td><td style="color:var(--red); font-weight:700;">-an</td><td class="es-form">habl<span style="color:var(--red);">an</span></td><td>Ellos <strong>hablan</strong> mucho.</td></tr>
         </tbody>
       </table>
+</div>
     </div>
     
     <div class="grammar-section">
       <h3>📌 5. -ER / -IR 규칙동사 — Día 07</h3>
       <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">-er(먹다 comer)과 -ir(살다 vivir)은 복수형 주어(nosotros, vosotros) 외의 모든 인칭 변화형이 일치합니다.</div>
-      <table class="conjugation-table">
+      <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
+<table class="conjugation-table">
         <thead><tr><th>주어</th><th>comer 어미</th><th>comer (먹다)</th><th>vivir 어미</th><th>vivir (살다)</th></tr></thead>
         <tbody>
           <tr><td class="pronoun">yo</td><td style="color:var(--red); font-weight:700;">-o</td><td class="es-form">com<span style="color:var(--red);">o</span></td><td style="color:var(--red); font-weight:700;">-o</td><td class="es-form">viv<span style="color:var(--red);">o</span></td></tr>
@@ -997,12 +1036,14 @@
           <tr><td class="pronoun">ellos/ellas</td><td style="color:var(--red); font-weight:700;">-en</td><td class="es-form">com<span style="color:var(--red);">en</span></td><td style="color:var(--red); font-weight:700;">-en</td><td class="es-form">viv<span style="color:var(--red);">en</span></td></tr>
         </tbody>
       </table>
+</div>
       <div class="tip-box">💡 <strong>꿀팁:</strong> 복수 1, 2인칭만 -er동사는 <strong>e</strong>계열(-emos, -éis), -ir동사는 <strong>i</strong>계열(-imos, -ís)을 사용하며 나머지는 완벽히 동형입니다.</div>
     </div>
     
     <div class="grammar-section">
       <h3>📌 6. 불규칙동사 TENER / IR — Día 08 · 12</h3>
-      <table class="conjugation-table">
+      <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
+<table class="conjugation-table">
         <thead><tr><th>주어</th><th>tener (가지다)</th><th>ir (가다)</th><th>ir + a + 장소/동사원형</th></tr></thead>
         <tbody>
           <tr><td class="pronoun">yo</td><td class="es-form" style="color:var(--red);">tengo</td><td class="es-form" style="color:var(--red);">voy</td><td><strong>Voy a</strong> la playa. (나는 바다에 간다.)</td></tr>
@@ -1013,6 +1054,7 @@
           <tr><td class="pronoun">ellos/ellas</td><td class="es-form">tienen</td><td class="es-form">van</td><td>Ellos <strong>van a</strong> viajar. (그들은 여행을 갈 것이다.)</td></tr>
         </tbody>
       </table>
+</div>
     </div>
     
     <div class="grammar-section">
@@ -1031,7 +1073,8 @@
     
     <div class="grammar-section">
       <h3>📌 8. 단순과거 — Día 15</h3>
-      <table class="conjugation-table">
+      <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
+<table class="conjugation-table">
         <thead><tr><th>주어</th><th>-AR 어미 변화 (hablar)</th><th>-ER/IR 어미 변화 (comer)</th><th>자주 쓰는 과거 시간 부사</th></tr></thead>
         <tbody>
           <tr><td class="pronoun">yo</td><td class="es-form">habl<span style="color:var(--red);">é</span></td><td class="es-form">com<span style="color:var(--red);">í</span></td><td><strong>ayer</strong> (어제)</td></tr>
@@ -1042,6 +1085,7 @@
           <tr><td class="pronoun">ellos/ellas</td><td class="es-form">habl<span style="color:var(--red);">aron</span></td><td class="es-form">com<span style="color:var(--red);">ieron</span></td><td><strong>en 2025</strong> (2025년에)</td></tr>
         </tbody>
       </table>
+</div>
     </div>
   </div>
 </div>
@@ -1088,7 +1132,8 @@
     <div class="card-title">
       <div class="card-title-left">💬 필수 기초 표현</div>
     </div>
-    <table class="vocab-table">
+    <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
+<table class="vocab-table">
       <thead><tr><th>스페인어</th><th>발음</th><th>뜻</th><th>듣기</th></tr></thead>
       <tbody>
         <tr><td class="es-cell">¡Hola!</td><td class="pron-cell">올라</td><td>안녕!</td><td><button onclick="speakSpanish('¡Hola!')" class="speak-btn">🔊</button></td></tr>
@@ -1105,6 +1150,7 @@
         <tr><td class="es-cell">Más despacio</td><td class="pron-cell">마스 데스빠씨오</td><td>더 천천히</td><td><button onclick="speakSpanish('Más despacio')" class="speak-btn">🔊</button></td></tr>
       </tbody>
     </table>
+</div>
   </div>
 </div>
 
@@ -1326,7 +1372,7 @@ auth.getRedirectResult().catch(e => {
 auth.onAuthStateChanged(async (user) => {
   if (user) {
     currentUser = user;
-    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('loginOverlay').style.display = 'flex';
     
     // 프로필 표시 활성화
     document.getElementById('userProfile').style.display = 'flex';
@@ -1334,6 +1380,7 @@ auth.onAuthStateChanged(async (user) => {
     
     // Firestore DB 데이터 로드
     await loadDataFromFirestore(user.uid);
+    if (currentUser && currentUser.uid === user.uid) document.getElementById('loginOverlay').style.display = 'none';
   } else {
     currentUser = null;
     document.getElementById('loginOverlay').style.display = 'flex';
@@ -1381,64 +1428,122 @@ async function logout() {
   }
 }
 
-// Firestore 데이터 로드 및 로컬 마이그레이션 진행
+function studyState(data = {}) {
+  return { tasks: data.tasks || {}, words: data.words || {}, studiedDates: data.studiedDates || [],
+    customVocab: data.customVocab || [], dailyTasks: data.dailyTasks || {}, practiceLog: data.practiceLog || {} };
+}
+
 async function loadDataFromFirestore(uid) {
   try {
+    const localState = getState();
+    const drafts = getPracticeDrafts();
     const docRef = db.collection('users').doc(uid);
-    const docSnap = await docRef.get();
-    
-    if (docSnap.exists) {
-      // 1. DB에 기존 학습 데이터가 있다면 로컬 상태로 덮어쓰기 동기화
-      const data = docSnap.data();
-      const state = {
-        tasks: data.tasks || {},
-        words: data.words || {},
-        studiedDates: data.studiedDates || [],
-        customVocab: data.customVocab || [],
-        dailyTasks: data.dailyTasks || {},
-        practiceLog: data.practiceLog || {}
-      };
-      saveState(state);
-    } else {
-      // 2. DB에 기록이 없다면(최초 로그인), 기존 이 컴퓨터의 로컬 스토리지를 Firestore로 이동(업로드)
-      const localState = getState();
-      await docRef.set({
-        tasks: localState.tasks || {},
-        words: localState.words || {},
-        studiedDates: localState.studiedDates || [],
-        customVocab: localState.customVocab || [],
-        dailyTasks: localState.dailyTasks || {},
-        practiceLog: localState.practiceLog || {},
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+    const data = await db.runTransaction(async transaction => {
+      const snapshot = await transaction.get(docRef);
+      if (snapshot.exists) return snapshot.data();
+      const initial = studyState(localState);
+      transaction.set(docRef, { ...initial, stats: computeStats(initial),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      return initial;
+    });
+    if (!currentUser || currentUser.uid !== uid) return;
+    const state = studyState(data);
+    // Recover pre-upgrade drafts once, including drafts absent from the cloud.
+    if (!localStorage.getItem(studyStorageKey('draftsMigrated'))) {
+      for (const [date, entry] of Object.entries(localState.practiceLog || {})) {
+        const remote = state.practiceLog[date];
+        if (!remote || (entry.updatedAt || 0) > (remote.updatedAt || 0)) drafts[date] = entry;
+      }
+      savePracticeDrafts({ ...drafts, ...getPracticeDrafts() });
+      localStorage.setItem(studyStorageKey('draftsMigrated'), '1');
     }
-    
-    // 데이터 로드가 완료되면 UI 초기 렌더링 갱신
-    initUI();
+    saveState(state);
+    await syncToFirestore();
+    if (currentUser && currentUser.uid === uid) initUI();
   } catch (error) {
     console.error('Firestore 데이터 로드 실패:', error);
+    if (currentUser && currentUser.uid === uid) initUI();
   }
 }
 
-// 학습 상태 변경 시 Firestore DB에 실시간 업로드 동기화
-async function syncToFirestore() {
-  if (!currentUser) return;
-  try {
-    const s = getState();
-    await db.collection('users').doc(currentUser.uid).set({
-      tasks: s.tasks || {},
-      words: s.words || {},
-      studiedDates: s.studiedDates || [],
-      customVocab: s.customVocab || [],
-      dailyTasks: s.dailyTasks || {},
-      practiceLog: s.practiceLog || {},
-      stats: computeStats(s), // Minb 대시보드 표시용 요약
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-  } catch (error) {
-    console.error('Firestore 데이터 동기화 에러:', error);
+function applyStudyChange(state, change) {
+  switch (change.type) {
+    case 'task':
+      state.tasks[change.taskId] = change.checked;
+      state.dailyTasks[change.date] = Object.values(state.tasks).filter(Boolean).length;
+      if (change.checked && !state.studiedDates.includes(change.date)) state.studiedDates.push(change.date);
+      break;
+    case 'word':
+      state.words[change.word] = change.checked;
+      break;
+    case 'addWord':
+      if (!state.customVocab.some(word => word.es.toLowerCase() === change.word.es.toLowerCase())) state.customVocab.push(change.word);
+      break;
+    case 'deleteWord':
+      state.customVocab = state.customVocab.filter(word => word.es !== change.word);
+      delete state.words[change.word];
+      break;
+    case 'practice':
+      state.practiceLog[change.date] = change.entry;
+      if (change.entry.done) {
+        if (!state.studiedDates.includes(change.date)) state.studiedDates.push(change.date);
+        state.dailyTasks[change.date] = Math.max(state.dailyTasks[change.date] || 0, Object.values(state.tasks).filter(Boolean).length + 1);
+      }
+      break;
+    default: throw new Error('Unknown study change');
   }
+  return state;
 }
+
+function getStudyChanges(uid) {
+  return JSON.parse(localStorage.getItem(studyStorageKey('changes', uid)) || '[]');
+}
+let studySyncQueue = Promise.resolve();
+function syncToFirestore(change) {
+  if (!currentUser) return Promise.resolve(false);
+  const uid = currentUser.uid;
+  const key = studyStorageKey('changes', uid);
+  if (change) {
+    const pending = getStudyChanges(uid);
+    pending.push({ id: Date.now() + '-' + Math.random(), change });
+    localStorage.setItem(key, JSON.stringify(pending));
+  }
+  // Persist intents before sending; transactions retry against the latest remote state.
+  studySyncQueue = studySyncQueue.then(async () => {
+    try {
+      while (getStudyChanges(uid).length) {
+        const next = getStudyChanges(uid)[0];
+        const docRef = db.collection('users').doc(uid);
+        const state = await db.runTransaction(async transaction => {
+          const snapshot = await transaction.get(docRef);
+          const remote = snapshot.exists ? snapshot.data() : {};
+          const updated = applyStudyChange(studyState(remote), next.change);
+          transaction.set(docRef, { ...remote, ...updated, stats: computeStats(updated),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          return updated;
+        });
+        localStorage.setItem(studyStorageKey('', uid), JSON.stringify(state));
+        if (next.change.type === 'practice') {
+          const draftKey = studyStorageKey('drafts', uid);
+          const drafts = JSON.parse(localStorage.getItem(draftKey) || '{}');
+          if (JSON.stringify(drafts[next.change.date]) === JSON.stringify(next.change.entry)) {
+            delete drafts[next.change.date];
+            localStorage.setItem(draftKey, JSON.stringify(drafts));
+          }
+        }
+        localStorage.setItem(key, JSON.stringify(getStudyChanges(uid).filter(item => item.id !== next.id)));
+      }
+      return true;
+    } catch (error) {
+      console.error('Firestore 데이터 동기화 에러:', error);
+      return false;
+    }
+  });
+  return studySyncQueue;
+}
+window.addEventListener('online', () => {
+  syncToFirestore().then(saved => { if (saved) initUI(); });
+});
 
 // ══════════════════════════════════════
 // DATA — Día 01~16 (넥서스 책 구성)
@@ -1913,7 +2018,7 @@ async function checkTask(taskId, diaNum, checked) {
   s.dailyTasks[today] = totalDone;
 
   saveState(s);
-  await syncToFirestore(); // 실시간 DB 업로드
+  await syncToFirestore({ type: 'task', taskId, checked, date: today });
 
   // Update card UI
   const prog = diaProgress(diaNum, s);
@@ -1953,7 +2058,7 @@ function updateHomeToday() {
   if (!el) return;
 
   // Find the first incomplete Día
-  const nextDia = DIAS.find(d => !isDiaComplete(d.num, s));
+  const nextDia = DIAS.find(d => d.tasks.some(task => !s.tasks[task.id]));
   if (!nextDia) {
     el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--green);font-size:16px;font-weight:800;">🎉 ¡Felicidades! 모든 Día 완료!</div>`;
     return;
@@ -1969,8 +2074,8 @@ function updateHomeToday() {
       <span>진행률</span><span>${prog.done}/${prog.total} 항목</span>
     </div>
     <div class="bar-wrap"><div class="bar-fill" style="width:${prog.total?Math.round(prog.done/prog.total*100):0}%"></div></div>
-    <button onclick="showTab('plan')" style="margin-top:14px;width:100%;background:var(--red);color:white;border:none;padding:12px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition: var(--transition);">
-      📅 학습 계획에서 체크하기 →
+    <button onclick="showTab('plan')" class="study-continue">
+      ${prog.done ? '이어서 학습하기' : '오늘 학습 시작하기'} →
     </button>
   `;
 }
@@ -2094,7 +2199,7 @@ async function toggleWord(word, checked) {
   const s = getState();
   s.words[word] = checked;
   saveState(s);
-  await syncToFirestore(); // DB 백업
+  await syncToFirestore({ type: 'word', word, checked });
   updateAllStats();
   applyVocabFilters();
 }
@@ -2173,7 +2278,7 @@ async function addCustomWord() {
   
   s.customVocab.push(newWord);
   saveState(s);
-  await syncToFirestore(); // DB 백업
+  await syncToFirestore({ type: 'addWord', word: newWord });
   
   alert('나만의 단어가 추가되었습니다.');
   toggleCustomForm();
@@ -2187,7 +2292,7 @@ async function deleteCustomWord(wordEs) {
     s.customVocab = s.customVocab.filter(v => v.es !== wordEs);
     delete s.words[wordEs]; // 체크 정보 해제
     saveState(s);
-    await syncToFirestore(); // DB 백업
+    await syncToFirestore({ type: 'deleteWord', word: wordEs });
     refreshVocabData();
   }
 }
@@ -2542,8 +2647,12 @@ function renderLog(studied) {
 // ══════════════════════════════════════
 async function resetAllData() {
   if (confirm('⚠️ 정말로 모든 학습 기록을 초기화하시겠습니까?\n체크리스트, 단어장 및 출석 달력 기록이 영구 삭제되며 되돌릴 수 없습니다.')) {
-    localStorage.removeItem('sp_v2');
-    // merge 동기화는 빈 맵을 '변경 없음'으로 취급하므로, 초기화는 update로 필드를 직접 교체한다
+    await studySyncQueue;
+    localStorage.removeItem(studyStorageKey());
+    localStorage.removeItem(studyStorageKey('drafts'));
+    localStorage.removeItem(studyStorageKey('changes'));
+    localStorage.setItem(studyStorageKey('draftsMigrated'), '1');
+    // 초기화는 학습 필드를 빈 값으로 직접 교체한다.
     if (currentUser) {
       try {
         await db.collection('users').doc(currentUser.uid).update({
@@ -2626,10 +2735,10 @@ function toggleNexus() {
 // ══════════════════════════════════════
 function showTab(id) {
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.study-tabs button').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   const idx=['home','plan','vocab','grammar','alphabet','quiz','progress','nexus'].indexOf(id);
-  document.querySelectorAll('nav button')[idx].classList.add('active');
+  document.querySelectorAll('.study-tabs button')[idx].classList.add('active');
   window.scrollTo({ top: 0 });
   if (id==='progress') {
     renderCal(getState().studiedDates);
@@ -2644,7 +2753,7 @@ function showTab(id) {
 // ══════════════════════════════════════
 document.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.target instanceof Element && e.target.matches('input, textarea, select')) return;
+  if (e.target instanceof Element && (e.target.matches('input, textarea, select') || e.target.closest('.study-table-region'))) return;
   // 플래시카드: 단어장 탭에서 화살표로 넘기고 스페이스로 뒤집기
   if (document.getElementById('tab-vocab').classList.contains('active')) {
     if (e.key === 'ArrowLeft') { e.preventDefault(); prevCard(); return; }
@@ -2687,7 +2796,9 @@ function savePracticeDraft() {
   const prev = s.practiceLog[key] || {};
   const item = dailyPracticeFor(key);
   s.practiceLog[key] = { ...prev, answer: document.getElementById('practiceAnswer').value, es: item.es, ko: item.ko, updatedAt: Date.now() };
-  saveState(s);
+  const drafts = getPracticeDrafts();
+  drafts[key] = s.practiceLog[key];
+  savePracticeDrafts(drafts);
   document.getElementById('practiceStatus').textContent = '임시 저장됨';
 }
 async function savePractice(done) {
@@ -2702,9 +2813,18 @@ async function savePractice(done) {
     const taskCount = Object.keys(s.tasks || {}).filter(k => s.tasks[k]).length;
     s.dailyTasks[key] = Math.max(s.dailyTasks[key] || 0, taskCount + 1);
   }
+  const entry = s.practiceLog[key];
+  const drafts = getPracticeDrafts();
+  drafts[key] = entry;
+  savePracticeDrafts(drafts);
   saveState(s);
-  await syncToFirestore();
-  document.getElementById('practiceStatus').textContent = done ? '오늘 문장 완료' : '저장됨';
+  const uid = currentUser && currentUser.uid;
+  const saved = await syncToFirestore({ type: 'practice', date: key, entry });
+  if (!currentUser || currentUser.uid !== uid) return;
+  const remaining = getPracticeDrafts();
+  document.getElementById('practiceStatus').textContent = saved
+    ? (remaining[key] ? '임시 저장됨' : (done ? '오늘 문장 완료' : '저장됨'))
+    : '기기에 임시 저장됨 · 다시 저장해 주세요';
   updateAllStats();
   updateHomeToday();
   if (document.getElementById('tab-progress').classList.contains('active')) { renderCal(getState().studiedDates); renderChart(); renderLog(getState().studiedDates); }
@@ -2764,16 +2884,29 @@ function init() {
   initUI();
 }
 
-// 기존 로컬스토리지 1차 가동
+function studyStorageKey(suffix = '', uid = currentUser ? currentUser.uid : 'guest') {
+  return 'sp_v2:' + uid + (suffix ? ':' + suffix : '');
+}
+function getPracticeDrafts() {
+  return JSON.parse(localStorage.getItem(studyStorageKey('drafts')) || '{}');
+}
+function savePracticeDrafts(drafts) {
+  localStorage.setItem(studyStorageKey('drafts'), JSON.stringify(drafts));
+}
 function getState() {
-  const d = localStorage.getItem('sp_v2');
-  const state = d ? JSON.parse(d) : {tasks:{}, words:{}, studiedDates:[], customVocab:[], dailyTasks:{}, practiceLog:{}};
-  if (!state.customVocab) state.customVocab = [];
-  if (!state.dailyTasks) state.dailyTasks = {};
-  if (!state.practiceLog) state.practiceLog = {};
+  const key = studyStorageKey();
+  let raw = localStorage.getItem(key);
+  if (!raw && currentUser && !localStorage.getItem('sp_v2:legacyOwner')) {
+    raw = localStorage.getItem('sp_v2');
+    if (raw) localStorage.setItem(key, raw);
+    localStorage.setItem('sp_v2:legacyOwner', currentUser.uid);
+  }
+  const state = studyState(raw ? JSON.parse(raw) : {});
+  for (const item of getStudyChanges(currentUser ? currentUser.uid : 'guest')) applyStudyChange(state, item.change);
+  state.practiceLog = { ...state.practiceLog, ...getPracticeDrafts() };
   return state;
 }
-function saveState(s) { localStorage.setItem('sp_v2', JSON.stringify(s)); }
+function saveState(s) { localStorage.setItem(studyStorageKey(), JSON.stringify(s)); }
 
 init();
 </script>
