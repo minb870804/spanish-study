@@ -1,5 +1,6 @@
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { createHash } = require('node:crypto');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
 const webpush = require('web-push');
@@ -279,7 +280,11 @@ exports.notifyScheduleShared = onCall({ region: 'asia-northeast3' }, async reque
 
   const spaceSnap = await db.collection('spaces').doc(spaceId).get();
   if (!spaceSnap.exists) return { sent: 0, recipients: 0 };
-  const members = (spaceSnap.data().members || []).filter(m => m && m !== uid);
+  const spaceMembers = (spaceSnap.data() || {}).members;
+  if (!Array.isArray(spaceMembers) || !spaceMembers.includes(uid)) {
+    throw new HttpsError('permission-denied', '현재 참여 중인 스페이스가 아닙니다.');
+  }
+  const members = spaceMembers.filter(m => m && m !== uid);
   if (!members.length) return { sent: 0, recipients: 0 };
 
   const sharerName = token.name || '배우자';
@@ -296,6 +301,73 @@ exports.notifyScheduleShared = onCall({ region: 'asia-northeast3' }, async reque
     sent += result.sent;
   }
   return { sent, recipients: members.length };
+});
+
+exports.notifySharedDiaryEntry = onCall({ region: 'asia-northeast3', timeoutSeconds: 60 }, async request => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+  const authorUid = request.auth.uid;
+  const spaceId = String(request.data && request.data.spaceId || '').trim().toUpperCase();
+  const dayKey = String(request.data && request.data.dayKey || '').trim();
+  if (!/^[A-HJ-KM-NP-Z2-9]{6}$/.test(spaceId) || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) {
+    throw new HttpsError('invalid-argument', '스페이스 또는 날짜가 올바르지 않습니다.');
+  }
+  const spaceRef = db.collection('spaces').doc(spaceId);
+  const spaceSnap = await spaceRef.get();
+  const space = spaceSnap.exists ? spaceSnap.data() || {} : {};
+  if (!Array.isArray(space.members) || !space.members.includes(authorUid)) {
+    throw new HttpsError('permission-denied', '현재 참여 중인 스페이스가 아닙니다.');
+  }
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    throw new HttpsError('failed-precondition', '푸시 알림 설정이 필요합니다.');
+  }
+  const recipients = [...new Set(space.members.filter(uid => typeof uid === 'string' && uid && uid !== authorUid))];
+  let sent = 0;
+  let attempted = 0;
+  for (const recipientUid of recipients) {
+    const notificationId = createHash('sha256')
+      .update(JSON.stringify([spaceId, dayKey, authorUid, recipientUid]))
+      .digest('hex');
+    // Unmatched top-level collection: Firestore rules deny all client access.
+    const deliveryRef = db.collection('diaryNotificationDeliveries').doc(notificationId);
+    const claimed = await db.runTransaction(async tx => {
+      const [delivery, currentSpace] = await Promise.all([tx.get(deliveryRef), tx.get(spaceRef)]);
+      if (delivery.exists || !currentSpace.exists) return false;
+      const current = currentSpace.data() || {};
+      if (!Array.isArray(current.members) || !current.members.includes(authorUid) || !current.members.includes(recipientUid)) return false;
+      const entry = current.sharedDiary && current.sharedDiary[dayKey] && current.sharedDiary[dayKey][authorUid];
+      if (!entry || typeof entry.text !== 'string' || !entry.text.trim()) return false;
+      if (entry.authorUid !== undefined && entry.authorUid !== authorUid) return false;
+      tx.create(deliveryRef, {
+        spaceId, dayKey, authorUid, recipientUid,
+        status: 'attempted', attemptedAt: FieldValue.serverTimestamp()
+      });
+      return true;
+    });
+    if (!claimed) continue;
+    attempted += 1;
+    // Claim before sending: duplicate calls never retry an uncertain delivery.
+    try {
+      const result = await sendReminderToUser(recipientUid, {
+        title: 'Minb 교환일기',
+        body: '새 교환일기가 도착했어요. 함께 확인해 보세요.',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: `diary-${notificationId}`,
+        url: '/shared-diary'
+      });
+      sent += result.sent;
+      await deliveryRef.update({
+        status: result.sent > 0 ? 'sent' : 'not-sent',
+        sent: result.sent,
+        finishedAt: FieldValue.serverTimestamp()
+      });
+    } catch (error) {
+      logger.error('Shared diary push attempt failed; delivery will not be retried', {
+        notificationId, message: error.message
+      });
+    }
+  }
+  return { sent, recipients: attempted };
 });
 
 async function sendReminderToUser(uid, payload) {

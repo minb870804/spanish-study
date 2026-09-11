@@ -1154,6 +1154,9 @@
     padding:14px 20px calc(14px + env(safe-area-inset-bottom)); background-color:var(--card); background-image:var(--grain-card);
     border-top:1px solid var(--border); box-shadow:0 -8px 18px rgba(62,52,40,.05);
   }
+  .todo-editor-delete { margin-right:auto; color:var(--red); border-color:var(--red); }
+  .todo-editor-delete:hover { background:var(--red-light); color:var(--red); }
+  .todo-editor-delete[hidden] { display:none; }
   .todo-content { cursor:pointer; border-radius:8px; }
   .todo-content:focus-visible { outline:3px solid var(--blue-light); outline-offset:3px; }
   .todo-content .txt { text-decoration:underline; text-decoration-color:transparent; text-underline-offset:3px; transition:var(--transition); }
@@ -1185,6 +1188,9 @@
   }
 </style>
 
+<link rel="stylesheet" href="css/ui.css">
+<link rel="stylesheet" href="css/home-settings.css">
+<script src="js/app-shell.js" defer></script>
 </head>
 <body>
 
@@ -1223,6 +1229,7 @@
 </header>
 
 <main class="fade">
+<div id="homeView">
 
   <!-- 날짜 히어로 -->
   <div class="hero">
@@ -1237,12 +1244,17 @@
     <button class="small-btn" onclick="requestPushPermission()">알림 켜기</button>
   </div>
 
+  <div id="homeCards" aria-label="홈 카드"></div>
   <div class="dashboard-grid">
+  <section class="card today-card" aria-labelledby="todayHeading">
+    <div class="ui-section-head"><div><p class="ui-eyebrow">하루의 시작</p><h2 id="todayHeading">오늘 할 일</h2><p class="ui-meta" id="todayCount"></p></div><button class="ui-button primary" onclick="openTodayQuickAdd()">＋ 일정 추가</button></div>
+    <div class="ui-agenda" id="todayAgenda"></div>
+  </section>
   <!-- 가장 큰 메인 영역: 월간 달력 -->
   <div class="card calendar-card">
     <div class="card-title calendar-titlebar">
       <div class="calendar-heading">
-        <span>📆 월간 달력</span>
+        <span>내 달력</span><div class="calendar-mode" aria-label="달력 보기"><button class="ui-button" data-calendar-view="week" aria-pressed="false" onclick="setCalendarView('week')">주간</button><button class="ui-button" data-calendar-view="month" aria-pressed="true" onclick="setCalendarView('month')">월간</button></div>
         <div class="calendar-day-summary" id="calendarDaySummary" aria-live="polite"></div>
       </div>
       <div class="calendar-actions">
@@ -1253,9 +1265,9 @@
           <button class="small-btn" onclick="goToday()">오늘</button>
         </div>
         <div class="month-nav" aria-label="달력 월 이동">
-          <button class="small-btn" onclick="moveCalMonth(-1)" aria-label="이전 달">‹</button>
+          <button class="small-btn" id="calPrev" onclick="moveCalMonth(-1)" aria-label="이전 달">‹</button>
           <span id="calMonthLabel" class="month-label"></span>
-          <button class="small-btn" onclick="moveCalMonth(1)" aria-label="다음 달">›</button>
+          <button class="small-btn" id="calNext" onclick="moveCalMonth(1)" aria-label="다음 달">›</button>
         </div>
       </div>
     </div>
@@ -1266,6 +1278,7 @@
       <button class="small-btn" data-schedule-filter="shared" onclick="setScheduleFilter('shared')">공유 일정</button>
     </div>
     <div id="monthCal"></div>
+    <section class="selected-agenda" aria-labelledby="selectedAgendaTitle"><div class="ui-section-head"><h3 id="selectedAgendaTitle">선택한 날의 일정</h3><button class="ui-button" onclick="openDayDetail(dateKey(selectedDate))">일정·메모</button></div><div id="selectedAgendaList" class="ui-agenda"></div></section>
     <div class="calendar-legend" style="display:flex; gap:10px; margin-top:10px; font-size:11px; color:var(--muted); flex-wrap:wrap;">
       <span><span class="mcal-tag t-todo">할 일</span> 남은 할 일</span>
       <span><span class="mcal-tag t-done">한 일</span> 완료</span>
@@ -1299,8 +1312,8 @@
             onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();addTodo();}"></textarea>
           <button class="add-btn" onclick="addTodo()">추가</button>
         </div>
-        <button type="button" class="todo-opts-toggle" id="todoOptsToggle" onclick="toggleTodoOptions()" aria-expanded="false">＋ 세부설정 · 시간·장소·기간·알림</button>
-        <div id="todoAdvOptions" class="todo-adv" hidden>
+        <button type="button" class="todo-opts-toggle" id="todoOptsToggle" onclick="toggleTodoOptions()" aria-expanded="true">− 세부설정 접기</button>
+        <div id="todoAdvOptions" class="todo-adv">
           <div class="todo-detail-row">
             <label class="todo-detail-field">
               <span>🕐 시간</span>
@@ -1421,8 +1434,8 @@
       <div class="dash-col">
       <div class="card upcoming-card">
         <div class="card-title">
-          <span>📌 할 일 (오늘부터)</span>
-          <span class="week-range">마감일·시간 순 · 날짜를 누르면 편집</span>
+          <span>앞으로의 할 일</span>
+          <span class="week-range">일정을 누르면 수정할 수 있어요</span>
         </div>
         <div id="upcomingTodos">
           <div class="upcoming-todo-list" id="upcomingTodoList"></div>
@@ -1462,6 +1475,9 @@
     </div>
   </div>
 
+<section class="card shared-summary"><div><strong>함께 쓰는 공간</strong><p class="ui-meta" id="sharedStatus"></p></div><a class="ui-button" href="#settings">관리</a></section>
+</div>
+<section id="settingsView" hidden aria-labelledby="settingsTitle"><div class="ui-section-head settings-intro"><div><p class="ui-eyebrow">나에게 맞게</p><h2 id="settingsTitle" tabindex="-1">설정</h2><p class="ui-meta">공유 공간과 홈 바로가기를 관리해요.</p></div><a href="#home" class="ui-button">홈으로</a></div></section>
 </main>
 
 <!-- 카테고리 변경 팝오버 -->
@@ -1667,7 +1683,7 @@
   </div>
 </div>
 
-<button id="fab" class="fab" onclick="openTodayQuickAdd()" title="오늘 할 일 빠른 추가" aria-label="오늘 할 일 빠른 추가">＋</button>
+<button id="fab" class="fab" onclick="openSelectedDayQuickAdd()" title="선택한 날 할 일 빠른 추가" aria-label="선택한 날 할 일 빠른 추가">＋</button>
 
 <div id="toast"></div>
 
@@ -1677,6 +1693,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-functions-compat.js"></script>
 
+<script src="js/dashboard-ux.js"></script>
+<script src="js/day-persistence.js"></script>
+<script src="js/todo-editor.js"></script>
 <script>
 // Firebase Auth는 127.0.0.1과 localhost를 서로 다른 도메인으로 본다.
 // 로컬 확인 때 unauthorized-domain이 나지 않도록 허용 가능성이 높은 localhost로 맞춘다.
@@ -1729,7 +1748,7 @@ const daySaveQueues = new Map();
 let daySaveSeq = 0;
 
 const DAYS_KO = ['일','월','화','수','목','금','토'];
-const CALENDAR_DAYS_KO = ['월','화','수','목','금','토','일'];
+const CALENDAR_DAYS_KO = ['일','월','화','수','목','금','토'];
 const MEMBER_SIGNATURES = [
   { label: '민석', color: '#2563EB', aliases: ['민석', 'minseok', 'minseokkim'] },
   { label: '단비', color: '#EC4899', aliases: ['단비', 'danbi'] }
@@ -1788,7 +1807,9 @@ function setLoginBusy(busy, text = '로그인 확인 중…') {
 
 async function finishSignedInUser(user) {
   if (!user) return;
+  const changedAccount = currentUser?.uid !== user.uid;
   currentUser = user;
+  if (changedAccount) { userData = null; initializeUiPreferences(user.uid); }
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('userProfile').style.display = 'flex';
   document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
@@ -1832,6 +1853,7 @@ auth.onAuthStateChanged(async (user) => {
   } else {
     currentUser = null;
     userData = null;
+    initializeUiPreferences(null);
     signedInInitUid = '';
     signedInInitPromise = null;
     setLoginBusy(false);
@@ -1930,6 +1952,7 @@ async function tryFastStartFromCache() {
     if (!data.spaceId || Number(data.dataModelVersion || 0) < 2) return false;
 
     userData = data;
+    syncUiPreferences();
     spaceId = data.spaceId;
     renderStudyStats(userData);
     subscribeUser();
@@ -1955,6 +1978,7 @@ async function ensureSpaceFromServer() {
   const userRef = db.collection('users').doc(currentUser.uid);
   const snap = await userRef.get();
   userData = snap.exists ? snap.data() : {};
+  syncUiPreferences();
   if (snap.exists) renderStudyStats(userData);
   spaceId = userData.spaceId || null;
   let currentSpace = null;
@@ -1983,6 +2007,7 @@ async function ensureSpaceFromServer() {
   }
 
   userData = await initializePersonalData(userRef, userData, currentSpace || {});
+  syncUiPreferences();
   subscribeUser();
   subscribeSpace();
 }
@@ -2178,6 +2203,7 @@ function subscribeUser() {
   unsubUser = db.collection('users').doc(currentUser.uid).onSnapshot(doc => {
     if (!doc.exists) return;
     userData = doc.data();
+    syncUiPreferences();
     renderStudyStats(userData);
     if (spaceData) renderAll();
   }, err => console.error('개인 데이터 구독 에러:', err));
@@ -2421,7 +2447,7 @@ function formatReminder(todo) {
 function reminderChip(todo, key = dateKey(selectedDate), refreshModalAfter = false) {
   if (!todo.remindAtMs) return '';
   if (todo.reminderSentAt) return '<span class="reminder-chip sent">🔔 완료</span>';
-  return `<button class="reminder-chip" onclick="setTodoReminderForKey('${key}', '${todo.id}', ${refreshModalAfter})" title="알림 시간 변경">🔔 ${formatReminder(todo)}</button>`;
+  return `<button class="reminder-chip" onclick="setTodoReminderForKey(${jsArg(key)}, ${jsArg(todo.id)}, ${refreshModalAfter})" title="알림 시간 변경">🔔 ${formatReminder(todo)}</button>`;
 }
 
 function rebaseTodoReminder(todo, targetKey) {
@@ -2560,7 +2586,7 @@ function memoBoxesHtml(prefix, notesObj, oninput) {
   return getMemoCats().map(c => `
     <div class="memo-box">
       <label class="memo-box-label" for="${prefix}_${c.id}"><span class="memo-box-dot" style="background:${c.color};"></span>${c.icon ? c.icon + ' ' : ''}${esc(c.name)}</label>
-      <textarea id="${prefix}_${c.id}" class="note-area memo-area" placeholder="${esc(c.name)} 관련 기록"${oninput ? ` oninput="${oninput}"` : ''}>${esc((notesObj && notesObj[c.id]) || '')}</textarea>
+      <textarea id="${prefix}_${c.id}" class="note-area memo-area" placeholder="${escAttr(c.name)} 관련 기록"${oninput ? ` oninput="${oninput}"` : ''}>${esc((notesObj && notesObj[c.id]) || '')}</textarea>
     </div>`).join('');
 }
 
@@ -2601,7 +2627,7 @@ function catEditRows(scope, cats) {
     <div class="cat-edit-row" data-scope="${scope}" style="--cat-row-color:${color};">
       <input type="color" class="cat-edit-color" value="${escAttr(color)}" data-original-color="${escAttr(color)}" data-prev-color="${escAttr(color)}" data-scope="${scope}" data-id="${escAttr(c.id)}" aria-label="${escAttr(c.name)} 색상" onchange="guardCategoryColor(this)">
       <input type="text" class="cat-edit-name" value="${escAttr(c.name)}" maxlength="20" data-scope="${scope}" data-id="${escAttr(c.id)}" aria-label="${escAttr(c.name)} 이름">
-      <button type="button" class="cat-edit-del" onclick="removeCatEditRow(this, '${scope}')" title="카테고리 삭제">🗑</button>
+      <button type="button" class="cat-edit-del" onclick="removeCatEditRow(this, ${jsArg(scope)})" title="카테고리 삭제">🗑</button>
     </div>`;
   }).join('');
 }
@@ -2778,7 +2804,7 @@ function renderMemoCatChips() {
   row.innerHTML = cats.map(cat => `
     <button class="tcat-chip ${cat.id === selectedMemoCat ? 'sel' : ''}"
       style="${cat.id === selectedMemoCat ? `background:${cat.color};` : ''}"
-      onclick="pickMemoCat('${cat.id}')">${cat.icon ? `${esc(cat.icon)} ` : ''}${esc(cat.name)}</button>`).join('');
+      onclick="pickMemoCat(${jsArg(cat.id)})">${cat.icon ? `${esc(cat.icon)} ` : ''}${esc(cat.name)}</button>`).join('');
 }
 function pickMemoCat(id) {
   selectedMemoCat = id;
@@ -2799,11 +2825,11 @@ function renderHomeMemo(day) {
   const items = memoEntryItems(dnotes);
   list.innerHTML = items.length ? items.map(({ cat, text, index }) => `
     <div class="memo-entry-item">
-      <button class="tcat-badge" style="background:${cat.color};" onclick="openMemoCatPicker(event, '${cat.id}', ${index})" title="카테고리 변경">${cat.icon ? `${esc(cat.icon)} ` : ''}${esc(cat.name)}</button>
+      <button class="tcat-badge" style="background:${cat.color};" onclick="openMemoCatPicker(event, ${jsArg(cat.id)}, ${index})" title="카테고리 변경">${cat.icon ? `${esc(cat.icon)} ` : ''}${esc(cat.name)}</button>
       <span class="memo-entry-text">${esc(text)}</span>
       <span class="memo-entry-actions">
-        <button onclick="editMemoEntry('${cat.id}', ${index})" title="메모 수정">✏️</button>
-        <button onclick="deleteMemoEntry('${cat.id}', ${index})" title="메모 삭제">✕</button>
+        <button onclick="editMemoEntry(${jsArg(cat.id)}, ${index})" title="메모 수정">✏️</button>
+        <button onclick="deleteMemoEntry(${jsArg(cat.id)}, ${index})" title="메모 삭제">✕</button>
       </span>
     </div>`).join('') : '<div class="empty-msg" style="padding:12px 0 4px;">아직 추가한 메모가 없어요.</div>';
 }
@@ -2864,7 +2890,7 @@ function openMemoCatPicker(ev, catId, index) {
   const picker = document.getElementById('catPicker');
   picker.innerHTML = getMemoCats().map(c => {
     const isCur = c.id === catId;
-    return `<button class="tcat-chip ${isCur ? 'sel' : ''}" style="background:${c.color}; color:white; ${isCur ? '' : 'opacity:0.6;'}" onclick="applyMemoCatChange('${c.id}')">${isCur ? '✓ ' : ''}${c.icon ? `${esc(c.icon)} ` : ''}${esc(c.name)}</button>`;
+    return `<button class="tcat-chip ${isCur ? 'sel' : ''}" style="background:${c.color}; color:white; ${isCur ? '' : 'opacity:0.6;'}" onclick="applyMemoCatChange(${jsArg(c.id)})">${isCur ? '✓ ' : ''}${c.icon ? `${esc(c.icon)} ` : ''}${esc(c.name)}</button>`;
   }).join('');
   picker.classList.add('open');
   const x = Math.min(ev.clientX, window.innerWidth - 260);
@@ -2994,25 +3020,6 @@ function toggleRecurDay(d, btn) {
   renderRecurDayBtns();
 }
 
-async function saveRecurring(arr) {
-  if (!spaceId || !currentUser) return;
-  const personal = arr.filter(rule => todoScope(rule, 'private') !== 'shared');
-  const shared = arr.filter(rule => todoScope(rule, 'private') === 'shared');
-  userData.personalRecurring = personal;
-  spaceData.recurring = shared;
-  try {
-    const batch = db.batch();
-    batch.update(db.collection('users').doc(currentUser.uid), {
-      personalRecurring: personal,
-      personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    batch.update(db.collection('spaces').doc(spaceId), {
-      recurring: shared,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await batch.commit();
-  } catch (e) { console.error('반복 할 일 저장 실패:', e); toast('저장에 실패했어요.'); }
-}
 
 async function addRecurring() {
   const input = document.getElementById('recurInput');
@@ -3035,16 +3042,18 @@ async function addRecurring() {
   };
   const arr = [...getAllRecurring(), rule];
   document.getElementById('recurShareInput').checked = false;
-  await saveRecurring(arr);
+  if (!(await saveRecurring(arr))) return;
   renderRecurList(); renderAll();
 }
 
-async function deleteRecurring(id) {
+// confirmed=true면 호출한 쪽(일정 수정 창)에서 이미 삭제 확인을 받은 것. 지웠으면 true.
+async function deleteRecurring(id, confirmed = false) {
   const recurring = getAllRecurring().find(r => r.id === id);
-  if (!recurring || !(await confirmScheduleDeletion(recurring.text))) return;
+  if (!recurring || (!confirmed && !(await confirmScheduleDeletion(recurring.text)))) return false;
   const arr = getAllRecurring().filter(r => r.id !== id);
-  await saveRecurring(arr);
+  if (!(await saveRecurring(arr))) return false;
   renderRecurList(); renderAll();
+  return true;
 }
 
 // ── 기존 할 일 → 반복 일정 등록 (매일 / 매주 / 매월 / 매년) ──
@@ -3106,7 +3115,7 @@ async function saveRecurSetup() {
     ...fields
   };
   closeRecurSetup();
-  await saveRecurring([...getAllRecurring(), rule]);
+  if (!(await saveRecurring([...getAllRecurring(), rule]))) return;
   renderRecurList(); renderAll();
   toast(`🔁 ${recurFreqLabel(rule)} 반복으로 등록했어요!`);
 }
@@ -3125,7 +3134,7 @@ async function toggleRecurringSharing(id) {
   rule.visibility = makeShared ? 'shared' : 'private';
   rule.catName = cat.name;
   rule.catColor = cat.color;
-  await saveRecurring(arr);
+  if (!(await saveRecurring(arr))) return;
   renderRecurList(); renderAll();
   if (makeShared) notifyScheduleShared('', rule.text);
   toast(makeShared ? '👫 반복 일정을 공유했어요.' : '🔒 공유를 취소했어요. 이제 나에게만 보여요.');
@@ -3152,49 +3161,13 @@ function renderRecurList() {
       <span class="txt">🔁 ${esc(r.text)}</span>
       <span class="by">${esc(recurFreqLabel(r))}</span>
       ${scheduleScopeBadge(r, '', 'rec')}
-      <button class="del" onclick="deleteRecurring('${r.id}')" title="삭제">✕</button>
+      <button class="del" onclick="deleteRecurring(${jsArg(r.id)})" title="삭제">✕</button>
     </div>`).join('')
     : '<div class="empty-msg" style="padding:8px 0;">아직 반복 할 일이 없어요. 위에서 추가해 보세요!</div>';
   activateActionTooltips(box);
 }
 
-async function commitDaySplit(key, split) {
-  const batch = db.batch();
-  batch.update(db.collection('users').doc(currentUser.uid), {
-    [`personalDays.${key}`]: split.personal,
-    personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  batch.update(db.collection('spaces').doc(spaceId), {
-    [`days.${key}`]: split.shared,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  await batch.commit();
-}
 
-async function saveDay(key, day) {
-  if (!spaceId || !currentUser) return false;
-  const split = splitDayForStorage(day);
-  const writeId = ++daySaveSeq;
-  pendingDayWrites.set(key, { id: writeId, split });
-  applySplitDayLocal(key, split);
-
-  const previous = daySaveQueues.get(key) || Promise.resolve();
-  const write = previous.catch(() => {}).then(() => commitDaySplit(key, split));
-  daySaveQueues.set(key, write);
-
-  try {
-    await write;
-    if ((pendingDayWrites.get(key) || {}).id === writeId) applySplitDayLocal(key, split);
-    return true;
-  } catch (e) {
-    console.error('저장 실패:', e);
-    toast('저장에 실패했어요. 네트워크를 확인해 주세요.');
-    return false;
-  } finally {
-    if ((pendingDayWrites.get(key) || {}).id === writeId) pendingDayWrites.delete(key);
-    if (daySaveQueues.get(key) === write) daySaveQueues.delete(key);
-  }
-}
 
 function splitDayForStorage(day) {
   const recurringScopes = Object.fromEntries(getAllRecurring().map(rule => [rule.id, todoScope(rule, 'private')]));
@@ -3240,9 +3213,9 @@ function getCategories() {
 function catById(id) { return getCategories().find(c => c.id === id) || DEFAULT_CATS[3]; }
 function todoCategory(todo) {
   if (todoScope(todo, 'private') === 'shared') {
-    if (todo && todo.catName && todo.catColor) return { id: todo.cat, name: todo.catName, color: todo.catColor };
+    if (todo && todo.catName && todo.catColor) return { id: todo.cat, name: todo.catName, color: normalizeCategoryColor(todo.catColor) };
     const legacy = ((spaceData && spaceData.categories) || []).find(c => c.id === todo.cat);
-    if (legacy) return legacy;
+    if (legacy) return { ...legacy, color: normalizeCategoryColor(legacy.color) };
   }
   return catById(todo && todo.cat);
 }
@@ -3253,7 +3226,7 @@ function renderCatChips() {
   const cats = getCategories();
   if (!cats.some(c => c.id === selectedTodoCat)) selectedTodoCat = cats[0].id;
   row.innerHTML = cats.map(c =>
-    `<button class="tcat-chip ${c.id === selectedTodoCat ? 'sel' : ''}" style="${c.id === selectedTodoCat ? `background:${c.color};` : ''}" onclick="pickTodoCat('${c.id}')">${esc(c.name)}</button>`
+    `<button class="tcat-chip ${c.id === selectedTodoCat ? 'sel' : ''}" style="${c.id === selectedTodoCat ? `background:${c.color};` : ''}" onclick="pickTodoCat(${jsArg(c.id)})">${esc(c.name)}</button>`
   ).join('')
     + `<button class="tcat-chip" onclick="addCustomCategory()" title="새 카테고리 만들기">＋ 카테고리</button>`
     + `<button class="tcat-chip" onclick="openCatEditor()" title="카테고리 색·이름 편집">🎨 편집</button>`;
@@ -3300,7 +3273,7 @@ function openCatPicker(ev, key, kind, id) {
   const picker = document.getElementById('catPicker');
   picker.innerHTML = getCategories().map(c => {
     const isCur = c.id === curCatId;
-    return `<button class="tcat-chip ${isCur ? 'sel' : ''}" style="background:${c.color}; color:white; ${isCur ? '' : 'opacity:0.6;'}" onclick="applyCatChange('${c.id}')">${isCur ? '✓ ' : ''}${esc(c.name)}</button>`;
+    return `<button class="tcat-chip ${isCur ? 'sel' : ''}" style="background:${c.color}; color:white; ${isCur ? '' : 'opacity:0.6;'}" onclick="applyCatChange(${jsArg(c.id)})">${isCur ? '✓ ' : ''}${esc(c.name)}</button>`;
   }).join('');
   picker.classList.add('open');
   // 클릭 위치 근처에 표시 (화면 밖으로 나가지 않게 보정)
@@ -3334,7 +3307,7 @@ async function applyCatChange(catId) {
     r.cat = catId;
     r.catName = cat.name;
     r.catColor = cat.color;
-    await saveRecurring(arr);
+    if (!(await saveRecurring(arr))) return;
     renderAll(); if (modalKey) refreshModal(true);
   } else {
     const day = getDay(key);
@@ -3378,7 +3351,7 @@ function setTodoDoneState(todo, checked) {
   }
 }
 
-// 할 일 세부설정(시간·장소·기간·알림) 펼치기/접기 — 기본은 접힘
+// 할 일 세부설정(시간·장소·기간·알림) 펼치기/접기 — 기본은 펼침(앱을 새로 열 때마다 펼치지 않아도 되게)
 function toggleTodoOptions() {
   const box = document.getElementById('todoAdvOptions');
   const btn = document.getElementById('todoOptsToggle');
@@ -3494,9 +3467,25 @@ async function addTodo() {
   day.todos.push(todo);
   // 현재 필터에 새 일정이 가려지는 경우 전체 보기로 전환해 추가 결과를 바로 보여준다.
   if (scheduleFilter === 'shared' && visibility !== 'shared') scheduleFilter = 'all';
-  setDayLocal(key, day);
-  renderAll(); // 낙관적 렌더링
-  await saveDay(key, day);
+  if (!(await saveDay(key, day))) {
+    if (!input.value) {
+      input.value = text;
+      if (startInput) startInput.value = startKey;
+      if (endInput) endInput.value = endKey;
+      if (timeInput) timeInput.value = scheduleTime;
+      if (locationInput) locationInput.value = scheduleLocation;
+      if (reminderInput) reminderInput.value = reminderFields.reminderTime || '';
+      document.getElementById('todoShareInput').checked = visibility === 'shared';
+      if (importantEl) importantEl.checked = important;
+      selectedParty = assignee === TOGETHER_KEY ? 'both' : assignee === partnerUid() ? 'partner' : 'mine';
+      todoStartDateEdited = true;
+      todoEndDateEdited = !!endKey;
+      renderPartyRow();
+    }
+    renderAll();
+    return;
+  }
+  renderAll();
   scheduleLocalReminder(todo); // 네이티브 앱: 기기에 알람 예약(웹은 no-op)
   if (isPeriod) toast(`✅ ${shortDateLabel(startKey)}~${shortDateLabel(endKey)} 기간 일정을 추가했어요!`);
   else if (reminderFields.remindAtMs) toast('✅ 할 일과 알림이 추가됐어요!');
@@ -3590,7 +3579,6 @@ document.addEventListener("click", event => {
   if (!button || button.disabled) return;
   openTodoDetail(button.dataset.todoDetailKey, button.dataset.todoDetailId, button.dataset.todoDetailKind || "todo");
 });
-function openTodoDetail(key,id,kind="todo"){const recurring=kind==="rec",day=getDay(key),todo=recurring?getAllRecurring().find(x=>x.id===id):day.todos.find(x=>x.id===id);if(!todo||!canEditTodo(todo)){toast("수정 권한을 확인할 수 없습니다.");return;}const cats=getCategories(),current=assigneeOf(todo),party=current===TOGETHER_KEY?"both":current===partnerUid()?"partner":"mine";const modal=document.createElement("div");modal.className="modal open todo-editor-modal";modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.innerHTML=`<div class="modal-box todo-editor-box"><div class="modal-head"><strong>일정 수정</strong><button class="small-btn" type="button" data-close>닫기</button></div><form class="todo-editor-form"><label>제목<input required maxlength="160" name="text" class="modal-input"></label><div class="todo-editor-grid"><label>시작일<input required type="date" name="date" class="modal-input"></label><label>종료일<input type="date" name="endDate" class="modal-input"></label></div><label class="todo-editor-check"><input type="checkbox" name="allDay"> 종일</label><div class="todo-editor-grid todo-editor-time"><label>시작 시간<input type="time" name="time" class="modal-input"></label><label>종료 시간<input type="time" name="endTime" class="modal-input"></label></div><label>장소<input maxlength="160" name="location" class="modal-input"></label><label>카테고리<select name="cat" class="modal-input">${cats.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("")}</select></label><label>공유·주인<select name="party" class="modal-input"><option value="private">나만</option>${partyOptions().map(o=>`<option value="${o.id}">${esc(o.label)}</option>`).join("")}</select></label><label class="todo-editor-check"><input type="checkbox" name="important"> 중요 일정</label><label>알림 시간<input type="time" name="reminderTime" class="modal-input"></label><button type="button" class="small-btn todo-editor-recur" data-recur>반복 설정 열기</button><label>메모<textarea name="notes" class="modal-input" rows="4"></textarea></label><div class="todo-editor-save"><button type="button" class="small-btn" data-close>취소</button><button type="submit" class="add-btn">저장</button></div></form></div>`;const f=modal.querySelector("form"),set=(n,v)=>f.elements[n].value=v||"";set("text",todo.text);set("date",todo.startDate||key);set("endDate",todo.endDate);set("time",todo.time);set("endTime",todo.endTime);set("location",todo.location);set("cat",todo.cat||cats[0]?.id);set("reminderTime",todo.reminderTime||formatReminder(todo));set("notes",todo.notes);f.elements.allDay.checked=!!todo.allDay;f.elements.important.checked=!!todo.important;f.elements.party.value=todoScope(todo,"private")==="shared"?party:"private";let dirty=false;const mark=()=>dirty=true;f.addEventListener("input",mark);f.addEventListener("change",mark);const close=force=>{if(!force&&dirty&&!confirm("변경 내용을 저장하지 않고 닫을까요?"))return;window.removeEventListener("popstate",onBack);modal.remove();};const onBack=e=>{if(dirty&&!confirm("변경 내용을 저장하지 않고 닫을까요?")){history.pushState({todoEditor:true},"");return;}modal.remove();};modal.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>close(false));modal.onclick=e=>{if(e.target===modal)close(false);};modal.querySelector("[data-recur]").onclick=()=>{if(dirty&&!confirm("반복 설정을 열면 저장하지 않은 변경은 사라집니다. 계속할까요?"))return;close(true);openRecurSetup(key,id);};f.onsubmit=async e=>{e.preventDefault();const v=Object.fromEntries(new FormData(f));const start=v.date,end=v.endDate;if(!v.text.trim())return;if(end&&end<start){toast("종료일이 시작일보다 빠를 수 없습니다.");return;}if(!f.elements.allDay.checked&&(!end||end===start)&&v.time&&v.endTime&&v.endTime<v.time){toast("종료시간이 시작시간보다 빠를 수 없습니다.");return;}const cat=cats.find(c=>c.id===v.cat)||todoCategory(todo),rem=v.reminderTime?buildReminderFields(start,v.reminderTime):{};if(rem===null)return;await cancelLocalReminder(todo.id);const shared=v.party!=="private",changed={...todo,text:v.text.trim(),time:f.elements.allDay.checked?"":v.time,endTime:f.elements.allDay.checked?"":v.endTime,allDay:f.elements.allDay.checked,location:normalizeTodoText(v.location),notes:v.notes.trim(),important:f.elements.important.checked,cat:cat.id,catName:cat.name,catColor:cat.color,visibility:shared?"shared":"private",assignee:shared?resolveAssignee(v.party):currentUser.uid,...rem};if(!v.reminderTime){delete changed.reminderTime;delete changed.remindAtMs;delete changed.reminderSentAt;delete changed.reminderSkippedAt;}if(end&&end>start){changed.startDate=start;changed.endDate=end;}else{delete changed.startDate;delete changed.endDate;}if(recurring){Object.assign(todo,changed);await saveRecurring(getAllRecurring());renderRecurList();renderAll();dirty=false;close(true);toast("일정을 저장했습니다.");return;}let saved;if(start!==key){day.todos=day.todos.filter(x=>x.id!==id);setDayLocal(key,day);const target=getDay(start);target.todos.push(changed);setDayLocal(start,target);saved=(await Promise.all([saveDay(key,day),saveDay(start,target)])).every(Boolean);}else{Object.assign(todo,changed);setDayLocal(key,day);saved=await saveDay(key,day);}if(!saved)return;if(changed.remindAtMs)scheduleLocalReminder(changed);selectedDate=new Date(`${start}T12:00:00`);renderAll();dirty=false;close(true);toast("일정을 저장했습니다.");};document.body.appendChild(modal);history.pushState({todoEditor:true},"");window.addEventListener("popstate",onBack);setTimeout(()=>f.elements.text.focus(),0);}
 
 async function editTodo(id) {
   const key = dateKey(selectedDate);
@@ -3631,20 +3619,24 @@ function confirmScheduleDeletion(title) {
   });
 }
 
-async function deleteTodo(id) {
-  const initial = getDay(dateKey(selectedDate)).todos.find(t => t.id === id);
-  if (!initial || !(await confirmScheduleDeletion(initial.text))) return;
+function deleteTodo(id) { return deleteTodoAt(dateKey(selectedDate), id); }
 
-  const key = dateKey(selectedDate);
+// 날짜 칸(key)의 할 일 삭제. 목록의 ✕, 날짜 팝업, 일정 수정 창이 모두 이 함수를 쓴다.
+// confirmed=true면 호출한 쪽에서 이미 삭제 확인을 받은 것. 실제로 지웠으면 true를 돌려준다.
+async function deleteTodoAt(key, id, confirmed = false) {
+  const initial = getDay(key).todos.find(t => t.id === id);
+  if (!initial || (!confirmed && !(await confirmScheduleDeletion(initial.text)))) return false;
+
   const day = getDay(key);
   const removed = day.todos.find(t => t.id === id);
-  if (removed && !isTodoAuthor(removed)) { toast('일정을 만든 사람만 삭제할 수 있어요.'); return; }
+  if (!removed) return false;
+  if (!isTodoAuthor(removed)) { toast('일정을 만든 사람만 삭제할 수 있어요.'); return false; }
   day.todos = day.todos.filter(t => t.id !== id);
   setDayLocal(key, day);
-  renderTodos(day);
+  renderAll();
   await saveDay(key, day);
   cancelLocalReminder(id); // 네이티브 앱 예약 알람 취소
-  if (removed) showUndoToast('🗑 삭제했어요.', async () => {
+  showUndoToast('🗑 삭제했어요.', async () => {
     const d = getDay(key);
     d.todos = [...d.todos, removed];
     setDayLocal(key, d);
@@ -3652,6 +3644,7 @@ async function deleteTodo(id) {
     await saveDay(key, d);
     if (removed.remindAtMs) scheduleLocalReminder(removed);
   });
+  return true;
 }
 
 async function toggleTodoSharing(key, id) {
@@ -3693,11 +3686,11 @@ function scheduleScopeBadge(todo, key = '', kind = 'todo') {
   // '🔒 나만'은 상태처럼 보여 눌러볼 생각을 하기 어려웠던 터라 할 일을 라벨에 적는다.
   if (kind !== 'rec' && isShared()) {
     const pickLabel = shared ? '👫 공유 중 · 변경' : '🔒 나만 · 공유하기';
-    return `<button type="button" class="scope-badge scope-control ${shared ? 'shared' : ''}" onclick="openSharePicker(event, '${key}', '${todo.id}')" title="공유 범위와 주인 고르기">${pickLabel}</button>`;
+    return `<button type="button" class="scope-badge scope-control ${shared ? 'shared' : ''}" onclick="openSharePicker(event, ${jsArg(key)}, ${jsArg(todo.id)})" title="공유 범위와 주인 고르기">${pickLabel}</button>`;
   }
   const action = kind === 'rec'
-    ? `toggleRecurringSharing('${todo.id}')`
-    : `toggleTodoSharing('${key}', '${todo.id}')`;
+    ? `toggleRecurringSharing(${jsArg(todo.id)})`
+    : `toggleTodoSharing(${jsArg(key)}, ${jsArg(todo.id)})`;
   const label = shared ? '👫 공유 중 · 취소' : '🔒 나만';
   const title = shared ? '공유 취소 — 상대방 달력에서 숨기기' : '배우자와 공유';
   return `<button type="button" class="scope-badge scope-control ${shared ? 'shared' : ''}" onclick="${action}" title="${title}">${label}</button>`;
@@ -3752,6 +3745,7 @@ function renderAll() {
   const day = getDay(key);
   renderTodos(day);
   renderUpcomingTodos();
+  renderDashboardOverview();
 
   // 기간 일정 시작일 기본값 = 선택한 날 (사용자가 아직 안 건드렸을 때만)
   const startEl = document.getElementById('todoStartInput');
@@ -4060,20 +4054,20 @@ function renderVaultList() {
       <div class="vault-service">
         <span>${esc(e.service)}</span>
         <span class="vault-actions">
-          <button onclick="editVaultEntry('${e.id}')" title="수정">✏️</button>
-          <button onclick="deleteVaultEntry('${e.id}')" title="삭제">✕</button>
+          <button onclick="editVaultEntry(${jsArg(e.id)})" title="수정">✏️</button>
+          <button onclick="deleteVaultEntry(${jsArg(e.id)})" title="삭제">✕</button>
         </span>
       </div>
       <div class="vault-field">
         <span class="vf-label">ID</span>
         <span class="vf-value">${esc(e.username || '')}</span>
-        <button onclick="copyVaultField('${e.id}', 'username')">복사</button>
+        <button onclick="copyVaultField(${jsArg(e.id)}, 'username')">복사</button>
       </div>
       <div class="vault-field">
         <span class="vf-label">PW</span>
         <span class="vf-value">${vaultShown.has(e.id) ? esc(e.password || '') : '••••••••'}</span>
-        <button onclick="toggleVaultPw('${e.id}')">${vaultShown.has(e.id) ? '숨김' : '보기'}</button>
-        <button onclick="copyVaultField('${e.id}', 'password')">복사</button>
+        <button onclick="toggleVaultPw(${jsArg(e.id)})">${vaultShown.has(e.id) ? '숨김' : '보기'}</button>
+        <button onclick="copyVaultField(${jsArg(e.id)}, 'password')">복사</button>
       </div>
     </div>`).join('') : '<div class="empty-msg" style="padding:14px 0 6px;">아직 기록한 계정이 없어요. 아래에서 추가해 보세요.</div>';
   applyTwemoji(box);
@@ -4299,7 +4293,7 @@ function runSearch() {
   hits.sort((a, b) => b.key.localeCompare(a.key)); // 최근 날짜 먼저
   const top = hits.slice(0, 50);
   box.innerHTML = top.length ? top.map(h => `
-    <button class="search-hit" onclick="closeSearchModal(); openWeekAgendaDay('${h.key}')">
+    <button class="search-hit" onclick="closeSearchModal(); openWeekAgendaDay(${jsArg(h.key)})">
       <span class="search-hit-date">${shortDateLabel(h.key)}</span>
       <span class="search-hit-text ${h.done ? 'done' : ''}">${esc(h.text)}</span>
       <span class="search-hit-kind">${h.kind}${h.done ? ' · 완료' : ''}</span>
@@ -4309,6 +4303,7 @@ function runSearch() {
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function jsArg(value) { return escAttr(JSON.stringify(String(value))); }
 function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
 function activateActionTooltips(root) {
@@ -4442,7 +4437,7 @@ function renderWeekOverview() {
     if (!meta.length) meta.push(esc(cat.name));
     const statusClass = item.overdue ? 'week-status overdue' : 'week-status';
     const statusText = item.overdue ? '지연' : (item.recurring ? '반복' : '예정');
-    return `<button class="week-agenda-item" onclick="openWeekAgendaDay('${item.key}')" aria-label="${esc(todo.text)} 일정 열기">
+    return `<button class="week-agenda-item" onclick="openWeekAgendaDay(${jsArg(item.key)})" aria-label="${escAttr(todo.text)} 일정 열기">
       <span class="week-agenda-date ${isToday ? 'today' : ''}">${dateLabel}</span>
       <span class="week-agenda-main">
         <span class="week-agenda-title"><span class="week-agenda-dot" style="background:${cat.color};"></span><span class="week-agenda-title-text">${esc(todo.text)}</span></span>
@@ -4518,8 +4513,8 @@ function renderUpcomingTodos() {
     if (isPeriodTodo(todo)) meta.push(`기간 ${shortDateLabel(todo.startDate || sourceKey)}–${shortDateLabel(todo.endDate)}`);
     if (!meta.length) meta.push(esc(cat.name));
     const upMine = canEditTodo(todo);
-    return `<div class="upcoming-todo" role="button" tabindex="0" onclick="openWeekAgendaDay('${sourceKey}')" aria-label="${escAttr(todo.text)} 일정 열기">
-      <input type="checkbox" aria-label="완료" ${upMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onclick="event.stopPropagation()" onchange="completeUpcomingTodo('${sourceKey}', '${todo.id}', this.checked)">
+    return `<div class="upcoming-todo" role="button" tabindex="0" data-source-key="${escAttr(sourceKey)}" data-todo-id="${escAttr(todo.id)}" onclick="openUpcomingItem(event)" onkeydown="openUpcomingItem(event)" aria-label="${escAttr(todo.text)} 일정 열기">
+      <input type="checkbox" aria-label="완료" ${upMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onclick="event.stopPropagation()" onchange="completeUpcomingTodo(${jsArg(sourceKey)}, ${jsArg(todo.id)}, this.checked)">
       <span class="upcoming-todo-date">${month}/${day}<br>${DAYS_KO[dueDate.getDay()]}</span>
       <span class="upcoming-todo-main">
         <span class="upcoming-todo-title">${isImportantTodo(todo) ? '<span style="color:var(--red); font-weight:900;">❗</span>' : ''}${esc(todo.text)}</span>
@@ -4576,10 +4571,10 @@ function renderTodos(day) {
     const borderStyle = sharedOwnerBorderStyle(r);
     const rMine = canEditTodo(r);
     return `<div class="todo-item recurring ${done ? 'done' : ''}" style="${borderStyle}">
-      <input type="checkbox" ${done ? 'checked' : ''} ${rMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleRecurringDone('${r.id}', this.checked)">
-      <button type="button" class="todo-content" data-todo-detail-key="${esc(currentKey)}" data-todo-detail-id="${esc(r.id)}" data-todo-detail-kind="rec"><span class="txt">${esc(r.text)}</span>${todoMetaHtml(r)}</button>
+      <input type="checkbox" ${done ? 'checked' : ''} ${rMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleRecurringDone(${jsArg(r.id)}, this.checked)">
+      <button type="button" class="todo-content" data-todo-detail-key="${escAttr(currentKey)}" data-todo-detail-id="${escAttr(r.id)}" data-todo-detail-kind="rec"><span class="txt">${esc(r.text)}</span>${todoMetaHtml(r)}</button>
       <span class="todo-actions" onclick="event.stopPropagation()">
-        <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'rec', '${r.id}')" title="카테고리 변경">${esc(cat.name)}</button>
+        <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, ${jsArg(dateKey(selectedDate))}, 'rec', ${jsArg(r.id)})" title="카테고리 변경">${esc(cat.name)}</button>
         ${scheduleScopeBadge(r, '', 'rec')}
         ${authorChip(r)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
         <span class="by" title="반복 할 일">🔁</span>
@@ -4595,24 +4590,24 @@ function renderTodos(day) {
     const mine = canEditTodo(t);
     const author = isTodoAuthor(t);
     const handle = mine
-      ? `<button class="del move-handle" onpointerdown="startTodoItemDrag(event, '${currentKey}', '${t.id}')" title="드래그해서 날짜 이동">↕</button>`
+      ? `<button class="del move-handle" onpointerdown="startTodoItemDrag(event, ${jsArg(currentKey)}, ${jsArg(t.id)})" title="드래그해서 날짜 이동">↕</button>`
       : `<span class="move-handle" style="visibility:hidden;">↕</span>`;
     const badge = mine
-      ? `<button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, '${dateKey(selectedDate)}', 'todo', '${t.id}')" title="카테고리 변경">${esc(cat.name)}</button>`
+      ? `<button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, ${jsArg(dateKey(selectedDate))}, 'todo', ${jsArg(t.id)})" title="카테고리 변경">${esc(cat.name)}</button>`
       : `<span class="tcat-badge" style="background:${cat.color}; cursor:default;">${esc(cat.name)}</span>`;
     const menu = mine ? `
         <button type="button" class="todo-menu-btn" onclick="toggleRowActions(event, this)" title="더보기" aria-label="더보기">⋯</button>
         <span class="todo-btns">
-          <button type="button" class="quick-move-btn" onclick="event.stopPropagation(); quickMoveTodo('${currentKey}', '${t.id}', 1)" title="내일로 이동">내일</button>
-          <button type="button" class="quick-move-btn" onclick="event.stopPropagation(); quickMoveTodo('${currentKey}', '${t.id}', 7)" title="다음 주로 이동">+7</button>
-          <button type="button" class="del" onclick="event.stopPropagation(); moveTodoToDateFromKey('${currentKey}', '${t.id}')" title="날짜 변경">📅</button>
-          <button type="button" class="del" onclick="event.stopPropagation(); copyTodoToDateFromKey('${currentKey}', '${t.id}')" title="다른 날짜에 한 번 복사">📋</button>
-          ${author ? `<button type="button" class="del" onclick="event.stopPropagation(); deleteTodo('${t.id}')" title="삭제">✕</button>` : ''}
+          <button type="button" class="quick-move-btn" onclick="event.stopPropagation(); quickMoveTodo(${jsArg(currentKey)}, ${jsArg(t.id)}, 1)" title="내일로 이동">내일</button>
+          <button type="button" class="quick-move-btn" onclick="event.stopPropagation(); quickMoveTodo(${jsArg(currentKey)}, ${jsArg(t.id)}, 7)" title="다음 주로 이동">+7</button>
+          <button type="button" class="del" onclick="event.stopPropagation(); moveTodoToDateFromKey(${jsArg(currentKey)}, ${jsArg(t.id)})" title="날짜 변경">📅</button>
+          <button type="button" class="del" onclick="event.stopPropagation(); copyTodoToDateFromKey(${jsArg(currentKey)}, ${jsArg(t.id)})" title="다른 날짜에 한 번 복사">📋</button>
+          ${author ? `<button type="button" class="del" onclick="event.stopPropagation(); deleteTodo(${jsArg(t.id)})" title="삭제">✕</button>` : ''}
         </span>` : '';
-    return `<div class="todo-item ${mine ? 'swipeable' : ''} ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${t.id}" style="${borderStyle}">
+    return `<div class="todo-item ${mine ? 'swipeable' : ''} ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${escAttr(t.id)}" style="${borderStyle}">
       ${handle}
-      <input type="checkbox" ${t.done ? 'checked' : ''} ${mine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleTodo('${t.id}', this.checked)">
-      <button type="button" class="todo-content" data-todo-detail-key="${esc(currentKey)}" data-todo-detail-id="${esc(t.id)}" data-todo-detail-kind="todo"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</button>
+      <input type="checkbox" ${t.done ? 'checked' : ''} ${mine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleTodo(${jsArg(t.id)}, this.checked)">
+      <button type="button" class="todo-content" data-todo-detail-key="${escAttr(currentKey)}" data-todo-detail-id="${escAttr(t.id)}" data-todo-detail-kind="todo"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</button>
       <span class="todo-actions" onclick="event.stopPropagation()">
         ${importantFlag(t)}
         ${badge}
@@ -4665,7 +4660,7 @@ function assigneeOf(todo) {
 // 색은 스페이스에 저장해 두 사람 화면에서 같은 색으로 보인다.
 function ownerColorFor(key) {
   const saved = (spaceData && spaceData.ownerColors) || {};
-  if (saved[key]) return saved[key];
+  if (saved[key]) return normalizeCategoryColor(saved[key]);
   return key === TOGETHER_KEY ? DEFAULT_TOGETHER_COLOR : memberSignature(key).color;
 }
 function partyLabel(key) {
@@ -4735,7 +4730,7 @@ function renderPartyRow() {
   if (!opts.some(o => o.id === selectedParty)) selectedParty = 'mine';
   box.innerHTML = opts.map(o => {
     const c = ownerColorFor(o.key);
-    return `<button type="button" class="party-btn ${o.id === selectedParty ? 'sel' : ''}" style="--party-color:${c}; --party-bg:${hexToRgba(c, 0.16)};" onclick="setSelectedParty('${o.id}')">${esc(o.label)}</button>`;
+    return `<button type="button" class="party-btn ${o.id === selectedParty ? 'sel' : ''}" style="--party-color:${c}; --party-bg:${hexToRgba(c, 0.16)};" onclick="setSelectedParty(${jsArg(o.id)})">${esc(o.label)}</button>`;
   }).join('');
 }
 function setSelectedParty(id) { selectedParty = id; renderPartyRow(); }
@@ -4767,7 +4762,7 @@ function openSharePicker(ev, key, id) {
   picker.innerHTML = privateBtn + partyOptions().map(o => {
     const isCur = shared && o.key === cur;
     const c = ownerColorFor(o.key);
-    return `<button class="party-btn ${isCur ? 'sel' : ''}" style="--party-color:${c}; --party-bg:${hexToRgba(c, 0.16)};" onclick="applySharePick('${o.id}')">${isCur ? '✓ ' : ''}👫 ${esc(o.label)}</button>`;
+    return `<button class="party-btn ${isCur ? 'sel' : ''}" style="--party-color:${c}; --party-bg:${hexToRgba(c, 0.16)};" onclick="applySharePick(${jsArg(o.id)})">${isCur ? '✓ ' : ''}👫 ${esc(o.label)}</button>`;
   }).join('');
   picker.classList.add('open');
   const x = Math.min(ev.clientX, window.innerWidth - 260);
@@ -4825,7 +4820,7 @@ function renderOwnerColors() {
   rows.innerHTML = items.map(it => `
     <div class="owner-color-row">
       <input type="color" value="${escAttr(ownerColorFor(it.key))}" aria-label="${escAttr(it.name)} 색상"
-        onchange="saveOwnerColor('${escAttr(it.key)}', this.value)">
+        onchange="saveOwnerColor(${jsArg(it.key)}, this.value)">
       <span class="owner-color-name">${esc(it.name)} 일정</span>
     </div>`).join('');
 }
@@ -4862,7 +4857,7 @@ function renderMembers() {
   const profiles = spaceData.memberProfiles || {};
   box.innerHTML = (spaceData.members || []).map(uid => {
     const p = profiles[uid] || { name: '멤버', photo: '' };
-    const img = p.photo ? `<img src="${esc(p.photo)}" alt="" referrerpolicy="no-referrer">` : '👤';
+    const img = p.photo ? `<img src="${escAttr(p.photo)}" alt="" referrerpolicy="no-referrer">` : '👤';
     const me = currentUser && uid === currentUser.uid ? ' (나)' : '';
     const signature = memberSignature(uid);
     const badge = isShared() ? `<span class="owner-badge" style="--owner-color:${signature.color}; --owner-bg:${hexToRgba(signature.color, 0.14)};">${signature.label}</span>` : '';
@@ -4881,10 +4876,37 @@ function dayCounts(d) {
   return { total, done, remain: total - done, hasNote: scheduleFilter !== 'shared' && notesHaveContent(day.notes) };
 }
 
-function moveCalMonth(delta) { calMonth.setMonth(calMonth.getMonth() + delta); renderMonthCal(); }
+function moveCalMonth(delta) {
+  if (calendarView === 'week') {
+    selectedDate = dayOffset(selectedDate, delta * 7);
+    calMonth = new Date(selectedDate);
+  } else {
+    calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + delta, 1);
+    selectedDate = new Date(calMonth);
+  }
+  renderAll();
+}
 
-function calendarDragAttrs(kind, key, id = "") {
-  return `role="button" tabindex="0" onpointerdown="startMonthItemDrag(event, &quot;${key}&quot;, &quot;${kind}&quot;, &quot;${id}&quot;)" title="길게 누르면 일정 이동"`;
+let calendarClickBlockedUntil = 0;
+function calendarDragAttrs(kind, key, id = '') {
+  return `role="button" tabindex="0" data-calendar-key="${escAttr(key)}" data-calendar-kind="${escAttr(kind)}" data-calendar-id="${escAttr(id)}" onpointerdown="startMonthItemDrag(event, this.dataset.calendarKey, this.dataset.calendarKind, this.dataset.calendarId)" onclick="openCalendarTag(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCalendarTag(event)}"`;
+}
+function openCalendarTag(event) {
+  event.stopPropagation();
+  if (calendarSwiped || Date.now() < calendarClickBlockedUntil) return;
+  const { calendarKey: key, calendarKind: kind, calendarId: id } = event.currentTarget.dataset;
+  const todo = kind === 'todo' ? getDay(key).todos.find(item => item.id === id) : null;
+  if (todo && canEditTodo(todo)) openTodoDetail(key, id);
+  else openDayDetail(key);
+}
+function openUpcomingItem(event) {
+  if (event.target.closest('input, button')) return;
+  if (event.type === 'keydown' && (event.target !== event.currentTarget || !['Enter', ' '].includes(event.key))) return;
+  event.preventDefault();
+  const { sourceKey: key, todoId: id } = event.currentTarget.dataset;
+  const todo = getDay(key).todos.find(item => item.id === id);
+  if (todo && canEditTodo(todo)) openTodoDetail(key, id);
+  else openWeekAgendaDay(key);
 }
 
 function renderCalendarTags(key, dateObj) {
@@ -4901,9 +4923,9 @@ function renderCalendarTags(key, dateObj) {
     const showLabel = b.isStart || dateObj.getDay() === 0; // 시작일 또는 주 시작(일)에 제목 표시
     const impBar = isImportantTodo(b.todo);
     const cls = ['mcal-bar', b.isStart ? 'start' : '', b.isEnd ? 'end' : '', b.todo.done ? 'done' : ''].filter(Boolean).join(' ');
-    const label = showLabel ? esc((b.todo.done ? "✓ " : "") + (impBar ? "❗" : "") + b.todo.text) : "&nbsp;";
+    const label = showLabel ? esc(b.todo.text) : "&nbsp;";
     const barColor = impBar ? IMPORTANT_COLOR : (owner ? owner.color : cat.color);
-    tags.push(`<span class="${cls}" style="background:${barColor};" ${calendarDragAttrs('todo', b.startK, b.todo.id)} title="${esc(b.todo.text)} (${shortDateLabel(b.startK)}~${shortDateLabel(b.endK)})">${label}</span>`);
+    tags.push(`<span class="${cls}" style="background:${barColor};" ${calendarDragAttrs('todo', b.startK, b.todo.id)} title="${escAttr(b.todo.text)} (${shortDateLabel(b.startK)}~${shortDateLabel(b.endK)})">${label}</span>`);
   });
 
   // 기간 일정이 아닌 일반 할 일 + 반복 할 일을 합쳐 미리보기(항상 표시)
@@ -4924,12 +4946,12 @@ function renderCalendarTags(key, dateObj) {
       const style = owner
         ? `background:${hexToRgba(owner.color, 0.16)}; color:${owner.color}; box-shadow:inset 3px 0 ${owner.color};`
         : `background:${hexToRgba(cat.color, 0.16)}; color:${cat.color};`;
-      const label = `${done ? "✓ " : ""}🔁 ${obj.text}`;
+      const label = obj.text;
       tags.push(`<span class="mcal-tag" style="${done ? 'opacity:0.55;' : ''}${style}" title="반복 할 일">${esc(label)}</span>`);
     } else {
       const t = obj;
       const imp = isImportantTodo(t);
-      const prefix = `${t.done ? "✓ " : ""}${imp ? "❗" : ""}${t.time ? `${t.time} · ` : ""}`;
+      const label = t.text;
       // 주인 색은 왼쪽 띠로 남겨 누구 일정인지 계속 알 수 있게 한다.
       const ownerAccent = owner ? `box-shadow:inset 3px 0 ${owner.color};` : '';
       const ownerStyle = owner
@@ -4937,13 +4959,13 @@ function renderCalendarTags(key, dateObj) {
         : '';
       // 완료는 기존대로 녹색, 중요는 빨강, 그 외는 주인·카테고리 색
       if (t.done) {
-        tags.push(`<span class="mcal-tag t-done" style="${ownerStyle}" ${calendarDragAttrs('todo', key, t.id)}>${esc(prefix + t.text)}</span>`);
+        tags.push(`<span class="mcal-tag t-done" style="${ownerStyle}" ${calendarDragAttrs('todo', key, t.id)}>${esc(label)}</span>`);
       } else {
         const cat = todoCategory(t);
         const style = imp
           ? `background:${hexToRgba(IMPORTANT_COLOR, 0.18)}; color:${IMPORTANT_COLOR}; font-weight:900; ${ownerAccent}`
           : (ownerStyle || `background:${hexToRgba(cat.color, 0.16)}; color:${cat.color};`);
-        tags.push(`<span class="mcal-tag t-cat" style="${style}" ${calendarDragAttrs('todo', key, t.id)}${imp ? ' title="중요 일정"' : ''}>${esc(prefix + t.text)}</span>`);
+        tags.push(`<span class="mcal-tag t-cat" style="${style}" ${calendarDragAttrs('todo', key, t.id)}${imp ? ' title="중요 일정"' : ''}>${esc(label)}</span>`);
       }
     }
   });
@@ -5040,12 +5062,13 @@ function renderMonthCal() {
   ensureHolidays(y).then(loaded => { if (loaded) renderMonthCal(); });
   document.getElementById('calMonthLabel').textContent = `${y}년 ${m+1}월`;
   renderCalendarDaySummary(calMonth);
-  // 월요일부터 일요일까지의 완전한 주 단위로 렌더해 전월·다음 월 일정도 함께 확인한다.
+  // 일요일부터 토요일까지 표시하고 월 경계의 일정도 함께 보여 준다.
   const firstDow = new Date(y, m, 1).getDay();
-  const mondayOffset = (firstDow + 6) % 7;
+  const sundayOffset = firstDow;
   const total = new Date(y, m + 1, 0).getDate();
-  const cellCount = Math.ceil((mondayOffset + total) / 7) * 7;
-  const gridStart = new Date(y, m, 1 - mondayOffset);
+  const cellCount = calendarView === 'week' ? 7 : Math.ceil((sundayOffset + total) / 7) * 7;
+  const gridStart = calendarView === 'week' ? dayOffset(selectedDate, -selectedDate.getDay()) : new Date(y, m, 1 - sundayOffset);
+  if (calendarView === 'week') document.getElementById('calMonthLabel').textContent = `${shortMonthDay(gridStart)} – ${shortMonthDay(dayOffset(gridStart, 6))}`;
   const todayK = dateKey(new Date());
   const selK = dateKey(selectedDate);
   const predPeriod = predictedPeriodDays();
@@ -5057,13 +5080,14 @@ function renderMonthCal() {
     const holName = holidayMap[key];
     const outsideMonth = d.getMonth() !== m;
     const cls = ["mcal-day", outsideMonth ? "outside-month" : "", key === todayK ? "today" : "", key === selK ? "sel" : "", holName ? "holiday" : "", isPeriodDay(key) ? "period" : (predPeriod[key] ? "period-pred" : ""), d.getDay() === 0 ? "sun" : d.getDay() === 6 ? "sat" : ""].join(" ");
-    const holLabel = holName ? `<span class="mcal-holiday-name" title="${esc(holName)}">${esc(holName)}</span>` : "";
-    html += `<div class="${cls}" data-date="${key}" onclick="onCalDayClick(&quot;${key}&quot;)"><span class="mcal-num">${d.getDate()}</span>${holLabel}${renderCalendarTags(key, d)}</div>`;
+    const holLabel = holName ? `<span class="mcal-holiday-name" title="${escAttr(holName)}">${esc(holName)}</span>` : "";
+    html += `<div class="${cls}" data-date="${key}" onclick="onCalDayClick(&quot;${key}&quot;)"><button type="button" class="mcal-num mcal-date-hit" aria-label="${m+1 !== d.getMonth()+1 ? d.getMonth()+1 : m+1}월 ${d.getDate()}일 일정 선택" aria-pressed="${key === selK}">${d.getDate()}</button>${holLabel}${renderCalendarTags(key, d)}</div>`;
   }
   html += "</div>";
   box.innerHTML = html;
   renderCalendarLegend();
   initCalendarSwipe();
+  renderSelectedAgenda();
 }
 
 // ── 모바일 달력 좌우 스와이프로 월 이동 ──
@@ -5151,38 +5175,6 @@ function addMoveEventLocal(moveEvent) {
   }
 }
 
-async function saveMovedDays(sourceKey, sourceDay, targetKey, targetDay, moveEvent = null) {
-  if (!spaceId || !currentUser) return;
-  const sourceSplit = splitDayForStorage(sourceDay);
-  const targetSplit = splitDayForStorage(targetDay);
-  applySplitDayLocal(sourceKey, sourceSplit);
-  applySplitDayLocal(targetKey, targetSplit);
-  try {
-    const userUpdates = {
-      [`personalDays.${sourceKey}`]: sourceSplit.personal,
-      [`personalDays.${targetKey}`]: targetSplit.personal,
-      personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    const spaceUpdates = {
-      [`days.${sourceKey}`]: sourceSplit.shared,
-      [`days.${targetKey}`]: targetSplit.shared,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    if (moveEvent) {
-      if (moveEvent.visibility === 'shared') spaceUpdates.moveLog = firebase.firestore.FieldValue.arrayUnion(moveEvent);
-      else userUpdates.personalMoveLog = firebase.firestore.FieldValue.arrayUnion(moveEvent);
-    }
-    const batch = db.batch();
-    batch.update(db.collection('users').doc(currentUser.uid), userUpdates);
-    batch.update(db.collection('spaces').doc(spaceId), spaceUpdates);
-    await batch.commit();
-    return true;
-  } catch (e) {
-    console.error('날짜 이동 저장 실패:', e);
-    toast('이동 저장에 실패했어요. 네트워크를 확인해 주세요.');
-    return false;
-  }
-}
 
 async function moveCalendarItem(sourceKey, targetKey, kind, id, opts = {}) {
   if (!spaceData || !sourceKey || !targetKey) return;
@@ -5252,7 +5244,7 @@ let todoSwipeState = null;
 
 function startMonthItemDrag(event, sourceKey, kind, id = "") {
   const tag = event.currentTarget;
-  const dragInfo = { sourceKey, kind, id, label: tag.textContent.trim(), sourceEl: tag.closest(".mcal-day"), openSourceOnTap: true };
+  const dragInfo = { sourceKey, kind, id, label: tag.textContent.trim(), sourceEl: tag.closest(".mcal-day"), openSourceOnTap: false };
   if (event.pointerType === "mouse") { startMoveDrag(event, dragInfo); return; }
 
   let holding = true;
@@ -5267,6 +5259,7 @@ function startMonthItemDrag(event, sourceKey, kind, id = "") {
   timer = setTimeout(() => {
     if (!holding) return;
     clearHold();
+    calendarClickBlockedUntil = Date.now() + 1200;
     if (window.confirm("일정을 이동하시겠습니까?")) startMoveDrag(event, dragInfo);
   }, 900);
 }
@@ -5349,6 +5342,7 @@ async function onMonthItemDragEnd(event) {
     if (state.openSourceOnTap) onCalDayClick(state.sourceKey);
     return;
   }
+  calendarClickBlockedUntil = Date.now() + 400;
   const targetKey = state.dropEl && state.dropEl.dataset.date;
   if (targetKey) {
     await moveCalendarItem(state.sourceKey, targetKey, state.kind, state.id);
@@ -5356,6 +5350,7 @@ async function onMonthItemDragEnd(event) {
 }
 
 function cancelMonthItemDrag() {
+  calendarClickBlockedUntil = Date.now() + 400;
   cleanupMonthItemDrag();
 }
 
@@ -5530,7 +5525,8 @@ async function onCalDayClick(key) {
   todoStartDateEdited = false;
   todoEndDateEdited = false;
   showAllUpcomingTodos = false;
-  openDayDetail(key);
+  calMonth = new Date(selectedDate);
+  renderAll();
 }
 
 let modalKey = null;
@@ -5561,11 +5557,8 @@ function relocateEntryCards() {
   const todoCard = document.querySelector('.todo-card');
   const noteCard = document.querySelector('.note-card');
   if (!dmBody || !todoCard || !noteCard || dmBody.contains(todoCard)) return;
-  const cols = document.querySelectorAll('.dash-cards > .dash-col');
-  const upcoming = document.querySelector('.upcoming-card');
   dmBody.appendChild(todoCard);
   dmBody.appendChild(noteCard);
-  if (cols[0] && upcoming && !cols[0].contains(upcoming)) cols[0].appendChild(upcoming);
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', relocateEntryCards);
 else relocateEntryCards();
@@ -5652,27 +5645,7 @@ async function confirmMoveDate() {
   }
 }
 
-async function mDeleteTodo(id) {
-  const initial = getDay(modalKey).todos.find(t => t.id === id);
-  if (!initial || !(await confirmScheduleDeletion(initial.text))) return;
-  const key = modalKey;
-  const day = getDay(key);
-  const removed = day.todos.find(t => t.id === id);
-  if (removed && !isTodoAuthor(removed)) { toast('일정을 만든 사람만 삭제할 수 있어요.'); return; }
-  day.todos = day.todos.filter(t => t.id !== id);
-  setDayLocal(key, day);
-  refreshModal(true); renderAll();
-  await saveDay(key, day);
-  cancelLocalReminder(id);
-  if (removed) showUndoToast('🗑 삭제했어요.', async () => {
-    const d = getDay(key);
-    d.todos = [...d.todos, removed];
-    setDayLocal(key, d);
-    renderAll(); refreshModal();
-    await saveDay(key, d);
-    if (removed.remindAtMs) scheduleLocalReminder(removed);
-  });
-}
+function mDeleteTodo(id) { return deleteTodoAt(modalKey, id); }
 
 async function mToggleRec(id, checked) {
   const day = getDay(modalKey);
@@ -6556,15 +6529,33 @@ function exportBackup() {
   toast('📦 백업 파일을 내려받았어요!');
 }
 
-// FAB: 오늘 날짜 팝업을 바로 열고 입력칸에 포커스
-function openTodayQuickAdd() {
+// 지정한 날짜 팝업을 바로 열고 입력칸에 포커스
+function openQuickAddFor(key) {
   if (!spaceData) { toast('데이터를 불러오는 중이에요.'); return; }
-  openDayDetail(dateKey(new Date()));
+  openDayDetail(key);
   setTimeout(() => {
     const input = document.getElementById('todoInput');
     if (input) { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }
   }, 120);
 }
+
+// '오늘 할 일' 카드의 추가 버튼 — 언제나 오늘 날짜로 연다
+function openTodayQuickAdd() { openQuickAddFor(dateKey(new Date())); }
+
+// FAB — 달력에서 고른 날짜로 연다. 시작일·종료일 기본값도 그 날짜로 채워진다.
+function openSelectedDayQuickAdd() { openQuickAddFor(dateKey(selectedDate)); }
+
+// 앱을 백그라운드에 두었다가 다음 날 다시 열면 '선택한 날'이 지난 날짜로 남는다.
+// 날짜가 바뀐 뒤 돌아온 경우에만 오늘로 되돌려 달력·FAB 기본 날짜를 맞춘다.
+let lastActiveDayKey = dateKey(new Date());
+function syncDayRollover() {
+  const todayKey = dateKey(new Date());
+  if (todayKey === lastActiveDayKey) return;
+  lastActiveDayKey = todayKey;
+  goToday();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncDayRollover(); });
+window.addEventListener('pageshow', e => { if (e.persisted) syncDayRollover(); });
 
 loadTheme();
 renderAll();
