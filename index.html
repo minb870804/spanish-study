@@ -1154,6 +1154,9 @@
     padding:14px 20px calc(14px + env(safe-area-inset-bottom)); background-color:var(--card); background-image:var(--grain-card);
     border-top:1px solid var(--border); box-shadow:0 -8px 18px rgba(62,52,40,.05);
   }
+  .todo-editor-delete { margin-right:auto; color:var(--red); border-color:var(--red); }
+  .todo-editor-delete:hover { background:var(--red-light); color:var(--red); }
+  .todo-editor-delete[hidden] { display:none; }
   .todo-content { cursor:pointer; border-radius:8px; }
   .todo-content:focus-visible { outline:3px solid var(--blue-light); outline-offset:3px; }
   .todo-content .txt { text-decoration:underline; text-decoration-color:transparent; text-underline-offset:3px; transition:var(--transition); }
@@ -1309,8 +1312,8 @@
             onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();addTodo();}"></textarea>
           <button class="add-btn" onclick="addTodo()">추가</button>
         </div>
-        <button type="button" class="todo-opts-toggle" id="todoOptsToggle" onclick="toggleTodoOptions()" aria-expanded="false">＋ 세부설정 · 시간·장소·기간·알림</button>
-        <div id="todoAdvOptions" class="todo-adv" hidden>
+        <button type="button" class="todo-opts-toggle" id="todoOptsToggle" onclick="toggleTodoOptions()" aria-expanded="true">− 세부설정 접기</button>
+        <div id="todoAdvOptions" class="todo-adv">
           <div class="todo-detail-row">
             <label class="todo-detail-field">
               <span>🕐 시간</span>
@@ -1680,7 +1683,7 @@
   </div>
 </div>
 
-<button id="fab" class="fab" onclick="openTodayQuickAdd()" title="오늘 할 일 빠른 추가" aria-label="오늘 할 일 빠른 추가">＋</button>
+<button id="fab" class="fab" onclick="openSelectedDayQuickAdd()" title="선택한 날 할 일 빠른 추가" aria-label="선택한 날 할 일 빠른 추가">＋</button>
 
 <div id="toast"></div>
 
@@ -3043,12 +3046,14 @@ async function addRecurring() {
   renderRecurList(); renderAll();
 }
 
-async function deleteRecurring(id) {
+// confirmed=true면 호출한 쪽(일정 수정 창)에서 이미 삭제 확인을 받은 것. 지웠으면 true.
+async function deleteRecurring(id, confirmed = false) {
   const recurring = getAllRecurring().find(r => r.id === id);
-  if (!recurring || !(await confirmScheduleDeletion(recurring.text))) return;
+  if (!recurring || (!confirmed && !(await confirmScheduleDeletion(recurring.text)))) return false;
   const arr = getAllRecurring().filter(r => r.id !== id);
-  if (!(await saveRecurring(arr))) return;
+  if (!(await saveRecurring(arr))) return false;
   renderRecurList(); renderAll();
+  return true;
 }
 
 // ── 기존 할 일 → 반복 일정 등록 (매일 / 매주 / 매월 / 매년) ──
@@ -3346,7 +3351,7 @@ function setTodoDoneState(todo, checked) {
   }
 }
 
-// 할 일 세부설정(시간·장소·기간·알림) 펼치기/접기 — 기본은 접힘
+// 할 일 세부설정(시간·장소·기간·알림) 펼치기/접기 — 기본은 펼침(앱을 새로 열 때마다 펼치지 않아도 되게)
 function toggleTodoOptions() {
   const box = document.getElementById('todoAdvOptions');
   const btn = document.getElementById('todoOptsToggle');
@@ -3614,20 +3619,24 @@ function confirmScheduleDeletion(title) {
   });
 }
 
-async function deleteTodo(id) {
-  const initial = getDay(dateKey(selectedDate)).todos.find(t => t.id === id);
-  if (!initial || !(await confirmScheduleDeletion(initial.text))) return;
+function deleteTodo(id) { return deleteTodoAt(dateKey(selectedDate), id); }
 
-  const key = dateKey(selectedDate);
+// 날짜 칸(key)의 할 일 삭제. 목록의 ✕, 날짜 팝업, 일정 수정 창이 모두 이 함수를 쓴다.
+// confirmed=true면 호출한 쪽에서 이미 삭제 확인을 받은 것. 실제로 지웠으면 true를 돌려준다.
+async function deleteTodoAt(key, id, confirmed = false) {
+  const initial = getDay(key).todos.find(t => t.id === id);
+  if (!initial || (!confirmed && !(await confirmScheduleDeletion(initial.text)))) return false;
+
   const day = getDay(key);
   const removed = day.todos.find(t => t.id === id);
-  if (removed && !isTodoAuthor(removed)) { toast('일정을 만든 사람만 삭제할 수 있어요.'); return; }
+  if (!removed) return false;
+  if (!isTodoAuthor(removed)) { toast('일정을 만든 사람만 삭제할 수 있어요.'); return false; }
   day.todos = day.todos.filter(t => t.id !== id);
   setDayLocal(key, day);
-  renderTodos(day);
+  renderAll();
   await saveDay(key, day);
   cancelLocalReminder(id); // 네이티브 앱 예약 알람 취소
-  if (removed) showUndoToast('🗑 삭제했어요.', async () => {
+  showUndoToast('🗑 삭제했어요.', async () => {
     const d = getDay(key);
     d.todos = [...d.todos, removed];
     setDayLocal(key, d);
@@ -3635,6 +3644,7 @@ async function deleteTodo(id) {
     await saveDay(key, d);
     if (removed.remindAtMs) scheduleLocalReminder(removed);
   });
+  return true;
 }
 
 async function toggleTodoSharing(key, id) {
@@ -5635,27 +5645,7 @@ async function confirmMoveDate() {
   }
 }
 
-async function mDeleteTodo(id) {
-  const initial = getDay(modalKey).todos.find(t => t.id === id);
-  if (!initial || !(await confirmScheduleDeletion(initial.text))) return;
-  const key = modalKey;
-  const day = getDay(key);
-  const removed = day.todos.find(t => t.id === id);
-  if (removed && !isTodoAuthor(removed)) { toast('일정을 만든 사람만 삭제할 수 있어요.'); return; }
-  day.todos = day.todos.filter(t => t.id !== id);
-  setDayLocal(key, day);
-  refreshModal(true); renderAll();
-  await saveDay(key, day);
-  cancelLocalReminder(id);
-  if (removed) showUndoToast('🗑 삭제했어요.', async () => {
-    const d = getDay(key);
-    d.todos = [...d.todos, removed];
-    setDayLocal(key, d);
-    renderAll(); refreshModal();
-    await saveDay(key, d);
-    if (removed.remindAtMs) scheduleLocalReminder(removed);
-  });
-}
+function mDeleteTodo(id) { return deleteTodoAt(modalKey, id); }
 
 async function mToggleRec(id, checked) {
   const day = getDay(modalKey);
@@ -6539,15 +6529,33 @@ function exportBackup() {
   toast('📦 백업 파일을 내려받았어요!');
 }
 
-// FAB: 오늘 날짜 팝업을 바로 열고 입력칸에 포커스
-function openTodayQuickAdd() {
+// 지정한 날짜 팝업을 바로 열고 입력칸에 포커스
+function openQuickAddFor(key) {
   if (!spaceData) { toast('데이터를 불러오는 중이에요.'); return; }
-  openDayDetail(dateKey(new Date()));
+  openDayDetail(key);
   setTimeout(() => {
     const input = document.getElementById('todoInput');
     if (input) { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }
   }, 120);
 }
+
+// '오늘 할 일' 카드의 추가 버튼 — 언제나 오늘 날짜로 연다
+function openTodayQuickAdd() { openQuickAddFor(dateKey(new Date())); }
+
+// FAB — 달력에서 고른 날짜로 연다. 시작일·종료일 기본값도 그 날짜로 채워진다.
+function openSelectedDayQuickAdd() { openQuickAddFor(dateKey(selectedDate)); }
+
+// 앱을 백그라운드에 두었다가 다음 날 다시 열면 '선택한 날'이 지난 날짜로 남는다.
+// 날짜가 바뀐 뒤 돌아온 경우에만 오늘로 되돌려 달력·FAB 기본 날짜를 맞춘다.
+let lastActiveDayKey = dateKey(new Date());
+function syncDayRollover() {
+  const todayKey = dateKey(new Date());
+  if (todayKey === lastActiveDayKey) return;
+  lastActiveDayKey = todayKey;
+  goToday();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncDayRollover(); });
+window.addEventListener('pageshow', e => { if (e.persisted) syncDayRollover(); });
 
 loadTheme();
 renderAll();

@@ -285,6 +285,12 @@
     </div>
   </div>
 
+  <!-- 상대방이 써준 일기: 페이지를 열자마자 가장 먼저 읽히도록 맨 위에 둔다 -->
+  <div class="card" style="margin-bottom: 18px;">
+    <div class="card-title"><span>💬 <span id="partnerLabel">멤버</span>의 일기</span></div>
+    <div id="partnerEntries"></div>
+  </div>
+
   <div class="card" style="margin-bottom: 18px;">
     <div class="card-title"><span>👥 함께 쓰는 사람</span></div>
     <div class="member-chips" id="memberChips"></div>
@@ -307,13 +313,8 @@
       <div id="entryList"></div>
     </div>
 
-    <!-- 이 날의 일기들 -->
+    <!-- 이 날 내가 쓰는 일기 -->
     <div>
-      <div class="card" style="margin-bottom: 18px;">
-        <div class="card-title"><span>💬 <span id="partnerLabel">멤버</span>의 일기</span></div>
-        <div id="partnerEntries"></div>
-      </div>
-
       <div class="card">
         <div class="card-title"><span>✏️ 나의 일기</span><span class="save-hint" id="saveHint"></span></div>
         <div class="mood-row" id="moodRow"></div>
@@ -658,12 +659,30 @@ function renderMembers() {
   document.getElementById('soloHint').style.display = members.length > 1 ? 'none' : 'block';
 }
 
+// 카드 제목에 쓸 상대방 이름. 스페이스 멤버 프로필이 기준이고,
+// 프로필이 아직 안 올라온 경우엔 그 날 일기에 담긴 이름으로 대신한다.
+function partnerNames(entries) {
+  const profiles = (spaceData && spaceData.memberProfiles) || {};
+  const members = (spaceData && spaceData.members) || [];
+  const isOther = uid => !currentUser || uid !== currentUser.uid;
+  const uids = members.filter(isOther);
+  const source = uids.length ? uids : Object.keys(entries || {}).filter(isOther);
+  return source.map(uid =>
+    (profiles[uid] && profiles[uid].name) || (entries && entries[uid] && entries[uid].name) || '멤버'
+  );
+}
+
 function renderPartners() {
   const box = document.getElementById('partnerEntries');
   const entries = getEntries(editingKey);
   const others = Object.keys(entries).filter(uid => !currentUser || uid !== currentUser.uid);
+
+  const names = partnerNames(entries);
+  const label = names.length ? names.join('·') : '상대방';
+  document.getElementById('partnerLabel').textContent = label;
+
   if (!others.length) {
-    box.innerHTML = '<div class="empty-msg">이 날짜에 다른 멤버의 일기가 아직 없어요 🕊</div>';
+    box.innerHTML = `<div class="empty-msg">${esc(label)}의 일기가 아직 없어요 🕊</div>`;
     return;
   }
   box.innerHTML = others.map(uid => {
@@ -762,6 +781,33 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
+
+// ══════════════════════════════════════
+// 다시 들어왔을 때 오늘로 되돌리기
+// ══════════════════════════════════════
+// 앱(웹뷰)은 백그라운드로 보내도 페이지가 그대로 살아 있어서, 며칠 뒤 다시 열면
+// 마지막으로 일기를 쓰던 날짜가 그대로 남아 있었다. 잠깐 앱을 전환한 정도가 아니라
+// 실제로 '다시 들어온' 경우에만 오늘 날짜로 되돌린다.
+// 저장하지 않은 초안이 있으면 날짜를 옮기지 않는다(내용이 사라지므로).
+const RETURN_AFTER_MS = 60 * 1000;
+let hiddenAt = 0;
+
+function jumpToTodayOnReturn() {
+  if (editingKey === dateKey(new Date())) return;
+  if (isDirty()) return;
+  selectedDate = new Date();
+  editingKey = dateKey(selectedDate);
+  viewMonth = new Date();
+  renderAll();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (hiddenAt && Date.now() - hiddenAt >= RETURN_AFTER_MS) jumpToTodayOnReturn();
+  hiddenAt = 0;
+});
+// 뒤로가기 등으로 살아 있던 페이지가 복원된 경우
+window.addEventListener('pageshow', e => { if (e.persisted) jumpToTodayOnReturn(); });
 
 loadTheme();
 renderMoodRow();

@@ -28,7 +28,7 @@ function openTodoDetail(key, id, kind = 'todo') {
       <button type="button" class="small-btn todo-editor-recur" data-recur>반복 설정 열기</button>
       <label>메모<textarea name="notes" class="modal-input" rows="4"></textarea></label>
       </div></details>
-      <div class="todo-editor-save"><button type="button" class="small-btn" data-close>취소</button><button type="submit" class="add-btn">저장</button></div>
+      <div class="todo-editor-save"><button type="button" class="small-btn todo-editor-delete" data-delete>삭제</button><button type="button" class="small-btn" data-close>취소</button><button type="submit" class="add-btn">저장</button></div>
     </form></div>`;
   const form = modal.querySelector('form'), fields = form.elements;
   for (const name of ['text', 'time', 'endTime', 'location', 'notes']) fields[name].value = todo[name] || '';
@@ -99,6 +99,18 @@ function openTodoDetail(key, id, kind = 'todo') {
     const first = controls[0], last = controls.at(-1);
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  };
+  // 삭제는 목록의 ✕와 같은 규칙 — 일정을 만든 사람에게만 보인다.
+  const deleteButton = modal.querySelector('[data-delete]');
+  deleteButton.hidden = !isTodoAuthor(todo);
+  deleteButton.onclick = async () => {
+    if (saving) return;
+    const latest = (recurring ? getAllRecurring() : getDay(key).todos).find(item => item.id === id);
+    if (!latest) { toast('일정이 변경되었어요. 닫고 다시 열어 주세요.'); return; }
+    if (!(await confirmScheduleDeletion(latest.text))) return;
+    close(true); // 삭제하면 수정 중이던 내용은 의미가 없으므로 묻지 않고 닫는다
+    if (recurring) await deleteRecurring(id, true);
+    else await deleteTodoAt(key, id, true);
   };
   repeatButton.onclick = () => {
     if (saving || (dirty && !confirm('반복 설정을 열면 저장하지 않은 변경은 사라집니다. 계속할까요?'))) return;
