@@ -19,6 +19,65 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 }
 
+// ── 일정 알림: 월별 문서 방식 ──
+// 일정은 월별 문서(spaces/{id}/dayMonths, users/{uid}/dayMonths)로 옮겨진다(dayStorage >= 2).
+// 알림은 그날 일정에 붙고 늦어도 24시간까지만 보내므로, 한국 시간 기준 앞뒤 한 달이면 충분하다.
+const DAY_STORAGE_VERSION = 2;
+const FieldPath = admin.firestore.FieldPath;
+
+function reminderAction(todo, now) {
+  const remindAtMs = Number((todo && todo.remindAtMs) || 0);
+  if (!remindAtMs || todo.done || todo.reminderSentAt || todo.reminderSkippedAt) return null;
+  if (remindAtMs > now) return null;
+  return remindAtMs < now - MAX_OVERDUE_MS ? 'skip' : 'send';
+}
+
+function monthsAround(now) {
+  const kst = new Date(now + 9 * 60 * 60 * 1000);
+  return [-1, 0, 1].map(off => new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth() + off, 1)).toISOString().slice(0, 7));
+}
+
+async function remindFromDayMonths(col, now, recipientOf, payloadOf, stats) {
+  for (const month of monthsAround(now)) {
+    const ref = col.doc(month);
+    const snap = await ref.get();
+    if (!snap.exists) continue;
+    const entries = (snap.data() || {}).entries || {};
+    const marks = [];
+    for (const [dayKey, day] of Object.entries(entries)) {
+      const todos = day && day.todos && typeof day.todos === 'object' && !Array.isArray(day.todos) ? day.todos : {};
+      for (const [todoId, todo] of Object.entries(todos)) {
+        stats.scanned += 1;
+        const action = reminderAction(todo, now);
+        if (!action) continue;
+        stats.due += 1;
+        if (action === 'skip') {
+          marks.push({ dayKey, todoId, fields: { reminderSkippedAt: now } });
+          stats.skipped += 1;
+          continue;
+        }
+        const result = await sendReminderToUser(recipientOf(todo), payloadOf(dayKey, todoId, todo));
+        if (result.sent > 0) {
+          marks.push({ dayKey, todoId, fields: { reminderSentAt: now, reminderSentCount: result.sent } });
+          stats.sent += result.sent;
+        }
+      }
+    }
+    if (!marks.length) continue;
+    // 할 일 하나의 알림 칸만 고친다(그날 목록을 통째로 덮지 않는다). 그사이 지워진 할 일은 되살리지 않는다.
+    await db.runTransaction(async tx => {
+      const cur = ((await tx.get(ref)).data() || {}).entries || {};
+      const args = [];
+      for (const { dayKey, todoId, fields } of marks) {
+        const todos = cur[dayKey] && cur[dayKey].todos;
+        if (!todos || !todos[todoId]) continue;
+        for (const [field, value] of Object.entries(fields)) args.push(new FieldPath('entries', dayKey, 'todos', todoId, field), value);
+      }
+      if (args.length) tx.update(ref, args[0], args[1], ...args.slice(2));
+    });
+  }
+}
+
 exports.sendTodoReminders = onSchedule(
   {
     schedule: 'every 1 minutes',
@@ -34,13 +93,29 @@ exports.sendTodoReminders = onSchedule(
     }
 
     const now = Date.now();
-    const spacesSnap = await db.collection('spaces').get();
     let scanned = 0;
     let due = 0;
     let sent = 0;
     let skipped = 0;
+    const monthStats = { scanned: 0, due: 0, sent: 0, skipped: 0 };
 
-    for (const spaceDoc of spacesSnap.docs) {
+    // 저장 방식 표시만 먼저 가볍게 읽는다. 월별 문서로 옮긴 곳은 큰 본문서를 매분 받을 필요가 없다.
+    const spacesSnap = await db.collection('spaces').select('dayStorage').get();
+    for (const spaceFlag of spacesSnap.docs) {
+      if ((spaceFlag.get('dayStorage') || 0) >= DAY_STORAGE_VERSION) {
+        await remindFromDayMonths(spaceFlag.ref.collection('dayMonths'), now, todo => todo.by, (dayKey, todoId, todo) => ({
+          title: 'Minb 할 일 알림',
+          body: todo.text || '확인할 할 일이 있어요.',
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
+          tag: `todo-${spaceFlag.id}-${dayKey}-${todo.id || todoId}`,
+          url: `/?date=${dayKey}`
+        }), monthStats);
+        continue;
+      }
+      // 아직 옮기지 않은 곳은 예전처럼 본문서 전체를 본다.
+      const spaceDoc = await spaceFlag.ref.get();
+      if (!spaceDoc.exists) continue;
       const space = spaceDoc.data() || {};
       const days = space.days || {};
       const updates = {};
@@ -92,8 +167,21 @@ exports.sendTodoReminders = onSchedule(
     }
 
     // 개인 일정은 각 사용자 문서에서 별도로 스캔한다.
-    const usersSnap = await db.collection('users').get();
-    for (const userDoc of usersSnap.docs) {
+    const usersSnap = await db.collection('users').select('dayStorage').get();
+    for (const userFlag of usersSnap.docs) {
+      if ((userFlag.get('dayStorage') || 0) >= DAY_STORAGE_VERSION) {
+        await remindFromDayMonths(userFlag.ref.collection('dayMonths'), now, () => userFlag.id, (dayKey, todoId, todo) => ({
+          title: 'Minb 개인 일정 알림',
+          body: todo.text || '확인할 일정이 있어요.',
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
+          tag: `personal-todo-${userFlag.id}-${dayKey}-${todo.id || todoId}`,
+          url: `/?date=${dayKey}`
+        }), monthStats);
+        continue;
+      }
+      const userDoc = await userFlag.ref.get();
+      if (!userDoc.exists) continue;
       const user = userDoc.data() || {};
       const days = user.personalDays || {};
       const updates = {};
@@ -142,7 +230,12 @@ exports.sendTodoReminders = onSchedule(
       }
     }
 
-    logger.info('Todo reminder scan finished', { scanned, due, sent, skipped });
+    logger.info('Todo reminder scan finished', {
+      scanned: scanned + monthStats.scanned,
+      due: due + monthStats.due,
+      sent: sent + monthStats.sent,
+      skipped: skipped + monthStats.skipped
+    });
   }
 );
 

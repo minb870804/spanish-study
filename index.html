@@ -1694,6 +1694,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-functions-compat.js"></script>
 
 <script src="js/dashboard-ux.js"></script>
+<script src="js/diary-months.js"></script>
+<script src="js/day-months.js"></script>
 <script src="js/day-persistence.js"></script>
 <script src="js/todo-editor.js"></script>
 <script>
@@ -1809,7 +1811,7 @@ async function finishSignedInUser(user) {
   if (!user) return;
   const changedAccount = currentUser?.uid !== user.uid;
   currentUser = user;
-  if (changedAccount) { userData = null; initializeUiPreferences(user.uid); }
+  if (changedAccount) { userData = null; resetDayStorage('personal'); resetDayStorage('shared'); initializeUiPreferences(user.uid); }
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('userProfile').style.display = 'flex';
   document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
@@ -1861,6 +1863,8 @@ auth.onAuthStateChanged(async (user) => {
     document.getElementById('userProfile').style.display = 'none';
     if (unsubSpace) { unsubSpace(); unsubSpace = null; }
     if (unsubUser) { unsubUser(); unsubUser = null; }
+    resetDayStorage('personal');
+    resetDayStorage('shared');
     updatePushStatus();
   }
 });
@@ -2065,7 +2069,8 @@ async function initializePersonalData(userRef, rawUser, currentSpace) {
         : (currentSpace.recurring || []).map(rule => snapshotCategory(rule, 'shared'))
     };
     if (migrateLegacyToPersonal) cleanup.moveLog = firebase.firestore.FieldValue.delete();
-    Object.entries(currentSpace.days || {}).forEach(([key, day]) => {
+    // 공유 일정이 이미 월별 문서로 옮겨졌으면 예전 위치는 잠겨 있으므로 건드리지 않는다.
+    if ((currentSpace.dayStorage || 0) < DAY_STORAGE_VERSION) Object.entries(currentSpace.days || {}).forEach(([key, day]) => {
       cleanup[`days.${key}.todos`] = migrateLegacyToPersonal
         ? []
         : ((day && day.todos) || []).map(todo => snapshotCategory(todo, 'shared'));
@@ -2191,18 +2196,22 @@ function profileEntry() {
 
 function subscribeSpace() {
   if (unsubSpace) unsubSpace();
-  unsubSpace = db.collection('spaces').doc(spaceId).onSnapshot(doc => {
-    if (!doc.exists) return;
+  const sid = spaceId;
+  unsubSpace = db.collection('spaces').doc(sid).onSnapshot(doc => {
+    if (!doc.exists || spaceId !== sid) return;
     spaceData = doc.data();
+    ensureDayStorage('shared', sid, spaceData);
     renderAll();
   }, err => console.error('스페이스 구독 에러:', err));
 }
 
 function subscribeUser() {
   if (unsubUser) unsubUser();
-  unsubUser = db.collection('users').doc(currentUser.uid).onSnapshot(doc => {
-    if (!doc.exists) return;
+  const uid = currentUser.uid;
+  unsubUser = db.collection('users').doc(uid).onSnapshot(doc => {
+    if (!doc.exists || !currentUser || currentUser.uid !== uid) return;
     userData = doc.data();
+    ensureDayStorage('personal', uid, userData);
     syncUiPreferences();
     renderStudyStats(userData);
     if (spaceData) renderAll();
@@ -2234,6 +2243,7 @@ async function leaveSpace() {
   try {
     await cloudFunctions.httpsCallable('leaveSpace')({ spaceId });
     if (unsubSpace) { unsubSpace(); unsubSpace = null; }
+    resetDayStorage('shared');
     spaceId = null; spaceData = null;
     userData.spaceId = null;
     // 캐시에는 아직 예전 spaceId가 남아 있을 수 있으므로 반드시 서버 경로로 새 스페이스를 만든다
@@ -2512,19 +2522,19 @@ function pendingDaySplit(key) {
 function sharedDayRaw(key) {
   const pending = pendingDaySplit(key);
   if (pending) return pending.shared || {};
-  return (spaceData && spaceData.days && spaceData.days[key]) || {};
+  return sharedDaysMap()[key] || {};
 }
 
 function personalDayRaw(key) {
   const pending = pendingDaySplit(key);
   if (pending) return pending.personal || {};
-  return (userData && userData.personalDays && userData.personalDays[key]) || {};
+  return personalDaysMap()[key] || {};
 }
 
 function allDayKeys() {
   return [...new Set([
-    ...Object.keys((userData && userData.personalDays) || {}),
-    ...Object.keys((spaceData && spaceData.days) || {}),
+    ...Object.keys(personalDaysMap()),
+    ...Object.keys(sharedDaysMap()),
     ...pendingDayWrites.keys()
   ])];
 }
@@ -2695,7 +2705,8 @@ function refreshOwnedSharedCategorySnapshots(todoCats) {
   if (!currentUser || !spaceData) return { days: {}, recurring: null };
   const catMap = Object.fromEntries(todoCats.map(cat => [cat.id, cat]));
   const changedDays = {};
-  Object.entries(spaceData.days || {}).forEach(([key, day]) => {
+  const sharedDays = sharedDaysMap();
+  Object.entries(sharedDays).forEach(([key, day]) => {
     let changed = false;
     const todos = (day.todos || []).map(todo => {
       const cat = catMap[todo.cat];
@@ -2706,8 +2717,8 @@ function refreshOwnedSharedCategorySnapshots(todoCats) {
     });
     if (!changed) return;
     const nextDay = { ...day, todos };
-    spaceData.days[key] = nextDay;
-    changedDays[key] = nextDay;
+    sharedDays[key] = nextDay;
+    changedDays[key] = { prev: day, next: nextDay };
   });
   let recurringChanged = false;
   const recurring = (spaceData.recurring || []).map(rule => {
@@ -2780,7 +2791,7 @@ async function saveCatEditor() {
       const batch = db.batch();
       batch.update(db.collection('users').doc(currentUser.uid), userUpdate);
       const spaceUpdate = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
-      changedSharedDays.forEach(([key, day]) => { spaceUpdate[`days.${key}`] = day; });
+      changedSharedDays.forEach(([key, { prev, next }]) => addDayWrite(batch, spaceUpdate, 'shared', spaceId, key, prev, next));
       if (sharedCategoryPatch.recurring) spaceUpdate.recurring = sharedCategoryPatch.recurring;
       batch.update(db.collection('spaces').doc(spaceId), spaceUpdate);
       await batch.commit();
@@ -3191,10 +3202,10 @@ function splitDayForStorage(day) {
 }
 
 function applySplitDayLocal(key, split) {
-  if (!userData.personalDays) userData.personalDays = {};
-  if (!spaceData.days) spaceData.days = {};
-  userData.personalDays[key] = split.personal;
-  spaceData.days[key] = split.shared;
+  const personal = dayStore.personal.mode === 'months' ? dayStore.personal.days : (userData.personalDays || (userData.personalDays = {}));
+  const shared = dayStore.shared.mode === 'months' ? dayStore.shared.days : (spaceData.days || (spaceData.days = {}));
+  personal[key] = split.personal;
+  shared[key] = split.shared;
 }
 
 // ── 할 일 카테고리 ──

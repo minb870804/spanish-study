@@ -11,11 +11,12 @@ service cloud.firestore {
         && request.auth.uid in get(/databases/$(database)/documents/spaces/$(spaceId)).data.members;
     }
 
-    // 일기를 월별 문서로 옮긴 뒤(diaryStorage >= 2)에는 예전 위치 필드를 고치는 쓰기를 막는다.
+    // 월별 문서로 옮긴 뒤(표시 flag >= 2)에는 예전 위치 필드를 고치는 쓰기를 막는다.
+    //   일기: diaryStorage → diary / sharedDiary,  일정: dayStorage → personalDays / days
     // 업데이트되지 않은 화면이 예전 위치에 써서 조용히 어긋나는 대신 '저장 실패'로 드러나게 하려는 것.
     // 필드를 통째로 지우는 정리는 허용한다.
-    function touchesLockedDiary(field) {
-      return resource.data.get('diaryStorage', 0) >= 2
+    function touchesLocked(flag, field) {
+      return resource.data.get(flag, 0) >= 2
         && request.resource.data.diff(resource.data).affectedKeys().hasAny([field])
         && (field in request.resource.data);
     }
@@ -28,10 +29,17 @@ service cloud.firestore {
       allow create: if signedIn() && request.auth.uid == userId;
       allow read, delete: if signedIn() && request.auth.uid == userId;
       allow update: if signedIn() && request.auth.uid == userId
-        && !touchesLockedDiary('diary');
+        && !touchesLocked('diaryStorage', 'diary')
+        && !touchesLocked('dayStorage', 'personalDays');
 
       // 개인 일기(달마다 문서 하나): 본인만
       match /diaryMonths/{month} {
+        allow get, list: if signedIn() && request.auth.uid == userId;
+        allow write: if signedIn() && request.auth.uid == userId && isMonthKey(month);
+      }
+
+      // 개인 일정(달마다 문서 하나): 본인만
+      match /dayMonths/{month} {
         allow get, list: if signedIn() && request.auth.uid == userId;
         allow write: if signedIn() && request.auth.uid == userId && isMonthKey(month);
       }
@@ -49,12 +57,19 @@ service cloud.firestore {
       allow update: if isSpaceMember(spaceId)
         && !request.resource.data.diff(resource.data).affectedKeys()
           .hasAny(['members', 'memberProfiles', 'createdAt'])
-        && !touchesLockedDiary('sharedDiary');
+        && !touchesLocked('diaryStorage', 'sharedDiary')
+        && !touchesLocked('dayStorage', 'days');
 
       allow delete: if false;
 
       // 교환일기(달마다 문서 하나): 스페이스 멤버만
       match /diaryMonths/{month} {
+        allow get, list: if isSpaceMember(spaceId);
+        allow write: if isSpaceMember(spaceId) && isMonthKey(month);
+      }
+
+      // 공유 일정(달마다 문서 하나): 스페이스 멤버만
+      match /dayMonths/{month} {
         allow get, list: if isSpaceMember(spaceId);
         allow write: if isSpaceMember(spaceId) && isMonthKey(month);
       }
