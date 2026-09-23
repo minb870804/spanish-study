@@ -440,6 +440,7 @@
 
 <div id="toast"></div>
 
+<script src="js/diary-months.js"></script>
 <script>
 // ══════════════════════════════════════
 // FIREBASE INIT
@@ -546,22 +547,111 @@ async function logout() {
 }
 
 // ══════════════════════════════════════
-// DATA
+// DATA — 일기는 달마다 문서 하나(users/{uid}/diaryMonths/{YYYY-MM})에 둔다.
+// 예전에는 users/{uid}.diary 한 곳에 전부 쌓여서 문서 한도(1MB)에 닿을 상황이었다.
+// 예전 위치의 글은 처음 한 번 복사해 옮기고, 원본은 지우지 않고 남겨 둔다.
 // ══════════════════════════════════════
-// 실시간 구독 — 다른 기기에서 쓴 일기도 즉시 반영
+const DIARY_STORAGE_VERSION = 2;
 let unsubDiary = null;
-function loadDiary() {
-  if (unsubDiary) unsubDiary();
-  unsubDiary = db.collection('users').doc(currentUser.uid).onSnapshot(snap => {
-    diary = (snap.exists && snap.data().diary) || {};
-    if (isDirty()) {
-      // 작성 중인 글은 건드리지 않고 목록·스트릭만 갱신
-      renderList();
-      renderStreak();
-    } else {
-      renderAll();
+let diaryMode = 'legacy';   // 'months' = 월별 문서, 'legacy' = 예전 위치(옮기기에 실패했을 때만)
+
+const userDocRef = () => db.collection('users').doc(currentUser.uid);
+const diaryMonthsCol = () => userDocRef().collection('diaryMonths');
+
+// 받은 일기를 화면에 반영. 작성 중인 글은 건드리지 않고 목록·스트릭만 갱신한다.
+function applyDiary(map) {
+  diary = map || {};
+  if (isDirty()) { renderList(); renderStreak(); }
+  else renderAll();
+}
+
+async function loadDiary() {
+  if (unsubDiary) { unsubDiary(); unsubDiary = null; }
+  const uid = currentUser.uid;
+  let data;
+  try {
+    const snap = await userDocRef().get();
+    data = snap.exists ? (snap.data() || {}) : {};
+  } catch (e) {
+    console.warn('일기 설정을 못 읽어 예전 방식으로 엽니다:', e && e.code);
+    return startLegacyDiary();
+  }
+  if (!currentUser || currentUser.uid !== uid) return; // 그사이 로그아웃·계정 전환
+  if ((data.diaryStorage || 0) >= DIARY_STORAGE_VERSION) return startMonthDiary();
+  const moved = await moveDiaryToMonths();
+  if (!currentUser || currentUser.uid !== uid) return;
+  if (moved) startMonthDiary(); else startLegacyDiary();
+}
+
+// 예전 위치 → 월별 문서로 한 번 옮긴다. 서버에서 다시 읽어 원본과 모두 맞아야 true.
+// 실패하면 예전 방식으로 열고 다음에 다시 시도한다(원본은 절대 지우지 않는다).
+async function moveDiaryToMonths() {
+  const FieldPath = firebase.firestore.FieldPath;
+  const startedAt = Date.now();
+  const run = async () => {
+    // 기기에 남은 오래된 캐시로 옮기면 빠지는 글이 생기므로 원본은 서버에서 읽는다.
+    const server = (await userDocRef().get({ source: 'server' })).data() || {};
+    if ((server.diaryStorage || 0) >= DIARY_STORAGE_VERSION) return true; // 다른 기기가 이미 옮김
+    const result = await DiaryMonths.migrate({ db, col: diaryMonthsCol(), FieldPath, legacy: server.diary || {}, depth: 1 });
+    if (!result.ok) {
+      console.error('일기 옮기기 검증 실패 — 예전 방식을 유지하고 다음에 다시 시도합니다.', result.problems.slice(0, 5));
+      return false;
     }
+    // 이 표시 이후로는 보안 규칙이 예전 위치 쓰기를 막는다(업데이트 안 된 화면이 조용히 어긋나지 않게).
+    await userDocRef().set({ diaryStorage: DIARY_STORAGE_VERSION, diaryMovedAt: startedAt }, { merge: true });
+    // 표시 직전 몇 초 사이에 다른 기기의 예전 화면이 쓴 글이 있으면 마저 옮긴다.
+    try {
+      const fresh = (await userDocRef().get({ source: 'server' })).data() || {};
+      await DiaryMonths.catchUp({ db, col: diaryMonthsCol(), FieldPath, legacy: fresh.diary || {}, depth: 1,
+        since: startedAt - 10 * 60 * 1000 });
+    } catch (e) { console.warn('옮긴 직후 확인을 건너뜀(원본은 그대로 남아 있음):', e && (e.code || e.message)); }
+    if (result.copied) console.info(`일기 ${result.copied}편을 월별 저장소로 옮겼어요.`);
+    return true;
+  };
+  try {
+    return await DiaryMonths.withTimeout(run(), 30000, '일기 옮기기');
+  } catch (e) {
+    console.warn('이번엔 일기를 옮기지 못했어요 — 예전 방식으로 열고 다음에 다시 시도합니다:', e && (e.code || e.message));
+    return false;
+  }
+}
+
+function startLegacyDiary() {
+  diaryMode = 'legacy';
+  if (unsubDiary) unsubDiary();
+  unsubDiary = userDocRef().onSnapshot(snap => {
+    const data = snap.exists ? (snap.data() || {}) : {};
+    // 다른 기기가 옮기기를 마쳤으면 곧바로 새 방식으로 넘어간다(예전 위치는 이제 잠김).
+    if ((data.diaryStorage || 0) >= DIARY_STORAGE_VERSION) return startMonthDiary();
+    applyDiary(data.diary || {});
   }, e => console.error('일기 실시간 구독 실패:', e));
+}
+
+// 실시간 구독 — 다른 기기에서 쓴 일기도 즉시 반영. 바뀐 달의 문서만 새로 받는다.
+function startMonthDiary() {
+  diaryMode = 'months';
+  if (unsubDiary) unsubDiary();
+  unsubDiary = diaryMonthsCol().onSnapshot(snap => {
+    applyDiary(DiaryMonths.mergeMonths(snap.docs.map(d => d.data())));
+  }, e => console.error('일기 실시간 구독 실패:', e));
+}
+
+// 글 하나를 통째로 저장한다. 월별 문서에서는 그날 항목만 정확히 갈아 끼운다.
+function writeDiaryEntry(key, entry) {
+  if (diaryMode === 'months') {
+    const FieldPath = firebase.firestore.FieldPath;
+    return diaryMonthsCol().doc(DiaryMonths.monthOf(key))
+      .set({ entries: { [key]: entry } }, { mergeFields: [new FieldPath('entries', key)] });
+  }
+  return userDocRef().set({ diary: { [key]: entry } }, { merge: true });
+}
+
+function removeDiaryEntry(key) {
+  if (diaryMode === 'months') {
+    return diaryMonthsCol().doc(DiaryMonths.monthOf(key))
+      .update(new firebase.firestore.FieldPath('entries', key), firebase.firestore.FieldValue.delete());
+  }
+  return userDocRef().update({ [`diary.${key}`]: firebase.firestore.FieldValue.delete() });
 }
 
 async function saveEntry() {
@@ -570,14 +660,24 @@ async function saveEntry() {
   if (!text) { toast('내용을 입력해 주세요 ✍️'); return; }
   const entry = { text, mood: selectedMood, feelings: selectedFeelings, prompt: currentPrompt, updatedAt: Date.now() };
   diary[editingKey] = entry;
+  const modeAtSave = diaryMode; // 실패 이유는 '저장을 시작한 때'의 방식으로 판단한다
   try {
-    await db.collection('users').doc(currentUser.uid).set({ diary: { [editingKey]: entry } }, { merge: true });
+    await writeDiaryEntry(editingKey, entry);
     clearDraft(editingKey); // 저장 성공 → 임시 저장본 정리
     document.getElementById('saveHint').textContent = '✅ 저장됨';
     setTimeout(() => document.getElementById('saveHint').textContent = '', 2000);
     renderAll();
     toast('📔 일기가 저장됐어요!');
-  } catch (e) { console.error('저장 실패:', e); toast('저장에 실패했어요. 네트워크를 확인해 주세요.'); }
+  } catch (e) {
+    console.error('저장 실패:', e);
+    if (e && e.code === 'permission-denied' && modeAtSave === 'legacy') {
+      // 다른 기기가 저장 방식을 바꿔 예전 위치가 잠겼다. 새 방식으로 다시 연결한다(쓰던 글은 그대로).
+      toast('저장 방식이 바뀌었어요. 잠시 후 한 번 더 저장해 주세요.');
+      if (diaryMode === 'legacy') loadDiary(); // 아직 전환 소식을 못 받았으면 직접 다시 연결
+    } else {
+      toast('저장에 실패했어요. 네트워크를 확인해 주세요.');
+    }
+  }
 }
 
 async function deleteEntry() {
@@ -585,9 +685,7 @@ async function deleteEntry() {
   if (!confirm('이 날의 일기를 삭제할까요? 되돌릴 수 없어요.')) return;
   delete diary[editingKey];
   try {
-    await db.collection('users').doc(currentUser.uid).update({
-      [`diary.${editingKey}`]: firebase.firestore.FieldValue.delete()
-    });
+    await removeDiaryEntry(editingKey);
     clearDraft(editingKey);
     renderAll();
     toast('일기를 삭제했어요.');

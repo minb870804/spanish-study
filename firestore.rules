@@ -11,9 +11,30 @@ service cloud.firestore {
         && request.auth.uid in get(/databases/$(database)/documents/spaces/$(spaceId)).data.members;
     }
 
+    // 일기를 월별 문서로 옮긴 뒤(diaryStorage >= 2)에는 예전 위치 필드를 고치는 쓰기를 막는다.
+    // 업데이트되지 않은 화면이 예전 위치에 써서 조용히 어긋나는 대신 '저장 실패'로 드러나게 하려는 것.
+    // 필드를 통째로 지우는 정리는 허용한다.
+    function touchesLockedDiary(field) {
+      return resource.data.get('diaryStorage', 0) >= 2
+        && request.resource.data.diff(resource.data).affectedKeys().hasAny([field])
+        && (field in request.resource.data);
+    }
+
+    function isMonthKey(month) {
+      return month.matches('^[0-9]{4}-[0-9]{2}$');
+    }
+
     match /users/{userId} {
       allow create: if signedIn() && request.auth.uid == userId;
-      allow read, update, delete: if signedIn() && request.auth.uid == userId;
+      allow read, delete: if signedIn() && request.auth.uid == userId;
+      allow update: if signedIn() && request.auth.uid == userId
+        && !touchesLockedDiary('diary');
+
+      // 개인 일기(달마다 문서 하나): 본인만
+      match /diaryMonths/{month} {
+        allow get, list: if signedIn() && request.auth.uid == userId;
+        allow write: if signedIn() && request.auth.uid == userId && isMonthKey(month);
+      }
     }
 
     match /spaces/{spaceId} {
@@ -27,9 +48,16 @@ service cloud.firestore {
       // 멤버 명단은 callable function만 변경한다. 일반 일정·메모 갱신은 멤버에게 허용한다.
       allow update: if isSpaceMember(spaceId)
         && !request.resource.data.diff(resource.data).affectedKeys()
-          .hasAny(['members', 'memberProfiles', 'createdAt']);
+          .hasAny(['members', 'memberProfiles', 'createdAt'])
+        && !touchesLockedDiary('sharedDiary');
 
       allow delete: if false;
+
+      // 교환일기(달마다 문서 하나): 스페이스 멤버만
+      match /diaryMonths/{month} {
+        allow get, list: if isSpaceMember(spaceId);
+        allow write: if isSpaceMember(spaceId) && isMonthKey(month);
+      }
     }
   }
 }

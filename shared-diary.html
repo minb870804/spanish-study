@@ -232,6 +232,7 @@
 </style>
 <link rel="stylesheet" href="css/ui.css">
 <script src="js/app-shell.js" defer></script>
+<script src="js/diary-months.js"></script>
 </head>
 <body>
 
@@ -388,6 +389,7 @@ auth.onAuthStateChanged(async (user) => {
     document.getElementById('loginOverlay').style.display = 'flex';
     document.getElementById('userProfile').style.display = 'none';
     if (unsubSpace) { unsubSpace(); unsubSpace = null; }
+    resetDiaryStorage();
   }
 });
 
@@ -469,6 +471,7 @@ async function verifyCachedSpace(user, userRef, cachedSpaceId) {
     const isMember = spaceSnap.exists && (spaceSnap.data().members || []).includes(user.uid);
     if (currentUser?.uid === user.uid && spaceId === cachedSpaceId && (serverSpaceId !== cachedSpaceId || !isMember)) {
       if (unsubSpace) { unsubSpace(); unsubSpace = null; }
+      resetDiaryStorage();
       spaceId = null;
       spaceData = null;
       await connectSpaceFromServer();
@@ -521,15 +524,123 @@ function subscribeSpace() {
 function applySpaceData(data) {
   const hasDraft = isDirty();
   spaceData = data;
+  ensureDiaryStorage();
+  if (diaryMode === 'legacy') {
+    // 배우자 기기가 옮기기를 마쳤으면 곧바로 새 방식으로 넘어간다(예전 위치는 이제 잠김).
+    if ((data.diaryStorage || 0) >= DIARY_STORAGE_VERSION) startMonthDiary();
+    else sharedDiary = data.sharedDiary || {};
+  }
+  renderAfterData(hasDraft);
+}
+
+function renderAfterData(hasDraft) {
   if (hasDraft) { renderList(); renderMembers(); renderPartners(); }
   else renderAll();
 }
 
 // ══════════════════════════════════════
-// DATA — sharedDiary: { 'YYYY-MM-DD': { uid: {text, mood, name, updatedAt} } }
+// DATA — 교환일기는 달마다 문서 하나(spaces/{id}/diaryMonths/{YYYY-MM})에 둔다.
+//   { entries: { 'YYYY-MM-DD': { uid: {text, mood, name, updatedAt} } } }
+// 예전에는 스페이스 문서의 sharedDiary 한 곳에 전부 쌓여서 문서 한도(1MB)에 닿을 상황이었다.
+// 예전 위치의 글은 처음 한 번 복사해 옮기고, 원본은 지우지 않고 남겨 둔다.
+// 스페이스 문서 구독은 멤버 정보 때문에 계속 유지하고, 일기만 월별 문서에서 받는다.
 // ══════════════════════════════════════
+const DIARY_STORAGE_VERSION = 2;
+let sharedDiary = {};          // 화면은 이것만 읽는다
+let diaryMode = null;          // null(아직 안 정함) | 'legacy'(옮기기 실패 시) | 'months'
+let diaryModeFor = null;       // 어느 스페이스 기준으로 정했는지
+let unsubDiaryMonths = null;
+
+const spaceMonthsCol = sid => db.collection('spaces').doc(sid).collection('diaryMonths');
+
+function stopDiaryMonths() { if (unsubDiaryMonths) { unsubDiaryMonths(); unsubDiaryMonths = null; } }
+function resetDiaryStorage() { stopDiaryMonths(); diaryMode = null; diaryModeFor = null; sharedDiary = {}; }
+
+// 스페이스를 처음 받았을 때 한 번 저장 방식을 정한다. 옮기는 동안은 예전 글을 그대로 보여 준다.
+function ensureDiaryStorage() {
+  if (!spaceId || !spaceData || diaryModeFor === spaceId) return;
+  const sid = spaceId;
+  diaryModeFor = sid;
+  diaryMode = 'legacy';
+  sharedDiary = spaceData.sharedDiary || {};
+  if ((spaceData.diaryStorage || 0) >= DIARY_STORAGE_VERSION) { startMonthDiary(); return; }
+  moveSharedDiaryToMonths(sid).then(ok => {
+    if (ok && spaceId === sid && diaryModeFor === sid && diaryMode === 'legacy') startMonthDiary();
+  });
+}
+
+// 예전 위치 → 월별 문서로 한 번 옮긴다. 서버에서 다시 읽어 원본과 모두 맞아야 true.
+// 두 사람 기기가 동시에 해도 결과가 같다(이미 있는 더 최신 글은 덮지 않는다).
+async function moveSharedDiaryToMonths(sid) {
+  const FieldPath = firebase.firestore.FieldPath;
+  const ref = db.collection('spaces').doc(sid);
+  const col = spaceMonthsCol(sid);
+  const startedAt = Date.now();
+  const run = async () => {
+    // 기기에 남은 오래된 캐시로 옮기면 빠지는 글이 생기므로 원본은 서버에서 읽는다.
+    const server = (await ref.get({ source: 'server' })).data() || {};
+    if ((server.diaryStorage || 0) >= DIARY_STORAGE_VERSION) return true; // 배우자 기기가 이미 옮김
+    const result = await DiaryMonths.migrate({ db, col, FieldPath, legacy: server.sharedDiary || {}, depth: 2 });
+    if (!result.ok) {
+      console.error('교환일기 옮기기 검증 실패 — 예전 방식을 유지하고 다음에 다시 시도합니다.', result.problems.slice(0, 5));
+      return false;
+    }
+    // 이 표시 이후로는 보안 규칙이 예전 위치 쓰기를 막는다(업데이트 안 된 화면이 조용히 어긋나지 않게).
+    await ref.update({ diaryStorage: DIARY_STORAGE_VERSION, diaryMovedAt: startedAt });
+    // 표시 직전 몇 초 사이에 배우자의 예전 화면이 쓴 글이 있으면 마저 옮긴다.
+    try {
+      const fresh = (await ref.get({ source: 'server' })).data() || {};
+      await DiaryMonths.catchUp({ db, col, FieldPath, legacy: fresh.sharedDiary || {}, depth: 2,
+        since: startedAt - 10 * 60 * 1000 });
+    } catch (e) { console.warn('옮긴 직후 확인을 건너뜀(원본은 그대로 남아 있음):', e && (e.code || e.message)); }
+    if (result.copied) console.info(`교환일기 ${result.copied}편을 월별 저장소로 옮겼어요.`);
+    return true;
+  };
+  try {
+    return await DiaryMonths.withTimeout(run(), 30000, '교환일기 옮기기');
+  } catch (e) {
+    console.warn('이번엔 교환일기를 옮기지 못했어요 — 예전 방식으로 열고 다음에 다시 시도합니다:', e && (e.code || e.message));
+    return false;
+  }
+}
+
+// 실시간 구독 — 배우자가 쓴 일기도 즉시 반영. 바뀐 달의 문서만 새로 받는다.
+function startMonthDiary() {
+  const sid = spaceId;
+  if (!sid) return;
+  diaryMode = 'months';
+  diaryModeFor = sid;
+  stopDiaryMonths();
+  unsubDiaryMonths = spaceMonthsCol(sid).onSnapshot(snap => {
+    if (spaceId !== sid) return;
+    const hasDraft = isDirty();
+    sharedDiary = DiaryMonths.mergeMonths(snap.docs.map(d => d.data()));
+    renderAfterData(hasDraft);
+  }, e => console.error('교환일기 구독 에러:', e));
+}
+
+// 내 글 하나를 통째로 저장한다. 월별 문서에서는 그날의 '내 칸'만 정확히 갈아 끼워
+// 같은 날 배우자 글은 절대 건드리지 않는다.
+function writeSharedEntry(sid, key, uid, entry) {
+  const ref = db.collection('spaces').doc(sid);
+  if (diaryMode === 'months') {
+    const FieldPath = firebase.firestore.FieldPath;
+    return spaceMonthsCol(sid).doc(DiaryMonths.monthOf(key))
+      .set({ entries: { [key]: { [uid]: entry } } }, { mergeFields: [new FieldPath('entries', key, uid)] });
+  }
+  return ref.update({ [`sharedDiary.${key}.${uid}`]: entry, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+}
+
+function removeSharedEntry(sid, key, uid) {
+  if (diaryMode === 'months') {
+    return spaceMonthsCol(sid).doc(DiaryMonths.monthOf(key))
+      .update(new firebase.firestore.FieldPath('entries', key, uid), firebase.firestore.FieldValue.delete());
+  }
+  return db.collection('spaces').doc(sid).update({ [`sharedDiary.${key}.${uid}`]: firebase.firestore.FieldValue.delete() });
+}
+
 function getEntries(key) {
-  return (spaceData && spaceData.sharedDiary && spaceData.sharedDiary[key]) || {};
+  return sharedDiary[key] || {};
 }
 function myEntry(key) { return currentUser ? getEntries(key)[currentUser.uid] : null; }
 
@@ -564,19 +675,16 @@ async function saveEntry() {
     name: user.displayName || '사용자', photo: user.photoURL || '', updatedAt: Date.now()
   };
   diarySavePending = true;
+  const modeAtSave = diaryMode; // 실패 이유는 '저장을 시작한 때'의 방식으로 판단한다
   const button = document.querySelector('button[onclick="saveEntry()"]');
   button.disabled = true; button.textContent = '저장 중…';
   try {
-    await db.collection('spaces').doc(savedSpaceId).update({
-      [`sharedDiary.${dayKey}.${user.uid}`]: entry,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    await writeSharedEntry(savedSpaceId, dayKey, user.uid, entry);
     if (currentUser?.uid === user.uid && spaceId === savedSpaceId) {
       const draftText = document.getElementById('diaryArea').value, draftMood = selectedMood;
       const keepDraft = editingKey !== dayKey ? isDirty() : draftText.trim() !== text || draftMood !== entry.mood;
-      if (!spaceData.sharedDiary) spaceData.sharedDiary = {};
-      if (!spaceData.sharedDiary[dayKey]) spaceData.sharedDiary[dayKey] = {};
-      spaceData.sharedDiary[dayKey][user.uid] = entry;
+      if (!sharedDiary[dayKey]) sharedDiary[dayKey] = {};
+      sharedDiary[dayKey][user.uid] = entry;
       document.getElementById('saveHint').textContent = '저장됨';
       setTimeout(() => document.getElementById('saveHint').textContent = '', 2000);
       renderAll();
@@ -584,18 +692,25 @@ async function saveEntry() {
       toast('교환일기가 저장됐어요!');
       if (firstSave) void notifyNewSharedDiary(user, savedSpaceId, dayKey);
     }
-  } catch (e) { console.error('저장 실패:', e); toast('저장에 실패했어요. 입력한 내용은 그대로예요.'); }
+  } catch (e) {
+    console.error('저장 실패:', e);
+    if (e && e.code === 'permission-denied' && modeAtSave === 'legacy') {
+      // 배우자 기기가 저장 방식을 바꿔 예전 위치가 잠겼다. 새 방식으로 다시 연결한다(쓰던 글은 그대로).
+      toast('저장 방식이 바뀌었어요. 잠시 후 한 번 더 저장해 주세요.');
+      if (diaryMode === 'legacy') { diaryModeFor = null; ensureDiaryStorage(); } // 아직 전환 소식을 못 받았으면 직접
+    } else {
+      toast('저장에 실패했어요. 입력한 내용은 그대로예요.');
+    }
+  }
   finally { diarySavePending = false; button.disabled = false; button.textContent = '저장하기'; }
 }
 
 async function deleteEntry() {
   if (!myEntry(editingKey)) return;
   if (!confirm('이 날의 내 일기를 삭제할까요? 되돌릴 수 없어요.')) return;
-  delete spaceData.sharedDiary[editingKey][currentUser.uid];
+  if (sharedDiary[editingKey]) delete sharedDiary[editingKey][currentUser.uid];
   try {
-    await db.collection('spaces').doc(spaceId).update({
-      [`sharedDiary.${editingKey}.${currentUser.uid}`]: firebase.firestore.FieldValue.delete()
-    });
+    await removeSharedEntry(spaceId, editingKey, currentUser.uid);
     renderAll();
     toast('일기를 삭제했어요.');
   } catch (e) { console.error('삭제 실패:', e); toast('삭제에 실패했어요.'); }
@@ -721,7 +836,7 @@ function renderList() {
   const y = viewMonth.getFullYear(), m = viewMonth.getMonth();
   document.getElementById('monthLabel').textContent = `${y}년 ${m+1}월`;
   const prefix = `${y}-${String(m+1).padStart(2,'0')}`;
-  const all = (spaceData && spaceData.sharedDiary) || {};
+  const all = sharedDiary;
   const keys = Object.keys(all)
     .filter(k => k.startsWith(prefix) && Object.keys(all[k]).length)
     .sort().reverse();

@@ -329,12 +329,17 @@ exports.notifySharedDiaryEntry = onCall({ region: 'asia-northeast3', timeoutSeco
       .digest('hex');
     // Unmatched top-level collection: Firestore rules deny all client access.
     const deliveryRef = db.collection('diaryNotificationDeliveries').doc(notificationId);
+    // 교환일기는 월별 문서(spaces/{id}/diaryMonths/{YYYY-MM})로 옮겨졌을 수 있다.
+    // 전환 전후 어느 쪽 화면에서 저장해도 알림이 가도록 새 위치를 먼저 보고, 없으면 예전 위치를 본다.
+    const monthRef = spaceRef.collection('diaryMonths').doc(dayKey.slice(0, 7));
     const claimed = await db.runTransaction(async tx => {
-      const [delivery, currentSpace] = await Promise.all([tx.get(deliveryRef), tx.get(spaceRef)]);
+      const [delivery, currentSpace, monthSnap] = await Promise.all([tx.get(deliveryRef), tx.get(spaceRef), tx.get(monthRef)]);
       if (delivery.exists || !currentSpace.exists) return false;
       const current = currentSpace.data() || {};
       if (!Array.isArray(current.members) || !current.members.includes(authorUid) || !current.members.includes(recipientUid)) return false;
-      const entry = current.sharedDiary && current.sharedDiary[dayKey] && current.sharedDiary[dayKey][authorUid];
+      const monthEntries = monthSnap.exists ? ((monthSnap.data() || {}).entries || {}) : {};
+      const entry = (monthEntries[dayKey] && monthEntries[dayKey][authorUid])
+        || (current.sharedDiary && current.sharedDiary[dayKey] && current.sharedDiary[dayKey][authorUid]);
       if (!entry || typeof entry.text !== 'string' || !entry.text.trim()) return false;
       if (entry.authorUid !== undefined && entry.authorUid !== authorUid) return false;
       tx.create(deliveryRef, {
