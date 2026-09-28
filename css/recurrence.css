@@ -1,0 +1,13 @@
+.recur-week-hint { flex-basis:100%; font-size:var(--ui-small); color:var(--ui-muted); }
+.recur-presets { display:flex; gap:var(--ui-s2); flex-basis:100%; margin-top:var(--ui-s1); }
+.recur-dates { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--ui-s3); margin-block:var(--ui-s4); }
+.recur-dates label { display:flex; flex-direction:column; gap:var(--ui-s2); min-width:0; color:var(--ui-text); font-size:var(--ui-small); font-weight:700; }
+.recur-dates input,.recur-dates select { box-sizing:border-box; width:100%; min-width:0; min-height:var(--ui-control); padding:var(--ui-s2); border:1px solid var(--ui-border); border-radius:var(--ui-radius-sm); background:var(--ui-card); color:var(--ui-text); font:inherit; font-size:var(--ui-body); }
+.recur-summary { padding:var(--ui-s3); background:var(--ui-soft); color:var(--ui-accent); border-radius:var(--ui-radius-sm); font-size:var(--ui-small); line-height:1.6; word-break:keep-all; overflow-wrap:anywhere; }
+:is(#recurDayBtns,#rsDayBtns) [data-day] { min-width:var(--ui-control); min-height:var(--ui-control); }
+:is(#recurPanel,#recurSetupModal) [aria-pressed=true] { background:var(--ui-soft); color:var(--ui-accent); border-color:var(--ui-accent); }
+@media(max-width:480px) { .recur-dates { grid-template-columns:minmax(0,1fr); } }
+#recurSetupModal .move-date-card { max-height:calc(100vh - 2 * var(--ui-s5)); overflow-y:auto; }
+#recurList .by { white-space:normal; word-break:keep-all; overflow-wrap:anywhere; }
+@media(max-width:480px) { :is(#recurDayBtns,#rsDayBtns) [data-day] { flex-basis:calc(25% - var(--ui-s2)); } }
+body.dark .recur-dates input, body.dark .recur-dates select { color-scheme:dark; }
