@@ -1193,6 +1193,7 @@
 <link rel="stylesheet" href="css/home-settings.css">
 <script src="js/app-shell.js" defer></script>
 <link rel="stylesheet" href="css/recurrence.css">
+<link rel="stylesheet" href="css/app-design.css">
 </head>
 <body>
 
@@ -1214,7 +1215,7 @@
 <header>
   <div class="header-top">
     <div class="logo">
-      <span class="logo-flag app-mark" aria-hidden="true"></span>
+      <img class="logo-flag" src="favicon.svg" alt="" width="36" height="36">
       <div class="logo-text">
         <h1>Minb</h1>
         <p>나의 하루를 한곳에서 — 할 일 · 스터디 · 일기</p>
@@ -1242,14 +1243,14 @@
   </div>
 
   <div id="pushBanner" class="push-banner" style="display:none;">
-    <span>🔔 알림을 켜면 할 일 시간(기본 오전 8시)에 알려드려요</span>
+    <span>일정 알림을 받아보세요.<br><small>시간을 정하지 않으면 오전 8시에 알려드려요.</small></span>
     <button class="small-btn" onclick="requestPushPermission()">알림 켜기</button>
   </div>
 
   <div id="homeCards" aria-label="홈 카드"></div>
   <div class="dashboard-grid">
   <section class="card today-card" aria-labelledby="todayHeading">
-    <div class="ui-section-head"><div><p class="ui-eyebrow">하루의 시작</p><h2 id="todayHeading">오늘 할 일</h2><p class="ui-meta" id="todayCount"></p></div><button class="ui-button primary" onclick="openTodayQuickAdd()">＋ 일정 추가</button></div>
+    <div class="ui-section-head"><div><h2 id="todayHeading">오늘 할 일</h2><p class="ui-meta" id="todayCount"></p></div><button class="ui-button primary" onclick="openTodayQuickAdd()">＋ 일정 추가</button></div>
     <div class="ui-agenda" id="todayAgenda"></div>
   </section>
   <!-- 가장 큰 메인 영역: 월간 달력 -->
@@ -1445,7 +1446,7 @@
 
       <div class="card share-card">
         <div class="card-title">
-          <span>👥 함께 쓰는 사람</span>
+          <span>함께 쓰는 사람</span>
           <button class="small-btn" onclick="openVaultModal()" title="넷플릭스·쿠팡 등 공유 아이디/비밀번호">🔐 공유 계정</button>
         </div>
         <div class="member-chips" id="memberChips"></div>
