@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F5F3EE">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<title>독서감성문 | Minb</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="css/ui.css">
+<script src="js/app-shell.js" defer></script>
+<style>
+  :root { --reading:#a66a32; --reading-soft:#f5e9db; --reading-dark:#6f3d16; }
+  body { margin:0; min-height:100vh; font-family:'Outfit','Noto Sans KR',sans-serif; background:var(--ui-bg); color:var(--ui-text); }
+  header { background:var(--ui-card); border-bottom:1px solid var(--ui-border); }
+  .header-inner { max-width:var(--ui-content); margin:auto; min-height:72px; padding:0 var(--ui-s5); display:flex; justify-content:space-between; align-items:center; gap:var(--ui-s3); }
+  .brand { display:flex; align-items:center; gap:var(--ui-s3); font-weight:800; text-decoration:none; color:var(--ui-text); }
+  .brand-mark { width:36px; height:36px; display:grid; place-items:center; border-radius:12px; background:var(--ui-soft); color:var(--ui-accent); font-size:20px; }
+  .profile { min-width:0; word-break:keep-all; overflow-wrap:anywhere; font-size:var(--ui-small); color:var(--ui-muted); }
+  main { max-width:960px; padding:var(--ui-s6) var(--ui-s5) var(--ui-s8); margin:auto; }
+  .reading-hero { display:grid; grid-template-columns:1fr auto; gap:var(--ui-s5); align-items:end; margin-bottom:var(--ui-s6); }
+  .reading-hero h1 { margin:0; font-size:var(--ui-display); letter-spacing:-.04em; }
+  .reading-hero p { margin:var(--ui-s2) 0 0; color:var(--ui-muted); line-height:1.7; word-break:keep-all; }
+  .reading-count { padding:var(--ui-s3) var(--ui-s4); border-radius:var(--ui-radius); background:var(--reading-soft); color:var(--reading-dark); font-weight:800; white-space:nowrap; }
+  .layout { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr); gap:var(--ui-s5); align-items:start; }
+  .reading-card { background:var(--ui-card); border:1px solid var(--ui-border); border-radius:var(--ui-radius); box-shadow:var(--ui-shadow); padding:var(--ui-s5); }
+  .reading-card h2 { margin:0; font-size:var(--ui-title); }
+  .reading-card > p { margin:var(--ui-s2) 0 var(--ui-s5); color:var(--ui-muted); font-size:var(--ui-small); line-height:1.6; word-break:keep-all; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--ui-s3); }
+  .field { display:grid; gap:var(--ui-s2); }
+  .field.full { grid-column:1 / -1; }
+  .field label { font-size:var(--ui-small); font-weight:700; }
+  .field input,.field select,.field textarea { width:100%; box-sizing:border-box; min-height:var(--ui-control); border:1px solid var(--ui-border); border-radius:var(--ui-radius-sm); padding:var(--ui-s3); color:var(--ui-text); background:var(--ui-card); font:inherit; font-size:16px; }
+  .field textarea { min-height:92px; resize:vertical; line-height:1.7; }
+  .field textarea#reflection { min-height:172px; }
+  .field input:focus,.field select:focus,.field textarea:focus { border-color:var(--reading); outline:2px solid color-mix(in srgb,var(--reading) 22%,transparent); }
+  .form-actions { display:flex; justify-content:space-between; align-items:center; gap:var(--ui-s3); margin-top:var(--ui-s5); }
+  .save-status { color:var(--ui-muted); font-size:var(--ui-caption); }
+  .reading-save { background:var(--ui-ink); border-color:var(--ui-ink); color:var(--ui-on-ink); }
+  .reading-save:hover { background:var(--ui-text); }
+  .list-head { display:flex; justify-content:space-between; align-items:center; gap:var(--ui-s3); margin-bottom:var(--ui-s4); }
+  .list-head h2 { font-size:var(--ui-title); }
+  .book-list { display:grid; gap:var(--ui-s3); }
+  .book-entry { width:100%; border:1px solid var(--ui-border); background:var(--ui-card); color:var(--ui-text); text-align:left; padding:var(--ui-s4); border-radius:var(--ui-radius-sm); cursor:pointer; font:inherit; }
+  .book-entry:hover { border-color:var(--reading); background:var(--reading-soft); }
+  .book-entry.active { border-color:var(--reading); box-shadow:inset 3px 0 0 var(--reading); }
+  .book-meta { display:flex; justify-content:space-between; gap:var(--ui-s2); color:var(--ui-muted); font-size:var(--ui-caption); margin-top:var(--ui-s2); }
+  .book-title { display:block; font-size:var(--ui-body); font-weight:800; word-break:keep-all; }
+  .book-author { display:block; color:var(--ui-muted); font-size:var(--ui-small); margin-top:var(--ui-s1); }
+  .book-preview { display:-webkit-box; margin-top:var(--ui-s3); color:var(--ui-muted); font-size:var(--ui-small); line-height:1.6; overflow:hidden; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .empty { padding:var(--ui-s5) 0; color:var(--ui-muted); font-size:var(--ui-small); line-height:1.7; word-break:keep-all; }
+  .delete { color:#bd3b32; }
+  #toast { position:fixed; left:50%; bottom:calc(var(--ui-nav-height) + var(--ui-s5)); transform:translate(-50%,20px); opacity:0; pointer-events:none; padding:var(--ui-s3) var(--ui-s4); border-radius:999px; background:var(--ui-ink); color:var(--ui-on-ink); font-size:var(--ui-small); transition:opacity var(--ui-motion),transform var(--ui-motion); z-index:40; }
+  #toast.show { opacity:1; transform:translate(-50%,0); }
+  body.dark { color-scheme:dark; --reading-soft:#342819; --reading-dark:#efbd81; }
+  #loginButton, .brand { flex-shrink:0; white-space:nowrap; }
+  .reading-actions { display:flex; flex-wrap:wrap; gap:var(--ui-s2); margin-bottom:var(--ui-s5); }
+  #bookshelf { scroll-margin-top:var(--ui-s4); }
+  #listTitle:focus-visible { outline:2px solid var(--ui-accent); outline-offset:var(--ui-s1); }
+  .form-actions { flex-wrap:wrap; }
+  .form-actions > div { margin-left:auto; }
+  .save-status { word-break:keep-all; }
+  @media(max-width:767px) { .header-inner { min-height:60px; padding:var(--ui-s3) var(--ui-s4); flex-wrap:wrap; gap:var(--ui-s2); } .profile { order:3; flex-basis:100%; } main { padding:var(--ui-s5) var(--ui-s4) var(--ui-s8); } .reading-hero { grid-template-columns:1fr; gap:var(--ui-s3); } .reading-count { justify-self:start; } .layout { grid-template-columns:1fr; } .reading-card { padding:var(--ui-s4); } .form-grid { grid-template-columns:1fr; } .field.full { grid-column:auto; } }
+.field textarea { word-break:keep-all; overflow-wrap:break-word; }
+</style>
+</head>
+<body>
+<header><div class="header-inner"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">M</span><span>Minb</span></a><span class="profile" id="userName">독서 기록</span><button class="ui-button" id="loginButton" type="button" onclick="login()">Google 로그인</button></div></header>
+<main>
+  <section class="reading-hero" aria-labelledby="pageTitle"><div><p class="ui-eyebrow">나만의 책장</p><h1 id="pageTitle">읽은 마음</h1><p>책을 덮은 뒤 남은 문장과 감정을 기록해 보세요.</p></div><div class="reading-count" id="readingCount">0권 기록</div></section>
+  <div class="reading-actions" aria-label="독서 기록 바로가기"><button class="ui-button" type="button" onclick="showBookshelf()">내 책장 보기</button><button class="ui-button" type="button" onclick="newNote()">새 기록 쓰기</button></div>
+  <div class="layout">
+    <section class="reading-card" aria-labelledby="editorTitle"><h2 id="editorTitle">독서감성문 쓰기</h2><p>완독 전에도 마음에 남은 순간을 남길 수 있어요.</p>
+      <div class="form-grid">
+        <div class="field"><label for="bookTitle">책 제목</label><input id="bookTitle" placeholder="예: 달러구트 꿈 백화점" autocomplete="off"></div>
+        <div class="field"><label for="bookAuthor">저자</label><input id="bookAuthor" placeholder="예: 이미예" autocomplete="off"></div>
+        <div class="field"><label for="finishedDate">기록한 날</label><input id="finishedDate" type="date"></div>
+        <div class="field"><label for="emotion">읽고 난 감정</label><select id="emotion"><option value="위로">위로</option><option value="설렘">설렘</option><option value="차분">차분</option><option value="깊은 생각">깊은 생각</option><option value="씁쓸함">씁쓸함</option><option value="용기">용기</option></select></div>
+        <div class="field full"><label for="quote">마음에 남은 문장 <span class="ui-meta">선택</span></label><textarea id="quote" placeholder="책에서 오래 남을 한 문장을 적어 보세요."></textarea></div>
+        <div class="field full"><label for="reflection">독서감성문</label><textarea id="reflection" placeholder="이 책이 내게 어떤 이야기를 건넸나요?"></textarea></div>
+      </div>
+      <div class="form-actions"><span class="save-status" id="saveStatus" aria-live="polite"></span><div><button class="ui-button delete" id="deleteButton" hidden type="button" onclick="deleteNote()">삭제</button> <button class="ui-button primary reading-save" id="saveButton" type="button" onclick="saveNote()">기록 저장</button></div></div>
+    </section>
+    <section class="reading-card" id="bookshelf" aria-labelledby="listTitle"><div class="list-head"><h2 id="listTitle" tabindex="-1">나의 책장</h2><button class="ui-button" type="button" onclick="newNote()">새 기록</button></div><div class="book-list" id="bookList"></div></section>
+  </div>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+const firebaseConfig={apiKey:'AIzaSyDP1btfiPrymhvrYepVc8u8PatdiZq01D0',authDomain:'minb-spanish-study.firebaseapp.com',projectId:'minb-spanish-study',storageBucket:'minb-spanish-study.firebasestorage.app',messagingSenderId:'130349023752',appId:'1:130349023752:web:5c6c3985091f58959587bd'};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth(), db = firebase.firestore();
+let currentUser = null, notes = {}, editingId = null, unsubNotes = null, toastTimer = null;
+let formBaseline, editorRevision = 0, accountRevision = 0, pendingWrite = null, loginPending = false;
+const fieldIds = ['bookTitle','bookAuthor','finishedDate','emotion','quote','reflection'];
+const today = () => {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+const esc = value => { const el = document.createElement('div'); el.textContent = value || ''; return el.innerHTML; };
+function toast(message) {
+  const el = document.getElementById('toast');
+  el.textContent = message; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+}
+function status(message) { document.getElementById('saveStatus').textContent = message; }
+function blankForm() { return { bookTitle:'', bookAuthor:'', finishedDate:today(), emotion:'위로', quote:'', reflection:'' }; }
+function values() { return Object.fromEntries(fieldIds.map(id => [id, document.getElementById(id).value])); }
+function sameForm(a, b) { return fieldIds.every(id => a[id] === b[id]); }
+function isDirty() { return !!formBaseline && !sameForm(values(), formBaseline); }
+function setForm(note) {
+  const form = { ...blankForm(), ...(note?.form || {}) };
+  fieldIds.forEach(id => document.getElementById(id).value = form[id]);
+  formBaseline = { ...form };
+  document.getElementById('deleteButton').hidden = !note;
+  status(note ? '저장된 기록을 수정할 수 있어요.' : '');
+}
+function draftLocation(uid = currentUser?.uid) {
+  return { storage: uid ? localStorage : sessionStorage, key: `minb-reading-draft:${uid || 'guest'}` };
+}
+function readDraft(uid = currentUser?.uid) {
+  try {
+    const {storage, key} = draftLocation(uid), draft = JSON.parse(storage.getItem(key));
+    return draft && draft.form && draft.baseline ? draft : null;
+  } catch { return null; }
+}
+function persistDraft() {
+  try {
+    const {storage, key} = draftLocation();
+    if (isDirty()) storage.setItem(key, JSON.stringify({ id:editingId, form:values(), baseline:formBaseline }));
+    else storage.removeItem(key);
+    return true;
+  } catch {
+    status('기기에 임시 저장하지 못했어요. 이동 전에 저장해 주세요.');
+    return false;
+  }
+}
+function restoreDraft(draft) {
+  if (!draft) return false;
+  editingId = draft.id || null;
+  formBaseline = { ...blankForm(), ...draft.baseline };
+  fieldIds.forEach(id => document.getElementById(id).value = draft.form[id] ?? formBaseline[id]);
+  document.getElementById('deleteButton').hidden = !editingId || !notes[editingId];
+  status('임시 저장한 내용을 복원했어요.');
+  return true;
+}
+function updateSaveButton() {
+  const button = document.getElementById('saveButton');
+  button.disabled = !!pendingWrite || loginPending;
+  button.textContent = pendingWrite ? '저장 중…' : loginPending ? '로그인 중…' : currentUser ? '기록 저장' : '로그인하고 저장';
+  document.getElementById('deleteButton').disabled = !!pendingWrite;
+  document.getElementById('loginButton').disabled = loginPending;
+}
+function showBookshelf() {
+  document.getElementById('listTitle').focus();
+  document.getElementById('bookshelf').scrollIntoView({block:'start'});
+}
+function newNote() {
+  if (isDirty() && !confirm('작성 중인 내용을 지우고 새 기록을 시작할까요?')) return;
+  editorRevision++;
+  editingId = null;
+  setForm(null); persistDraft(); renderList();
+  document.getElementById('bookTitle').focus();
+}
+function renderList() {
+  const list = document.getElementById('bookList');
+  const items = Object.entries(notes).sort((a,b) => (b[1].updatedAt || 0) - (a[1].updatedAt || 0));
+  document.getElementById('readingCount').textContent = `${items.length}권 기록`;
+  if (!items.length) {
+    list.innerHTML = '<p class="empty">아직 기록한 책이 없어요. 오늘 마음에 남은 문장부터 적어 보세요.</p>';
+    return;
+  }
+  list.innerHTML = items.map(([id,note]) => {
+    const form = note.form || {};
+    return `<button class="book-entry ${id === editingId ? 'active' : ''}" type="button" data-note-id="${esc(id).replace(/"/g, '&quot;')}"><span class="book-title">${esc(form.bookTitle || '제목 없는 기록')}</span><span class="book-author">${esc(form.bookAuthor || '저자 미입력')}</span><span class="book-preview">${esc(form.reflection || form.quote || '아직 감상문을 쓰지 않았어요.')}</span><span class="book-meta"><span>${esc(form.emotion || '')}</span><span>${esc(form.finishedDate || '')}</span></span></button>`;
+  }).join('');
+  list.querySelectorAll('[data-note-id]').forEach(button => button.addEventListener('click', () => openNote(button.dataset.noteId)));
+}
+function openNote(id) {
+  if (editingId === id) { document.getElementById('bookTitle').focus(); return; }
+  if (isDirty() && !confirm('작성 중인 내용을 지우고 다른 기록을 열까요?')) return;
+  editorRevision++;
+  editingId = id;
+  setForm(notes[id]); persistDraft(); renderList();
+  document.getElementById('bookTitle').focus();
+}
+async function saveNote() {
+  if (pendingWrite || loginPending) return;
+  if (!currentUser) {
+    persistDraft();
+    status('로그인 후 기록 저장을 눌러 주세요. 입력한 내용은 유지돼요.');
+    await login();
+    return;
+  }
+  const form = values();
+  if (!form.bookTitle.trim()) { toast('책 제목을 입력해 주세요.'); document.getElementById('bookTitle').focus(); return; }
+  if (!form.reflection.trim() && !form.quote.trim()) { toast('감상문 또는 마음에 남은 문장을 적어 주세요.'); document.getElementById('reflection').focus(); return; }
+  const uid = currentUser.uid, account = accountRevision, editor = editorRevision;
+  const id = editingId || `book_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+  // Keep the allocated id in the draft so a retry or reload cannot create a second record.
+  editingId = id;
+  const note = {form, updatedAt:Date.now()}, operation = {};
+  pendingWrite = operation;
+  persistDraft(); updateSaveButton(); status('저장 중…');
+  try {
+    await db.collection('users').doc(uid).set({readingNotes:{[id]:note}}, {merge:true});
+    if (account !== accountRevision) return;
+    notes[id] = note;
+    if (editor === editorRevision && editingId === id) {
+      formBaseline = { ...form };
+      document.getElementById('deleteButton').hidden = false;
+      const stored = persistDraft();
+      if (stored) status(isDirty() ? '저장 후 변경한 내용이 있어요. 다시 저장해 주세요.' : '저장했어요.');
+    }
+    renderList();
+    toast('독서감성문을 저장했어요.');
+  } catch (error) {
+    console.error('독서감성문 저장 실패:', error);
+    if (account === accountRevision) {
+      if (editor === editorRevision) status('저장에 실패했어요. 입력 내용은 그대로예요. 다시 저장해 주세요.');
+      else toast('이전 기록 저장에 실패했어요.');
+    }
+  } finally {
+    if (pendingWrite === operation) { pendingWrite = null; updateSaveButton(); }
+  }
+}
+async function deleteNote() {
+  if (!currentUser || pendingWrite || !editingId || !notes[editingId] || !confirm('이 독서감성문을 삭제할까요?')) return;
+  const id = editingId, uid = currentUser.uid, account = accountRevision, editor = editorRevision, before = values(), operation = {};
+  pendingWrite = operation; updateSaveButton();
+  try {
+    await db.collection('users').doc(uid).update({[`readingNotes.${id}`]:firebase.firestore.FieldValue.delete()});
+    if (account !== accountRevision) return;
+    delete notes[id];
+    if (editor === editorRevision && sameForm(values(), before)) {
+      editingId = null; setForm(null); persistDraft();
+    } else if (editor === editorRevision) {
+      editingId = null; formBaseline = blankForm(); persistDraft();
+      document.getElementById('deleteButton').hidden = true;
+    }
+    renderList(); toast('기록을 삭제했어요.');
+  } catch (error) {
+    console.error('독서감성문 삭제 실패:', error);
+    if (account === accountRevision) toast('삭제에 실패했어요.');
+  } finally {
+    if (pendingWrite === operation) { pendingWrite = null; updateSaveButton(); }
+  }
+}
+function subscribe() {
+  const account = accountRevision;
+  unsubNotes = db.collection('users').doc(currentUser.uid).onSnapshot(snapshot => {
+    if (account !== accountRevision || snapshot.metadata?.hasPendingWrites) return;
+    const dirty = isDirty();
+    notes = snapshot.exists ? (snapshot.data().readingNotes || {}) : {};
+    if (!dirty && !pendingWrite) {
+      if (editingId && !notes[editingId]) editingId = null;
+      setForm(editingId && notes[editingId]);
+    }
+    document.getElementById('deleteButton').hidden = !editingId || !notes[editingId];
+    renderList();
+  }, error => {
+    console.error('독서감성문 동기화 실패:', error);
+    if (account === accountRevision) status('기록을 불러오지 못했어요. 연결을 확인하고 새로고침해 주세요.');
+  });
+}
+let authInitialized = false;
+auth.onAuthStateChanged(user => {
+  const previousUid = currentUser?.uid;
+  const guestDraft = !previousUid ? readDraft(null) : null;
+  if (authInitialized && previousUid === user?.uid) return;
+  if (authInitialized) persistDraft();
+  if (unsubNotes) { unsubNotes(); unsubNotes = null; }
+  accountRevision++; editorRevision++;
+  currentUser = user; notes = {}; editingId = null; pendingWrite = null;
+  setForm(null);
+  const ownDraft = readDraft();
+  restoreDraft(ownDraft || (user && !previousUid ? guestDraft : null));
+  if (user && !ownDraft && guestDraft && !previousUid && persistDraft()) {
+    try { sessionStorage.removeItem('minb-reading-draft:guest'); } catch { /* A retained guest draft remains tab-local. */ }
+  }
+  document.getElementById('loginButton').hidden = !!user;
+  document.getElementById('userName').textContent = user ? user.displayName || '나의 책장' : '로그인하면 내 기록을 저장할 수 있어요.';
+  updateSaveButton(); renderList();
+  authInitialized = true;
+  if (user) subscribe();
+});
+async function login() {
+  if (loginPending) return;
+  loginPending = true; updateSaveButton(); persistDraft();
+  try {
+    const cap = window.Capacitor;
+    if (cap?.isNativePlatform?.()) {
+      const result = await cap.Plugins.FirebaseAuthentication.signInWithGoogle();
+      const {idToken, accessToken} = result.credential || {};
+      if (!idToken) throw new Error('네이티브 로그인 토큰이 없습니다.');
+      await auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(idToken, accessToken || null));
+    } else {
+      try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+      catch (error) {
+        if (!['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(error.code)) throw error;
+        await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+      }
+    }
+  } catch (error) {
+    console.error('로그인 실패:', error);
+    status('로그인에 실패했어요. 입력 내용은 그대로예요. 다시 시도해 주세요.');
+    toast('로그인에 실패했어요. 다시 시도해 주세요.');
+  } finally { loginPending = false; updateSaveButton(); }
+}
+auth.getRedirectResult().catch(error => { console.error('리다이렉트 로그인 실패:', error); toast('로그인에 실패했어요. 다시 시도해 주세요.'); });
+function applyTheme() {
+  try { document.body.classList.toggle('dark', localStorage.getItem('theme') === 'dark'); }
+  catch { /* Use the readable default if browser storage is unavailable. */ }
+}
+fieldIds.forEach(id => ['input','change'].forEach(event => document.getElementById(id).addEventListener(event, () => {
+  if (persistDraft()) status(isDirty() ? '임시 저장됨 · 기록 저장을 눌러 완료해 주세요.' : '');
+})));
+window.addEventListener('beforeunload', event => {
+  if (!persistDraft() && isDirty()) { event.preventDefault(); event.returnValue = ''; }
+});
+window.addEventListener('pagehide', persistDraft);
+document.addEventListener('visibilitychange', () => { if (document.hidden) persistDraft(); });
+window.addEventListener('storage', event => { if (event.key === 'theme') applyTheme(); });
+applyTheme(); setForm(null); restoreDraft(readDraft(null)); updateSaveButton(); renderList();
+</script>
+</body>
+</html>

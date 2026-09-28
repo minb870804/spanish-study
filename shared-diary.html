@@ -229,9 +229,11 @@
   }
   body.dark #toast { background: #e1e1e6; color: #1e1e24; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.diary-area, .prompt-text { word-break:keep-all; overflow-wrap:break-word; }
 </style>
 <link rel="stylesheet" href="css/ui.css">
 <script src="js/app-shell.js" defer></script>
+<link rel="stylesheet" href="css/diary-sync.css">
 </head>
 <body>
 
@@ -271,6 +273,7 @@
 </header>
 
 <main class="fade">
+<div class="diary-sync" id="diarySyncPanel" hidden><p id="diarySyncStatus" role="status" aria-live="polite"></p><button class="ui-button" id="diarySyncRetry" type="button" onclick="retryDiarySync()" hidden>다시 연결</button></div>
 
   <div class="hero">
     <div>
@@ -316,7 +319,7 @@
     <!-- 이 날 내가 쓰는 일기 -->
     <div>
       <div class="card">
-        <div class="card-title"><span>✏️ 나의 일기</span><span class="save-hint" id="saveHint"></span></div>
+        <div class="card-title"><span>✏️ 나의 일기</span><span class="save-hint" id="saveHint" role="status" aria-live="polite"></span></div>
         <div class="mood-row" id="moodRow"></div>
         <textarea id="diaryArea" class="diary-area" placeholder="오늘 하루를 함께 쓰는 사람에게 들려주세요 💌" oninput="updateCharCount()"></textarea>
         <div class="editor-footer">
@@ -334,6 +337,7 @@
 
 <div id="toast"></div>
 
+<script src="js/diary-common.js"></script>
 <script>
 // ══════════════════════════════════════
 // FIREBASE INIT
@@ -363,7 +367,6 @@ const DAYS_KO = ['일','월','화','수','목','금','토'];
 let viewMonth = new Date();
 
 function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 // ══════════════════════════════════════
 // AUTH
@@ -376,170 +379,184 @@ auth.getRedirectResult().catch(e => {
   }
 });
 
-auth.onAuthStateChanged(async (user) => {
-  if (user) {
-    currentUser = user;
-    document.getElementById('loginOverlay').style.display = 'none';
-    document.getElementById('userProfile').style.display = 'flex';
-    document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
-    await connectSpace();
-  } else {
-    currentUser = null;
-    document.getElementById('loginOverlay').style.display = 'flex';
-    document.getElementById('userProfile').style.display = 'none';
-    if (unsubSpace) { unsubSpace(); unsubSpace = null; }
-  }
-});
+let sharedSession = 0;
+let connectionAttempt = 0;
+let subscriptionRevision = 0;
+let sharedBaseline = {text:'', mood:'😊'};
+let diarySavePending = false;
+let sharedOperation = null;
 
-async function loginWithGoogle() {
-  // iOS/Android 앱(Capacitor)에서는 네이티브 구글 로그인을 사용한다
-  // (웹뷰에서는 구글이 OAuth 팝업을 차단하기 때문)
-  const cap = window.Capacitor;
-  if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
-    try {
-      const result = await cap.Plugins.FirebaseAuthentication.signInWithGoogle();
-      const idToken = result.credential && result.credential.idToken;
-      const accessToken = result.credential && result.credential.accessToken;
-      if (!idToken) throw new Error('네이티브 로그인에서 토큰을 받지 못했습니다.');
-      const credential = firebase.auth.GoogleAuthProvider.credential(idToken, accessToken || null);
-      await auth.signInWithCredential(credential);
-    } catch (e) {
-      console.error('네이티브 로그인 에러:', e);
-      alert('구글 로그인 중 문제가 발생했습니다.\n' + (e.message || e));
-    }
-    return;
-  }
-  const provider = new firebase.auth.GoogleAuthProvider();
-  // 팝업 우선 (iOS 홈 화면 앱에서도 팝업이 리다이렉트보다 안정적)
+function sharedEditorValue() {
+  return {text:document.getElementById('diaryArea').value, mood:selectedMood};
+}
+function sameSharedContent(a, b) {
+  return (a?.text || '').trim() === (b?.text || '').trim() && (a?.mood || MOODS[0]) === (b?.mood || MOODS[0]);
+}
+function sharedDraftKey(uid = currentUser?.uid, id = spaceId) {
+  return uid && id ? `minb-shared-drafts:${uid}:${id}` : null;
+}
+function readSharedDrafts(uid = currentUser?.uid, id = spaceId) {
+  const key = sharedDraftKey(uid, id);
+  if (!key) return {days:{}};
   try {
-    await auth.signInWithPopup(provider);
-  } catch (e) {
-    // 팝업이 차단되면 리다이렉트로 자동 전환
-    if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment' || e.code === 'auth/cancelled-popup-request') {
-      try { await auth.signInWithRedirect(provider); return; } catch (e2) { e = e2; }
-    }
-    console.error('로그인 에러:', e);
-    alert(`구글 로그인 중 문제가 발생했습니다.\n코드: ${e.code}\n메시지: ${e.message}`);
-  }
+    const stored = JSON.parse(localStorage.getItem(key));
+    return stored?.days && typeof stored.days === 'object' ? stored : {days:{}};
+  } catch { return {days:{}}; }
 }
-async function logout() {
-  if (confirm('로그아웃 하시겠습니까?')) { await auth.signOut(); location.reload(); }
-}
-
-// ══════════════════════════════════════
-// SPACE 연결 (Minb와 동일한 스페이스 사용)
-// ══════════════════════════════════════
-function genCode() {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  let c = '';
-  for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random()*chars.length)];
-  return c;
-}
-
-async function connectSpace() {
-  if (await tryFastStartFromCache()) return;
-  return connectSpaceFromServer();
-}
-
-async function tryFastStartFromCache() {
-  const user = currentUser;
-  if (!user) return false;
-  const userRef = db.collection('users').doc(user.uid);
-  try {
-    const cached = await userRef.get({ source: 'cache' });
-    const cachedSpaceId = cached.exists ? String((cached.data() || {}).spaceId || '').trim().toUpperCase() : '';
-    if (!cachedSpaceId) return false;
-
-    spaceId = cachedSpaceId;
-    subscribeSpace();
-    void verifyCachedSpace(user, userRef, cachedSpaceId);
-    return true;
-  } catch {
+function writeSharedDrafts(drafts, uid = currentUser?.uid, id = spaceId) {
+  const key = sharedDraftKey(uid, id);
+  if (!key) return true;
+  try { localStorage.setItem(key, JSON.stringify(drafts)); return true; }
+  catch {
+    document.getElementById('saveHint').textContent = '기기에 임시 저장하지 못했어요. 이동 전에 저장해 주세요.';
     return false;
   }
 }
-
-async function verifyCachedSpace(user, userRef, cachedSpaceId) {
-  try {
-    const [userSnap, spaceSnap] = await Promise.all([
-      userRef.get(),
-      db.collection('spaces').doc(cachedSpaceId).get()
-    ]);
-    const serverSpaceId = userSnap.exists ? String((userSnap.data() || {}).spaceId || '').trim().toUpperCase() : '';
-    const isMember = spaceSnap.exists && (spaceSnap.data().members || []).includes(user.uid);
-    if (currentUser?.uid === user.uid && spaceId === cachedSpaceId && (serverSpaceId !== cachedSpaceId || !isMember)) {
-      if (unsubSpace) { unsubSpace(); unsubSpace = null; }
-      spaceId = null;
-      spaceData = null;
-      await connectSpaceFromServer();
+function persistSharedDraft() {
+  if (!currentUser || !spaceId || !spaceData) return true;
+  const drafts = readSharedDrafts();
+  if (isDirty()) { drafts.days[editingKey] = {...sharedEditorValue(), updatedAt:Date.now()}; drafts.lastKey = editingKey; }
+  else {
+    delete drafts.days[editingKey];
+    if (drafts.lastKey === editingKey) delete drafts.lastKey;
+  }
+  return writeSharedDrafts(drafts);
+}
+function clearSharedDraft(key, expected, uid = currentUser?.uid, id = spaceId) {
+  const drafts = readSharedDrafts(uid, id), draft = drafts.days[key];
+  if (!draft || expected && !sameSharedContent(draft, expected)) return;
+  delete drafts.days[key];
+  if (drafts.lastKey === key) delete drafts.lastKey;
+  writeSharedDrafts(drafts, uid, id);
+}
+function updateSharedActions() {
+  const ready = !!currentUser && !!spaceId && !!spaceData;
+  const save = document.querySelector('button[onclick="saveEntry()"]');
+  save.disabled = !ready || !!sharedOperation;
+  save.textContent = sharedOperation?.kind === 'save' ? '저장 중…' : '저장하기';
+  const remove = document.getElementById('deleteBtn');
+  remove.disabled = !ready || !!sharedOperation;
+  remove.textContent = sharedOperation?.kind === 'delete' ? '삭제 중…' : '삭제';
+  remove.style.display = myEntry(editingKey) ? 'inline-block' : 'none';
+  document.getElementById('diaryArea').disabled = !ready;
+  document.querySelectorAll('#moodRow button').forEach(button => button.disabled = !ready);
+}
+function activateSharedSpace(id, data) {
+  if (spaceId !== id) {
+    persistSharedDraft();
+    spaceId = id;
+    spaceData = data;
+    sharedBaseline = {text:'', mood:MOODS[0]};
+    const drafts = readSharedDrafts();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(drafts.lastKey || '') && drafts.days[drafts.lastKey]) {
+      editingKey = drafts.lastKey;
+      const [y,m,d] = editingKey.split('-').map(Number);
+      selectedDate = new Date(y,m-1,d);
+      viewMonth = new Date(y,m-1,1);
     }
-  } catch (e) {
-    console.warn('캐시 스페이스 확인 실패(캐시로 계속 진행):', e && e.code);
-  }
+    renderAll();
+  } else applySpaceData(data);
+  updateSharedActions();
 }
 
-async function connectSpaceFromServer() {
-  const userRef = db.collection('users').doc(currentUser.uid);
-  const snap = await userRef.get();
-  spaceId = snap.exists ? (snap.data().spaceId || null) : null;
+auth.onAuthStateChanged(async user => {
+  persistSharedDraft();
+  sharedSession++;
+  connectionAttempt++;
+  subscriptionRevision++;
+  if (unsubSpace) { unsubSpace(); unsubSpace = null; }
+  currentUser = user;
+  spaceId = null;
+  spaceData = null;
+  sharedBaseline = {text:'', mood:MOODS[0]};
+  sharedOperation = null;
+  diarySavePending = false;
+  selectedDate = new Date(); editingKey = dateKey(selectedDate); viewMonth = new Date();
+  renderAll(); updateSharedActions();
+  document.getElementById('loginOverlay').style.display = user ? 'none' : 'flex';
+  document.getElementById('userProfile').style.display = user ? 'flex' : 'none';
+  if (!user) { setDiarySync('signed-out'); return; }
+  document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
+  await connectSpace();
+});
 
-  let loadedSpace = null;
-  if (spaceId) {
-    try {
-      const sp = await db.collection('spaces').doc(spaceId).get();
-      if (!sp.exists || !(sp.data().members || []).includes(currentUser.uid)) spaceId = null;
-      else loadedSpace = sp.data();
-    } catch (e) { spaceId = null; }
-  }
-  if (loadedSpace) applySpaceData(loadedSpace);
-
-  if (!spaceId) {
-    // Minb를 거치지 않고 처음 온 경우에도 스페이스를 만들어 준다
-    spaceId = genCode();
-    await db.collection('spaces').doc(spaceId).set({
-      members: [currentUser.uid],
-      memberProfiles: { [currentUser.uid]: { name: currentUser.displayName || '사용자', photo: currentUser.photoURL || '' } },
-      days: {},
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await userRef.set({ spaceId }, { merge: true });
-  }
-
-  subscribeSpace();
+function genCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
 }
-
+async function connectSpace() {
+  if (!currentUser) return;
+  const user = currentUser, session = sharedSession, attempt = ++connectionAttempt;
+  const current = () => session === sharedSession && attempt === connectionAttempt;
+  setDiarySync('loading');
+  try {
+    const userRef = db.collection('users').doc(user.uid), snap = await userRef.get();
+    if (!current()) return;
+    let id = snap.exists ? snap.data().spaceId : null;
+    let data;
+    if (id) {
+      const space = await db.collection('spaces').doc(id).get();
+      if (!current()) return;
+      if (!space.exists || !(space.data().members || []).includes(user.uid)) throw new Error('space-unavailable');
+      if (space.metadata?.hasPendingWrites) throw new Error('space-write-unconfirmed');
+      data = space.data();
+    } else {
+      // An unavailable network must never be interpreted as a request to replace a shared space.
+      if (!navigator.onLine || snap.metadata?.fromCache) throw new Error('space-offline');
+      id = genCode();
+      data = {members:[user.uid], memberProfiles:{[user.uid]:{name:user.displayName || '사용자',photo:''}}, days:{},
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(), updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+      await db.collection('spaces').doc(id).set(data);
+      if (!current()) return;
+      await userRef.set({spaceId:id}, {merge:true});
+      if (!current()) return;
+    }
+    activateSharedSpace(id, data);
+    subscribeSpace();
+  } catch (error) {
+    if (!current()) return;
+    console.error('공유 공간 연결 실패:', error);
+    setDiarySync('error');
+    updateSharedActions();
+  }
+}
+function retryDiarySync() {
+  if (!currentUser) return;
+  persistSharedDraft();
+  if (unsubSpace) { unsubSpace(); unsubSpace = null; }
+  subscriptionRevision++;
+  return connectSpace();
+}
 function subscribeSpace() {
-  if (!spaceId) return;
+  if (!currentUser || !spaceId) return;
   if (unsubSpace) unsubSpace();
-  unsubSpace = db.collection('spaces').doc(spaceId).onSnapshot(doc => {
-    if (!doc.exists) return;
+  const session = sharedSession, id = spaceId, revision = ++subscriptionRevision;
+  const current = () => session === sharedSession && id === spaceId && revision === subscriptionRevision;
+  unsubSpace = db.collection('spaces').doc(id).onSnapshot({includeMetadataChanges:true}, doc => {
+    if (!current()) return;
+    if (!doc.exists) { setDiarySync('error'); return; }
+    observeDiarySnapshot(doc);
+    if (doc.metadata?.hasPendingWrites) return;
     applySpaceData(doc.data());
-  }, e => console.error('스페이스 구독 에러:', e));
+  }, error => {
+    if (!current()) return;
+    console.error('스페이스 구독 에러:', error);
+    setDiarySync('error');
+  });
 }
-
 function applySpaceData(data) {
   const hasDraft = isDirty();
   spaceData = data;
-  if (hasDraft) { renderList(); renderMembers(); renderPartners(); }
+  if (hasDraft || sharedOperation) { renderList(); renderMembers(); renderPartners(); }
   else renderAll();
+  updateSharedActions();
 }
-
-// ══════════════════════════════════════
-// DATA — sharedDiary: { 'YYYY-MM-DD': { uid: {text, mood, name, updatedAt} } }
-// ══════════════════════════════════════
-function getEntries(key) {
-  return (spaceData && spaceData.sharedDiary && spaceData.sharedDiary[key]) || {};
-}
+function getEntries(key) { return (spaceData && spaceData.sharedDiary && spaceData.sharedDiary[key]) || {}; }
 function myEntry(key) { return currentUser ? getEntries(key)[currentUser.uid] : null; }
+function isDirty() { return !sameSharedContent(sharedEditorValue(), sharedBaseline); }
 
-function isDirty() {
-  const cur = document.getElementById('diaryArea').value.trim();
-  const mine = myEntry(editingKey);
-  return cur !== ((mine && mine.text) || '').trim();
-}
-
-let diarySavePending = false;
 async function notifyNewSharedDiary(user, savedSpaceId, dayKey) {
   try {
     const token = await user.getIdToken();
@@ -554,58 +571,71 @@ async function notifyNewSharedDiary(user, savedSpaceId, dayKey) {
   }
 }
 async function saveEntry() {
-  if (!currentUser || !spaceId || !spaceData || diarySavePending) return;
-  const text = document.getElementById('diaryArea').value.trim();
-  if (!text) { toast('내용을 입력해 주세요 ✍️'); return; }
-  const user = currentUser, savedSpaceId = spaceId, dayKey = editingKey;
-  const firstSave = !myEntry(dayKey);
-  const entry = {
-    text, mood: selectedMood,
-    name: user.displayName || '사용자', photo: user.photoURL || '', updatedAt: Date.now()
-  };
-  diarySavePending = true;
-  const button = document.querySelector('button[onclick="saveEntry()"]');
-  button.disabled = true; button.textContent = '저장 중…';
+  if (!currentUser || !spaceId || !spaceData || sharedOperation) return;
+  const value = sharedEditorValue(), text = value.text.trim();
+  if (!text) { toast('내용을 입력해 주세요.'); return; }
+  const user = currentUser, id = spaceId, key = editingKey, session = sharedSession;
+  const firstSave = !myEntry(key), operation = {kind:'save'};
+  const entry = {...value, text, name:user.displayName || '사용자', photo:user.photoURL || '', updatedAt:Date.now()};
+  sharedOperation = operation; diarySavePending = true;
+  persistSharedDraft(); updateSharedActions(); setDiarySync('pending');
+  document.getElementById('saveHint').textContent = '저장 중…';
   try {
-    await db.collection('spaces').doc(savedSpaceId).update({
-      [`sharedDiary.${dayKey}.${user.uid}`]: entry,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    if (currentUser?.uid === user.uid && spaceId === savedSpaceId) {
-      const draftText = document.getElementById('diaryArea').value, draftMood = selectedMood;
-      const keepDraft = editingKey !== dayKey ? isDirty() : draftText.trim() !== text || draftMood !== entry.mood;
-      if (!spaceData.sharedDiary) spaceData.sharedDiary = {};
-      if (!spaceData.sharedDiary[dayKey]) spaceData.sharedDiary[dayKey] = {};
-      spaceData.sharedDiary[dayKey][user.uid] = entry;
-      document.getElementById('saveHint').textContent = '저장됨';
-      setTimeout(() => document.getElementById('saveHint').textContent = '', 2000);
-      renderAll();
-      if (keepDraft) { document.getElementById('diaryArea').value = draftText; selectedMood = draftMood; renderMoodRow(); updateCharCount(); }
-      toast('교환일기가 저장됐어요!');
-      if (firstSave) void notifyNewSharedDiary(user, savedSpaceId, dayKey);
+    await db.collection('spaces').doc(id).update({[`sharedDiary.${key}.${user.uid}`]:entry, updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    if (session !== sharedSession || id !== spaceId) return;
+    if (!spaceData.sharedDiary) spaceData.sharedDiary = {};
+    if (!spaceData.sharedDiary[key]) spaceData.sharedDiary[key] = {};
+    spaceData.sharedDiary[key][user.uid] = entry;
+    if (editingKey === key) {
+      sharedBaseline = {text:entry.text,mood:entry.mood};
+      if (persistSharedDraft()) document.getElementById('saveHint').textContent = isDirty() ? '저장 후 변경한 내용이 있어요.' : '저장됨';
+    } else clearSharedDraft(key, entry, user.uid, id);
+    renderList(); renderMembers(); renderPartners();
+    toast('교환일기가 저장됐어요.');
+    if (firstSave) void notifyNewSharedDiary(user, id, key);
+  } catch (error) {
+    console.error('저장 실패:', error);
+    if (session === sharedSession && id === spaceId) {
+      setDiarySync('error');
+      persistSharedDraft();
+      document.getElementById('saveHint').textContent = '저장에 실패했어요. 다시 저장해 주세요.';
+      toast('저장에 실패했어요. 입력한 내용은 그대로예요.');
     }
-  } catch (e) { console.error('저장 실패:', e); toast('저장에 실패했어요. 입력한 내용은 그대로예요.'); }
-  finally { diarySavePending = false; button.disabled = false; button.textContent = '저장하기'; }
+  } finally {
+    if (sharedOperation === operation) { sharedOperation = null; diarySavePending = false; updateSharedActions(); }
+  }
 }
-
 async function deleteEntry() {
-  if (!myEntry(editingKey)) return;
+  if (!currentUser || !spaceId || !myEntry(editingKey) || sharedOperation) return;
   if (!confirm('이 날의 내 일기를 삭제할까요? 되돌릴 수 없어요.')) return;
-  delete spaceData.sharedDiary[editingKey][currentUser.uid];
+  const uid = currentUser.uid, id = spaceId, key = editingKey, session = sharedSession, before = sharedEditorValue();
+  const operation = {kind:'delete'};
+  sharedOperation = operation; diarySavePending = true;
+  persistSharedDraft(); updateSharedActions(); setDiarySync('pending');
   try {
-    await db.collection('spaces').doc(spaceId).update({
-      [`sharedDiary.${editingKey}.${currentUser.uid}`]: firebase.firestore.FieldValue.delete()
-    });
-    renderAll();
+    await db.collection('spaces').doc(id).update({[`sharedDiary.${key}.${uid}`]:firebase.firestore.FieldValue.delete()});
+    if (session !== sharedSession || id !== spaceId) return;
+    if (spaceData.sharedDiary?.[key]) delete spaceData.sharedDiary[key][uid];
+    clearSharedDraft(key, before, uid, id);
+    if (editingKey === key) {
+      if (sameSharedContent(sharedEditorValue(), before)) renderEditor();
+      else { sharedBaseline = {text:'',mood:MOODS[0]}; persistSharedDraft(); }
+    }
+    renderList(); renderMembers(); renderPartners();
     toast('일기를 삭제했어요.');
-  } catch (e) { console.error('삭제 실패:', e); toast('삭제에 실패했어요.'); }
+  } catch (error) {
+    console.error('삭제 실패:', error);
+    if (session === sharedSession && id === spaceId) { setDiarySync('error'); toast('삭제에 실패했어요. 기록은 그대로예요.'); }
+  } finally {
+    if (sharedOperation === operation) { sharedOperation = null; diarySavePending = false; updateSharedActions(); }
+  }
 }
 
 // ══════════════════════════════════════
 // 날짜 이동
 // ══════════════════════════════════════
 function guardDirty() {
-  if (isDirty() && !confirm('저장하지 않은 일기 내용이 있어요.\n저장 없이 이동하면 사라집니다. 이동할까요?')) return false;
+  if (!persistSharedDraft() && isDirty() && !confirm('임시 저장하지 못했어요. 이동하면 작성 내용이 사라집니다. 이동할까요?')) return false;
   return true;
 }
 function moveDate(delta) {
@@ -700,8 +730,15 @@ function renderPartners() {
 
 function renderEditor() {
   const mine = myEntry(editingKey);
-  document.getElementById('diaryArea').value = mine ? mine.text : '';
-  selectedMood = (mine && mine.mood) || MOODS[0];
+  sharedBaseline = {text:mine?.text || '', mood:mine?.mood || MOODS[0]};
+  document.getElementById('diaryArea').value = sharedBaseline.text;
+  selectedMood = sharedBaseline.mood;
+  const draft = readSharedDrafts().days[editingKey];
+  if (draft && !sameSharedContent(draft, sharedBaseline)) {
+    document.getElementById('diaryArea').value = draft.text || '';
+    selectedMood = MOODS.includes(draft.mood) ? draft.mood : MOODS[0];
+    document.getElementById('saveHint').textContent = '임시 저장본을 복원했어요.';
+  } else document.getElementById('saveHint').textContent = '';
   document.getElementById('deleteBtn').style.display = mine ? 'inline-block' : 'none';
   renderMoodRow();
   updateCharCount();
@@ -712,7 +749,7 @@ function renderMoodRow() {
     `<button class="mood-btn ${m === selectedMood ? 'active' : ''}" onclick="pickMood('${m}')">${m}</button>`
   ).join('');
 }
-function pickMood(m) { selectedMood = m; renderMoodRow(); }
+function pickMood(m) { selectedMood = m; renderMoodRow(); persistSharedDraft(); }
 function updateCharCount() {
   document.getElementById('charCount').textContent = `${document.getElementById('diaryArea').value.length}자`;
 }
@@ -727,7 +764,7 @@ function renderList() {
     .sort().reverse();
   const box = document.getElementById('entryList');
   if (!keys.length) {
-    box.innerHTML = '<div class="empty-msg">이 달에는 아직 교환일기가 없어요.<br>오른쪽에서 첫 일기를 남겨보세요 💌</div>';
+    box.innerHTML = '<div class="empty-msg">이 달에는 아직 교환일기가 없어요.<br>첫 일기를 남겨보세요 💌</div>';
     return;
   }
   box.innerHTML = keys.map(k => {
@@ -760,27 +797,6 @@ function goDate(k) {
 // ══════════════════════════════════════
 // THEME / TOAST
 // ══════════════════════════════════════
-function toggleTheme() {
-  const isDark = document.body.classList.toggle('dark');
-  localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  updateThemeButton();
-}
-function updateThemeButton() {
-  document.getElementById('themeToggle').innerHTML = document.body.classList.contains('dark') ? '☀️ 라이트' : '🌙 다크';
-}
-function loadTheme() {
-  if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
-  updateThemeButton();
-}
-
-let toastTimer = null;
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
-}
 
 // ══════════════════════════════════════
 // 다시 들어왔을 때 오늘로 되돌리기
@@ -802,16 +818,22 @@ function jumpToTodayOnReturn() {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (document.hidden) { persistSharedDraft(); hiddenAt = Date.now(); return; }
   if (hiddenAt && Date.now() - hiddenAt >= RETURN_AFTER_MS) jumpToTodayOnReturn();
   hiddenAt = 0;
 });
 // 뒤로가기 등으로 살아 있던 페이지가 복원된 경우
 window.addEventListener('pageshow', e => { if (e.persisted) jumpToTodayOnReturn(); });
 
+document.getElementById('diaryArea').addEventListener('input', persistSharedDraft);
+window.addEventListener('pagehide', persistSharedDraft);
+window.addEventListener('beforeunload', event => {
+  if (!persistSharedDraft() && isDirty()) { event.preventDefault(); event.returnValue = ''; }
+});
 loadTheme();
 renderMoodRow();
 renderAll();
+updateSharedActions();
 </script>
 </body>
 </html>

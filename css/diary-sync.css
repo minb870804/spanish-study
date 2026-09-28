@@ -1,0 +1,4 @@
+.diary-sync { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--ui-s3); margin-bottom:var(--ui-s4); padding:var(--ui-s3) var(--ui-s4); border:1px solid var(--ui-border); border-radius:var(--ui-radius-sm); background:var(--ui-card); color:var(--ui-muted); font-size:var(--ui-small); line-height:1.6; word-break:keep-all; }
+.diary-sync[hidden] { display:none; }
+.diary-sync p { margin:0; flex:1; min-width:0; }
+.diary-sync button { white-space:nowrap; flex-shrink:0; }

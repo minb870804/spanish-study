@@ -337,9 +337,11 @@
     .prompt-actions .ghost-btn { flex: 1; }
     .diary-area { min-height: 240px; }
   }
+.diary-area, .prompt-text { word-break:keep-all; overflow-wrap:break-word; }
 </style>
 <link rel="stylesheet" href="css/ui.css">
 <script src="js/app-shell.js" defer></script>
+<link rel="stylesheet" href="css/diary-sync.css">
 </head>
 <body>
 
@@ -380,6 +382,7 @@
 </header>
 
 <main class="fade">
+<div class="diary-sync" id="diarySyncPanel" hidden><p id="diarySyncStatus" role="status" aria-live="polite"></p><button class="ui-button" id="diarySyncRetry" type="button" onclick="retryDiarySync()" hidden>다시 연결</button></div>
 
   <div class="streak-banner">
     <div>
@@ -408,7 +411,7 @@
 
     <!-- 에디터 -->
     <div class="card">
-      <div class="card-title"><span>✏️ 일기 쓰기</span><span class="save-hint" id="saveHint"></span></div>
+      <div class="card-title"><span>✏️ 일기 쓰기</span><span class="save-hint" id="saveHint" role="status" aria-live="polite"></span></div>
       <div class="editor-date-row">
         <input type="date" id="entryDate" onchange="loadEntry(this.value)">
         <button class="ghost-btn" style="color: var(--text);" onclick="goTodayEntry()">오늘</button>
@@ -440,6 +443,7 @@
 
 <div id="toast"></div>
 
+<script src="js/diary-common.js"></script>
 <script>
 // ══════════════════════════════════════
 // FIREBASE INIT
@@ -457,6 +461,9 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 let currentUser = null;
+let diaryAuthRevision = 0;
+let diaryWritePending = null;
+let editorBaseline = {};
 let diary = {};                  // { 'YYYY-MM-DD': { text, mood, feelings, prompt } }
 let viewMonth = new Date();      // 목록에 보여줄 달
 let editingKey = todayKey();     // 에디터가 가리키는 날짜
@@ -496,6 +503,18 @@ auth.getRedirectResult().catch(e => {
 });
 
 auth.onAuthStateChanged(async (user) => {
+  if (currentUser?.uid !== user?.uid) {
+    flushDraft();
+    diaryAuthRevision++;
+    currentUser = user;
+    diary = {};
+    editorBaseline = {};
+    diaryWritePending = null;
+    const button = document.querySelector('button[onclick="saveEntry()"]');
+    button.disabled = false;
+    button.textContent = '저장하기';
+    loadEntry(editingKey);
+  }
   if (user) {
     currentUser = user;
     document.getElementById('loginOverlay').style.display = 'none';
@@ -507,91 +526,125 @@ auth.onAuthStateChanged(async (user) => {
     document.getElementById('loginOverlay').style.display = 'flex';
     document.getElementById('userProfile').style.display = 'none';
     if (unsubDiary) { unsubDiary(); unsubDiary = null; }
+    setDiarySync('signed-out');
   }
 });
 
-async function loginWithGoogle() {
-  // iOS/Android 앱(Capacitor)에서는 네이티브 구글 로그인을 사용한다
-  // (웹뷰에서는 구글이 OAuth 팝업을 차단하기 때문)
-  const cap = window.Capacitor;
-  if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
-    try {
-      const result = await cap.Plugins.FirebaseAuthentication.signInWithGoogle();
-      const idToken = result.credential && result.credential.idToken;
-      const accessToken = result.credential && result.credential.accessToken;
-      if (!idToken) throw new Error('네이티브 로그인에서 토큰을 받지 못했습니다.');
-      const credential = firebase.auth.GoogleAuthProvider.credential(idToken, accessToken || null);
-      await auth.signInWithCredential(credential);
-    } catch (e) {
-      console.error('네이티브 로그인 에러:', e);
-      alert('구글 로그인 중 문제가 발생했습니다.\n' + (e.message || e));
-    }
-    return;
-  }
-  const provider = new firebase.auth.GoogleAuthProvider();
-  // 팝업 우선 (iOS 홈 화면 앱에서도 팝업이 리다이렉트보다 안정적)
-  try {
-    await auth.signInWithPopup(provider);
-  } catch (e) {
-    // 팝업이 차단되면 리다이렉트로 자동 전환
-    if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment' || e.code === 'auth/cancelled-popup-request') {
-      try { await auth.signInWithRedirect(provider); return; } catch (e2) { e = e2; }
-    }
-    console.error('로그인 에러:', e);
-    alert(`구글 로그인 중 문제가 발생했습니다.\n코드: ${e.code}\n메시지: ${e.message}`);
-  }
-}
-async function logout() {
-  if (confirm('로그아웃 하시겠습니까?')) { await auth.signOut(); location.reload(); }
-}
 
 // ══════════════════════════════════════
 // DATA
 // ══════════════════════════════════════
 // 실시간 구독 — 다른 기기에서 쓴 일기도 즉시 반영
 let unsubDiary = null;
+let diarySubscriptionRevision = 0;
+function retryDiarySync() { if (currentUser) return loadDiary(); }
 function loadDiary() {
+  if (!currentUser) return;
+  setDiarySync('loading');
+  const subscription = ++diarySubscriptionRevision;
   if (unsubDiary) unsubDiary();
-  unsubDiary = db.collection('users').doc(currentUser.uid).onSnapshot(snap => {
+  const revision = diaryAuthRevision;
+  unsubDiary = db.collection('users').doc(currentUser.uid).onSnapshot({includeMetadataChanges:true}, snap => {
+    if (revision !== diaryAuthRevision || subscription !== diarySubscriptionRevision) return;
+    observeDiarySnapshot(snap);
+    if (snap.metadata?.hasPendingWrites) return;
+    const hasDraft = isDirty();
     diary = (snap.exists && snap.data().diary) || {};
-    if (isDirty()) {
+    if (hasDraft || diaryWritePending) {
       // 작성 중인 글은 건드리지 않고 목록·스트릭만 갱신
       renderList();
       renderStreak();
     } else {
       renderAll();
     }
-  }, e => console.error('일기 실시간 구독 실패:', e));
+  }, e => {
+    if (revision !== diaryAuthRevision || subscription !== diarySubscriptionRevision) return;
+    console.error('일기 실시간 구독 실패:', e);
+    setDiarySync('error');
+  });
+}
+
+function diaryEditorValue() {
+  return { text: document.getElementById('diaryArea').value, mood: selectedMood,
+    feelings: [...selectedFeelings], prompt: currentPrompt || promptForKey(editingKey) };
 }
 
 async function saveEntry() {
-  if (!currentUser) return;
-  const text = document.getElementById('diaryArea').value.trim();
-  if (!text) { toast('내용을 입력해 주세요 ✍️'); return; }
-  const entry = { text, mood: selectedMood, feelings: selectedFeelings, prompt: currentPrompt, updatedAt: Date.now() };
-  diary[editingKey] = entry;
+  if (!currentUser || diaryWritePending) return;
+  const value = diaryEditorValue(), text = value.text.trim();
+  if (!text) { toast('내용을 입력해 주세요.'); return; }
+  const uid = currentUser.uid, key = editingKey, revision = diaryAuthRevision;
+  const entry = { ...value, text, updatedAt: Date.now() };
+  const operation = {};
+  diaryWritePending = operation;
+  flushDraft();
+  const button = document.querySelector('button[onclick="saveEntry()"]');
+  button.disabled = true;
+  button.textContent = '저장 중…';
+  document.getElementById('saveHint').textContent = '저장 중…';
   try {
-    await db.collection('users').doc(currentUser.uid).set({ diary: { [editingKey]: entry } }, { merge: true });
-    clearDraft(editingKey); // 저장 성공 → 임시 저장본 정리
-    document.getElementById('saveHint').textContent = '✅ 저장됨';
-    setTimeout(() => document.getElementById('saveHint').textContent = '', 2000);
-    renderAll();
-    toast('📔 일기가 저장됐어요!');
-  } catch (e) { console.error('저장 실패:', e); toast('저장에 실패했어요. 네트워크를 확인해 주세요.'); }
+    await db.collection('users').doc(uid).set({ diary: { [key]: entry } }, { merge: true });
+    if (revision !== diaryAuthRevision) return;
+    diary[key] = entry;
+    if (editingKey === key) {
+      editorBaseline = entry;
+      flushDraft();
+      document.getElementById('saveHint').textContent = isDirty() ? '저장 후 변경한 내용이 있어요.' : '저장됨';
+      document.getElementById('deleteBtn').style.display = 'inline-block';
+    } else {
+      const draft = getDrafts(uid)[key];
+      if (draft && sameDiaryContent(draft, entry, key)) clearDraft(key, uid);
+    }
+    renderList();
+    renderStreak();
+    renderDiaryInsight();
+    toast('일기가 저장됐어요.');
+  } catch (e) {
+    console.error('저장 실패:', e);
+    if (revision === diaryAuthRevision) {
+      setDiarySync('error');
+      flushDraft();
+      document.getElementById('saveHint').textContent = '저장에 실패했어요. 다시 저장해 주세요.';
+      toast('저장에 실패했어요. 입력한 내용은 그대로예요.');
+    }
+  } finally {
+    if (diaryWritePending === operation) {
+      diaryWritePending = null;
+      button.disabled = false;
+      button.textContent = '저장하기';
+    }
+  }
 }
 
 async function deleteEntry() {
-  if (!diary[editingKey]) return;
+  if (!currentUser || !diary[editingKey] || diaryWritePending) return;
   if (!confirm('이 날의 일기를 삭제할까요? 되돌릴 수 없어요.')) return;
-  delete diary[editingKey];
+  const uid = currentUser.uid, key = editingKey, revision = diaryAuthRevision;
+  const before = diaryEditorValue(), operation = {};
+  diaryWritePending = operation;
   try {
-    await db.collection('users').doc(currentUser.uid).update({
-      [`diary.${editingKey}`]: firebase.firestore.FieldValue.delete()
+    await db.collection('users').doc(uid).update({
+      [`diary.${key}`]: firebase.firestore.FieldValue.delete()
     });
-    clearDraft(editingKey);
-    renderAll();
+    if (revision !== diaryAuthRevision) return;
+    delete diary[key];
+    if (editingKey === key && sameDiaryContent(diaryEditorValue(), before, key)) {
+      clearDraft(key, uid);
+      loadEntry(key);
+    } else if (editingKey === key) {
+      editorBaseline = {};
+      flushDraft();
+    }
+    renderList();
+    renderStreak();
+    renderDiaryInsight();
     toast('일기를 삭제했어요.');
-  } catch (e) { console.error('삭제 실패:', e); toast('삭제에 실패했어요.'); }
+  } catch (e) {
+    console.error('삭제 실패:', e);
+    if (revision === diaryAuthRevision) { setDiarySync('error'); toast('삭제에 실패했어요.'); }
+  } finally {
+    if (diaryWritePending === operation) diaryWritePending = null;
+  }
 }
 
 // ══════════════════════════════════════
@@ -647,46 +700,58 @@ function insertPrompt() {
 }
 
 // 저장 안 한 일기 내용이 있는지 확인
+function sameDiaryContent(a, b, key) {
+  return (a.text || '').trim() === (b.text || '').trim()
+    && (a.mood || MOODS[0]) === (b.mood || MOODS[0])
+    && JSON.stringify(a.feelings || []) === JSON.stringify(b.feelings || [])
+    && (a.prompt || promptForKey(key)) === (b.prompt || promptForKey(key));
+}
 function isDirty() {
-  const cur = document.getElementById('diaryArea').value.trim();
-  const savedEntry = diary[editingKey] || {};
-  const saved = (savedEntry.text || '').trim();
-  const savedFeelings = JSON.stringify(savedEntry.feelings || []);
-  const activePrompt = currentPrompt || promptForKey(editingKey);
-  return cur !== saved || selectedMood !== (savedEntry.mood || MOODS[0]) || JSON.stringify(selectedFeelings) !== savedFeelings || activePrompt !== (savedEntry.prompt || promptForKey(editingKey));
+  return !sameDiaryContent(diaryEditorValue(), editorBaseline, editingKey);
 }
 
-// ── 임시 저장 (작성 중 내용 유실 방지) ──
-// 저장 전 내용을 기기(localStorage)에 자동 보관하고, 날짜를 옮겨도 되돌아오면 복원한다.
-const DRAFT_KEY = 'diary_drafts';
+// The legacy diary_drafts key has no owner; retain it without importing it into an account.
+const DRAFT_KEY = 'diary_drafts:';
 let draftTimer = null;
-function getDrafts() {
-  try { return JSON.parse(localStorage.getItem(DRAFT_KEY)) || {}; } catch { return {}; }
+function getDrafts(uid = currentUser?.uid) {
+  if (!uid) return {};
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY + uid)) || {}; }
+  catch { return {}; }
+}
+function writeDrafts(uid, drafts) {
+  try {
+    localStorage.setItem(DRAFT_KEY + uid, JSON.stringify(drafts));
+    return true;
+  } catch {
+    document.getElementById('saveHint').textContent = '기기에 임시 저장하지 못했어요. 이동 전에 저장해 주세요.';
+    return false;
+  }
 }
 function flushDraft() {
   clearTimeout(draftTimer);
-  const drafts = getDrafts();
-  if (isDirty()) {
-    drafts[editingKey] = { text: document.getElementById('diaryArea').value, mood: selectedMood, feelings: selectedFeelings, prompt: currentPrompt, t: Date.now() };
-  } else {
-    delete drafts[editingKey];
-  }
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts));
+  const uid = currentUser?.uid;
+  if (!uid) return true;
+  const drafts = getDrafts(uid);
+  if (isDirty()) drafts[editingKey] = { ...diaryEditorValue(), t: Date.now() };
+  else delete drafts[editingKey];
+  return writeDrafts(uid, drafts);
 }
 function scheduleDraft() {
   clearTimeout(draftTimer);
   draftTimer = setTimeout(flushDraft, 400);
 }
-function clearDraft(key) {
-  const drafts = getDrafts();
+function clearDraft(key, uid = currentUser?.uid) {
+  if (!uid) return;
+  const drafts = getDrafts(uid);
   delete drafts[key];
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts));
+  writeDrafts(uid, drafts);
 }
 
 function loadEntry(key) {
   if (key !== editingKey) flushDraft(); // 이동 전 작성 중이던 내용을 임시 저장
   editingKey = key;
   const e = diary[key];
+  editorBaseline = e ? { ...e, feelings: [...(e.feelings || [])] } : {};
   document.getElementById('entryDate').value = key;
   document.getElementById('diaryArea').value = e ? e.text : '';
   selectedMood = e && e.mood ? e.mood : MOODS[0];
@@ -696,7 +761,7 @@ function loadEntry(key) {
   // 저장본과 다른 임시 저장본이 있으면 복원해서 이어쓰기
   const draft = getDrafts()[key];
   const hint = document.getElementById('saveHint');
-  if (draft && (draft.text || '').trim() && (draft.text || '').trim() !== (e ? e.text : '').trim()) {
+  if (draft && !sameDiaryContent(draft, editorBaseline, key)) {
     document.getElementById('diaryArea').value = draft.text;
     if (draft.mood) selectedMood = draft.mood;
     if (Array.isArray(draft.feelings)) selectedFeelings = draft.feelings.filter(id => FEELINGS.some(f => f.id === id));
@@ -723,14 +788,16 @@ document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveEntry(); }
 });
 // 앱을 닫거나 새로고침해도 작성 중 내용을 남긴다
-window.addEventListener('beforeunload', flushDraft);
+window.addEventListener('beforeunload', event => {
+  if (!flushDraft() && isDirty()) { event.preventDefault(); event.returnValue = ''; }
+});
+window.addEventListener('pagehide', flushDraft);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushDraft(); });
 
 // ══════════════════════════════════════
 // LIST & STREAK
 // ══════════════════════════════════════
 function moveMonth(delta) { viewMonth.setMonth(viewMonth.getMonth() + delta); renderList(); }
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 // 일기 키워드 검색 (전체 기간 대상)
 let diarySearchQuery = '';
@@ -759,7 +826,7 @@ function renderList() {
     const prefix = `${y}-${String(m+1).padStart(2,'0')}`;
     keys = Object.keys(diary).filter(k => k.startsWith(prefix)).sort().reverse();
     if (!keys.length) {
-      box.innerHTML = '<div class="empty-msg">이 달에는 아직 일기가 없어요.<br>오른쪽에서 첫 일기를 써보세요 🌱</div>';
+      box.innerHTML = '<div class="empty-msg">이 달에는 아직 일기가 없어요.<br>첫 일기를 써보세요 🌱</div>';
       return;
     }
   }
@@ -834,27 +901,6 @@ function renderAll() {
 // ══════════════════════════════════════
 // THEME / TOAST
 // ══════════════════════════════════════
-function toggleTheme() {
-  const isDark = document.body.classList.toggle('dark');
-  localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  updateThemeButton();
-}
-function updateThemeButton() {
-  document.getElementById('themeToggle').innerHTML = document.body.classList.contains('dark') ? '☀️ 라이트' : '🌙 다크';
-}
-function loadTheme() {
-  if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
-  updateThemeButton();
-}
-
-let toastTimer = null;
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
-}
 
 loadTheme();
 renderMoodRow();
