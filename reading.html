@@ -69,21 +69,22 @@
   @media(max-width:767px) { .header-inner { min-height:60px; padding:var(--ui-s3) var(--ui-s4); flex-wrap:wrap; gap:var(--ui-s2); } .profile { order:3; flex-basis:100%; } main { padding:var(--ui-s5) var(--ui-s4) var(--ui-s8); } .reading-hero { grid-template-columns:1fr; gap:var(--ui-s3); } .reading-count { justify-self:start; } .layout { grid-template-columns:1fr; } .reading-card { padding:var(--ui-s4); } .form-grid { grid-template-columns:1fr; } .field.full { grid-column:auto; } }
 .field textarea { word-break:keep-all; overflow-wrap:break-word; }
 </style>
+<link rel="stylesheet" href="css/app-design.css">
 </head>
 <body>
-<header><div class="header-inner"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">M</span><span>Minb</span></a><span class="profile" id="userName">독서 기록</span><button class="ui-button" id="loginButton" type="button" onclick="login()">Google 로그인</button></div></header>
+<header><div class="header-inner"><a class="brand" href="./"><img class="brand-mark" src="favicon.svg" alt="" width="36" height="36"><span>Minb</span></a><span class="profile" id="userName">독서 기록</span><button class="ui-button" id="loginButton" type="button" onclick="login()">Google 로그인</button></div></header>
 <main>
-  <section class="reading-hero" aria-labelledby="pageTitle"><div><p class="ui-eyebrow">나만의 책장</p><h1 id="pageTitle">읽은 마음</h1><p>책을 덮은 뒤 남은 문장과 감정을 기록해 보세요.</p></div><div class="reading-count" id="readingCount">0권 기록</div></section>
+  <section class="reading-hero" aria-labelledby="pageTitle"><div><p class="ui-eyebrow">나만의 책장</p><h1 id="pageTitle">읽은 마음</h1><p>읽은 책과 오래 남은 생각들.</p></div><div class="reading-count" id="readingCount">0권 기록</div></section>
   <div class="reading-actions" aria-label="독서 기록 바로가기"><button class="ui-button" type="button" onclick="showBookshelf()">내 책장 보기</button><button class="ui-button" type="button" onclick="newNote()">새 기록 쓰기</button></div>
   <div class="layout">
-    <section class="reading-card" aria-labelledby="editorTitle"><h2 id="editorTitle">독서감성문 쓰기</h2><p>완독 전에도 마음에 남은 순간을 남길 수 있어요.</p>
+    <section class="reading-card" aria-labelledby="editorTitle"><h2 id="editorTitle">독서감성문 쓰기</h2><p>읽는 중에도 편하게 남겨두세요.</p>
       <div class="form-grid">
         <div class="field"><label for="bookTitle">책 제목</label><input id="bookTitle" placeholder="예: 달러구트 꿈 백화점" autocomplete="off"></div>
         <div class="field"><label for="bookAuthor">저자</label><input id="bookAuthor" placeholder="예: 이미예" autocomplete="off"></div>
         <div class="field"><label for="finishedDate">기록한 날</label><input id="finishedDate" type="date"></div>
         <div class="field"><label for="emotion">읽고 난 감정</label><select id="emotion"><option value="위로">위로</option><option value="설렘">설렘</option><option value="차분">차분</option><option value="깊은 생각">깊은 생각</option><option value="씁쓸함">씁쓸함</option><option value="용기">용기</option></select></div>
         <div class="field full"><label for="quote">마음에 남은 문장 <span class="ui-meta">선택</span></label><textarea id="quote" placeholder="책에서 오래 남을 한 문장을 적어 보세요."></textarea></div>
-        <div class="field full"><label for="reflection">독서감성문</label><textarea id="reflection" placeholder="이 책이 내게 어떤 이야기를 건넸나요?"></textarea></div>
+        <div class="field full"><label for="reflection">독서감성문</label><textarea id="reflection" placeholder="읽으며 든 생각이나 기억하고 싶은 장면을 적어보세요."></textarea></div>
       </div>
       <div class="form-actions"><span class="save-status" id="saveStatus" aria-live="polite"></span><div><button class="ui-button delete" id="deleteButton" hidden type="button" onclick="deleteNote()">삭제</button> <button class="ui-button primary reading-save" id="saveButton" type="button" onclick="saveNote()">기록 저장</button></div></div>
     </section>

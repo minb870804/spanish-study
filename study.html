@@ -690,13 +690,14 @@
 </style>
 <link rel="stylesheet" href="css/ui.css">
 <script src="js/app-shell.js" defer></script>
+<link rel="stylesheet" href="css/app-design.css">
 </head>
 <body>
 
 <!-- [신설] 구글 로그인 유도 오버레이 모달 -->
 <div id="loginOverlay" style="display: none;">
   <div class="login-card">
-    <div class="login-mark">🇪🇸</div>
+    <div class="login-mark"><img src="favicon.svg" alt="" width="64" height="64"></div>
     <h2 style="font-size: 22px; font-weight: 900; margin-bottom: 8px; color: var(--dark);">스페인어 첫걸음 스터디</h2>
     <p style="font-size: 13.5px; color: var(--muted); margin-bottom: 28px; line-height: 1.6;">
       기기 간의 실시간 진도 동기화를 위해 구글 로그인이 필요합니다. 어디서나 나만의 단어장과 출석 기록이 실시간으로 동기화됩니다!
@@ -711,7 +712,7 @@
 <header>
   <div class="header-top">
     <div class="logo">
-      <span class="logo-flag">🇪🇸</span>
+      <img class="logo-flag" src="favicon.svg" alt="" width="36" height="36">
       <div class="logo-text">
         <h1>스페인어 스터디</h1>
         <p>나혼자 끝내는 첫걸음 · Día 01~16 · 주 3일 학습</p>
@@ -730,14 +731,14 @@
     </div>
   </div>
   <nav class="study-tabs" aria-label="스페인어 학습 메뉴">
-    <button class="active" onclick="showTab('home')">🏠 홈</button>
-    <button onclick="showTab('plan')">📅 학습 계획</button>
-    <button onclick="showTab('vocab')">📖 단어장</button>
-    <button onclick="showTab('grammar')">✏️ 문법</button>
-    <button onclick="showTab('alphabet')">🔤 발음</button>
-    <button onclick="showTab('quiz')">🧠 퀴즈</button>
-    <button onclick="showTab('progress')">📊 진도 체크</button>
-    <button onclick="showTab('nexus')">🔗 넥서스 연동</button>
+    <button class="active" onclick="showTab('home')">홈</button>
+    <button onclick="showTab('plan')">학습 계획</button>
+    <button onclick="showTab('vocab')">단어장</button>
+    <button onclick="showTab('grammar')">문법</button>
+    <button onclick="showTab('alphabet')">발음</button>
+    <button onclick="showTab('quiz')">퀴즈</button>
+    <button onclick="showTab('progress')">진도 체크</button>
+    <button onclick="showTab('nexus')">넥서스 연동</button>
   </nav>
 </header>
 
@@ -747,7 +748,7 @@
 <div id="tab-home" class="tab-content active">
     <div class="card today-learning">
       <div class="card-title">
-        <div class="card-title-left">📋 오늘의 학습</div>
+        <div class="card-title-left">오늘의 학습</div>
       </div>
       <div id="home-today"></div>
     </div>
@@ -759,21 +760,21 @@
       <div class="hero-stat"><span class="val" id="stat-days">0</span><div class="lbl">공부한 날</div></div>
       <div class="hero-stat"><span class="val" id="stat-words">0</span><div class="lbl">암기 단어</div></div>
       <div class="hero-stat"><span class="val" id="stat-dias">0</span><div class="lbl">완료한 Día</div></div>
-      <div class="hero-stat"><span class="val" id="stat-streak">0</span><div class="lbl">연속 🔥</div></div>
+      <div class="hero-stat"><span class="val" id="stat-streak">0</span><div class="lbl">연속 학습</div></div>
     </div>
   </div>
 
   <div class="quick-nav">
-    <div class="quick-btn" onclick="showTab('plan')"><div class="icon">📅</div><div class="name">학습 계획</div></div>
-    <div class="quick-btn" onclick="showTab('vocab')"><div class="icon">🃏</div><div class="name">플래시카드</div></div>
-    <div class="quick-btn" onclick="showTab('quiz')"><div class="icon">🧠</div><div class="name">단어 퀴즈</div></div>
-    <div class="quick-btn" onclick="showTab('nexus')"><div class="icon">🔊</div><div class="name">음원·부록</div></div>
+    <button type="button" class="quick-btn" onclick="showTab('plan')"><span class="name">학습 계획</span><span class="icon" aria-hidden="true">→</span></button>
+    <button type="button" class="quick-btn" onclick="showTab('vocab')"><span class="name">플래시카드</span><span class="icon" aria-hidden="true">→</span></button>
+    <button type="button" class="quick-btn" onclick="showTab('quiz')"><span class="name">단어 퀴즈</span><span class="icon" aria-hidden="true">→</span></button>
+    <button type="button" class="quick-btn" onclick="showTab('nexus')"><span class="name">음원·부록</span><span class="icon" aria-hidden="true">→</span></button>
   </div>
 
   <div class="home-expression">
     <div class="phrase-of-day">
       <div>
-        <div class="label">⭐ 오늘의 표현</div>
+        <div class="label">오늘의 표현</div>
         <div class="es">
           <span id="pod-es"></span>
           <button onclick="speakSpanish(document.getElementById('pod-es').textContent)" class="speak-btn" title="발음 듣기">🔊</button>
@@ -788,7 +789,7 @@
   <div class="card practice-card">
     <div class="practice-head">
       <div>
-        <div class="card-title-left" style="font-weight:900;margin-bottom:8px;">✍️ 오늘의 문장 연습</div>
+        <div class="card-title-left" style="font-weight:900;margin-bottom:8px;">오늘의 문장 연습</div>
         <div class="practice-ko" id="practiceKo"></div>
         <div class="practice-hint" id="practiceHint"></div>
       </div>
@@ -820,7 +821,7 @@
     <div class="study-tips">
       <div class="tip-box"><span>🔊</span><div><strong>음원을 반드시 활용</strong><br>넥서스 부록 페이지에서 각 Día의 MP3 + 동영상 강의를 무료로 <span style="white-space:nowrap;">들을 수 있어요.</span> 소리 없이 눈으로만 공부하면 발음이 굳어집니다.</div></div>
       <div class="tip-box"><span>🔄</span><div><strong>복습용 동영상 활용</strong><br>각 Día에는 복습용 동영상이 따로 있어요. 다음 Día로 넘어가기 전에 꼭 복습 영상으로 확인하세요.</div></div>
-      <div class="tip-box"><span>🃏</span><div><strong>단어 암기 동영상</strong><br>Día 02~16에는 단어 암기 동영상이 제공돼요. 플래시카드와 함께 활용하면 효과가 2배예요.</div></div>
+      <div class="tip-box"><span>🃏</span><div><strong>단어 암기 동영상</strong><br>Día 02~16에는 단어 암기 동영상이 제공돼요. 플래시카드와 함께 활용하면 함께 복습하기 좋아요.</div></div>
       <div class="tip-box"><span>📅</span><div><strong>주 3일 리듬 유지</strong><br>매일보다 규칙적인 주 3회가 더 중요해요. 학습 계획 탭에서 체크하며 리듬을 만들어가세요.</div></div>
     </div>
   </details>
@@ -828,11 +829,11 @@
 
 <!-- ══ PLAN ══ -->
 <div id="tab-plan" class="tab-content">
-  <div class="section-title">📅 8주 학습 계획 <span style="font-size:13px;font-weight:400;color:var(--muted);">— 넥서스 Día 01~16 기반</span></div>
+  <div class="section-title">8주 학습 계획 <span style="font-size:13px;font-weight:400;color:var(--muted);">— 넥서스 Día 01~16 기반</span></div>
 
   <div class="notice">
     <span>✅</span>
-    <div><strong>이렇게 사용하세요:</strong> 각 Día 카드를 클릭해 펼친 후, 학습 항목에 체크하세요. 모든 항목을 체크하면 해당 Día가 완료로 표시되고 진도·달력이 자동 업데이트됩니다. 넥서스 부록 링크도 각 Día에 연결되어 있어요.</div>
+    <div>Día를 열어 공부한 항목에 체크하세요. 진도와 출석 기록에 바로 반영됩니다.</div>
   </div>
 
   <div id="plan-container"></div>
@@ -840,14 +841,14 @@
 
 <!-- ══ VOCAB & CUSTOM VOCAB ══ -->
 <div id="tab-vocab" class="tab-content">
-  <div class="section-title">📖 단어장</div>
+  <div class="section-title">단어장</div>
   
   <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
     <button onclick="toggleCustomForm()" class="filter-btn active" style="background: var(--blue); border-color: var(--blue); display: flex; align-items: center; gap: 6px;">➕ 나만의 단어 추가</button>
   </div>
   
   <div class="card" id="custom-vocab-card" style="display: none; margin-bottom: 18px; border: 1px solid var(--border);">
-    <div class="card-title" style="border-bottom:none; margin-bottom:12px; padding-bottom:0;">✍️ 나만의 단어 추가</div>
+    <div class="card-title" style="border-bottom:none; margin-bottom:12px; padding-bottom:0;">나만의 단어 추가</div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
       <div>
         <label style="font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px;">스페인어 단어 *</label>
@@ -878,13 +879,13 @@
     </div>
     <div style="display: flex; gap: 10px; justify-content: flex-end;">
       <button onclick="toggleCustomForm()" class="filter-btn" style="border-color: var(--muted); color: var(--muted);">취소</button>
-      <button onclick="addCustomWord()" class="filter-btn active" style="background: var(--green); border-color: var(--green);">등록하기 🚀</button>
+      <button onclick="addCustomWord()" class="filter-btn active" style="background: var(--green); border-color: var(--green);">등록하기</button>
     </div>
   </div>
 
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left">🃏 플래시카드 모드</div>
+      <div class="card-title-left">플래시카드 모드</div>
     </div>
     <div class="flashcard-area">
       <div class="flashcard" id="flashcard" onclick="flipCard()">
@@ -921,7 +922,7 @@
   
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left">📋 단어 목록</div>
+      <div class="card-title-left">단어 목록</div>
     </div>
     <div class="vocab-summary" id="vocabSummary"></div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
@@ -947,7 +948,7 @@
 
 <!-- ══ GRAMMAR ══ -->
 <div id="tab-grammar" class="tab-content">
-  <div class="section-title">✏️ 핵심 문법 정리</div>
+  <div class="section-title">핵심 문법 정리</div>
   <div class="card">
     <div class="grammar-section">
       <h3>📌 1. 명사의 성 — Día 02</h3>
@@ -1092,11 +1093,11 @@
 
 <!-- ══ ALPHABET ══ -->
 <div id="tab-alphabet" class="tab-content">
-  <div class="section-title">🔤 발음 & 알파벳</div>
+  <div class="section-title">발음 & 알파벳</div>
   
-  <div class="card" id="alpha-detail-card" style="display: none; border-left: 5px solid var(--red); background: var(--red-light);">
+  <div class="card" id="alpha-detail-card" style="display: none; background: var(--ui-soft);">
     <div class="card-title" style="border-bottom:none; margin-bottom:0; padding-bottom:0;">
-      <div class="card-title-left">✨ 선택한 알파벳 정보</div>
+      <div class="card-title-left">선택한 알파벳 정보</div>
     </div>
     <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 10px;">
       <div style="display: flex; align-items: center; gap: 16px;">
@@ -1112,9 +1113,9 @@
 
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left">📢 Día 01 — 발음 핵심 규칙</div>
+      <div class="card-title-left">Día 01 — 발음 핵심 규칙</div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;margin-bottom:14px;">
+    <div class="pronunciation-rules">
       <div class="rule-box" style="margin:0;"><div class="rule-title">모음 (항상 일정)</div>A[아] E[에] I[이] O[오] U[우]<br>영어처럼 변하지 않아요!</div>
       <div class="rule-box" style="margin:0;"><div class="rule-title">특수 문자</div><strong>Ñ</strong>[냐/뇨] mañana(내일)<br><strong>H</strong> 묵음 — hola[올라]<br><strong>LL</strong>[야/요] — llamar[야마르]</div>
       <div class="rule-box" style="margin:0;"><div class="rule-title">C / G 변화</div>C+a/o/u ➔ [k] (casa)<br>C+e/i ➔ [s] (cine)<br>G+e/i ➔ [h] (gente[헨테])</div>
@@ -1123,14 +1124,14 @@
   </div>
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left">🔡 알파벳 27개</div>
+      <div class="card-title-left">알파벳 27개</div>
     </div>
     <div style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">알파벳 카드를 클릭하면 스페인어 발음을 바로 들려주고 상세 정보가 나타납니다.</div>
     <div class="alpha-grid" id="alpha-grid"></div>
   </div>
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left">💬 필수 기초 표현</div>
+      <div class="card-title-left">필수 기초 표현</div>
     </div>
     <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
 <table class="vocab-table">
@@ -1156,22 +1157,21 @@
 
 <!-- ══ QUIZ ══ -->
 <div id="tab-quiz" class="tab-content">
-  <div class="section-title">🧠 스페인어 단어 퀴즈</div>
+  <div class="section-title">스페인어 단어 퀴즈</div>
   
   <!-- 퀴즈 시작 대기 화면 -->
   <div class="card" id="quiz-setup" style="text-align: center; padding: 40px 20px;">
-    <div style="font-size: 48px; margin-bottom: 16px;">🧠</div>
-    <h3 style="font-size: 20px; font-weight: 800; margin-bottom: 8px;">스페인어 단어 실력 테스트</h3>
+    <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">단어 10개 복습하기</h3>
     <p style="font-size: 13.5px; color: var(--muted); margin-bottom: 20px; line-height: 1.6;">
-      지금까지 공부한 전체 단어와 직접 추가한 나만의 단어 중 무작위로 10문제가 출제됩니다.<br>
-      스페인어 단어 🔊 소리를 들으며 뜻을 맞춰 보세요!
+      기본 단어와 내가 추가한 단어에서 10문제를 골라드려요.<br>
+      발음을 듣고 뜻을 떠올려 보세요.
     </p>
     <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px;">
       <button class="filter-btn active" id="qdir-mix" onclick="setQuizDir('mix', this)">🔀 랜덤 방향</button>
       <button class="filter-btn" id="qdir-es" onclick="setQuizDir('es', this)">🇪🇸 스→한</button>
       <button class="filter-btn" id="qdir-ko" onclick="setQuizDir('ko', this)">🇰🇷 한→스</button>
     </div>
-    <button onclick="startQuiz()" style="background: var(--red); color: white; border: none; padding: 12px 32px; border-radius: 24px; font-size: 15px; font-weight: 700; cursor: pointer; transition: var(--transition); box-shadow: 0 4px 10px rgba(211,47,47,0.2);">퀴즈 시작하기 🚀</button>
+    <button onclick="startQuiz()" class="ui-button primary">퀴즈 시작하기</button>
   </div>
   
   <!-- 퀴즈 진행 화면 -->
@@ -1224,7 +1224,7 @@
 
 <!-- ══ PROGRESS ══ -->
 <div id="tab-progress" class="tab-content">
-  <div class="section-title">📊 진도 체크</div>
+  <div class="section-title">진도 체크</div>
 
   <div class="notice">
     <span>📌</span>
@@ -1235,12 +1235,12 @@
     <div class="progress-stat"><span class="p-val" id="prog-days">0</span><div class="p-lbl">학습일</div></div>
     <div class="progress-stat"><span class="p-val" id="prog-words">0</span><div class="p-lbl">암기 단어</div></div>
     <div class="progress-stat"><span class="p-val" id="prog-dias">0/16</span><div class="p-lbl">Día 완료</div></div>
-    <div class="progress-stat"><span class="p-val" id="prog-streak">0</span><div class="p-lbl">연속 🔥</div></div>
+    <div class="progress-stat"><span class="p-val" id="prog-streak">0</span><div class="p-lbl">연속 학습</div></div>
   </div>
 
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left">📈 최근 7일간 완료한 항목 수</div>
+      <div class="card-title-left">최근 7일간 완료한 항목 수</div>
     </div>
     <div class="chart-container" id="study-chart" style="display: flex; align-items: flex-end; justify-content: space-between; height: 160px; padding: 10px 20px 0; margin-top: 10px;">
       <!-- JS로 동적 렌더링 -->
@@ -1249,7 +1249,7 @@
 
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left">📆 출석 달력</div>
+      <div class="card-title-left">출석 달력</div>
       <div style="display:flex; align-items:center; gap:10px;">
         <button onclick="prevMonth()" style="background:none; border:none; color:var(--red); font-weight:800; cursor:pointer; font-size:14px; padding: 2px 6px;">◀</button>
         <span style="font-size:13px; color:var(--dark); font-weight:700; min-width: 76px; text-align: center;" id="cal-month-label"></span>
@@ -1265,7 +1265,7 @@
 
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left">📗 Día별 진도 현황</div>
+      <div class="card-title-left">Día별 진도 현황</div>
     </div>
     <div style="margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;">
@@ -1278,14 +1278,14 @@
 
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left">📝 최근 학습 기록</div>
+      <div class="card-title-left">최근 학습 기록</div>
     </div>
     <div id="study-log"></div>
   </div>
 
   <div class="card" style="border: 1px dashed var(--red); background: var(--red-light);">
     <div class="card-title" style="color: var(--red); border-bottom: none; margin-bottom: 4px; padding-bottom: 0;">
-      <div class="card-title-left">⚙️ 데이터 관리</div>
+      <div class="card-title-left">데이터 관리</div>
     </div>
     <p style="font-size:12px; color:var(--muted); margin-bottom: 12px; line-height: 1.5;">학습 계획 체크리스트, 단어 암기 상태 및 출석 달력 기록을 모두 삭제하고 처음 상태로 되돌립니다.</p>
     <button onclick="resetAllData()" style="background:var(--red); color:white; border:none; padding:10px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; transition: var(--transition);">모든 학습 데이터 초기화</button>
@@ -1294,18 +1294,18 @@
 
 <!-- ══ NEXUS ══ -->
 <div id="tab-nexus" class="tab-content">
-  <div class="section-title">🔗 넥서스 공식 부록 연동</div>
+  <div class="section-title">넥서스 공식 부록 연동</div>
   
   <div class="notice">
     <span>ℹ️</span>
     <div>
-      <strong>보안 및 편리한 학습을 위한 안내:</strong> 브라우저 보안 정책상 넥서스 공식 홈페이지는 사이트 내부에 매립되지 않고 **안전한 새 탭**으로 열립니다. 부록 페이지를 새 창으로 열어놓고 음원을 재생하며 본 스터디 사이트의 체크리스트와 단어장을 멀티태스킹 뷰로 공부하시는 것을 추천합니다!
+      교재 음원과 동영상은 넥서스 자료실에서 새 탭으로 열려요. 학습을 마친 뒤 돌아와 진도를 체크하세요.
     </div>
   </div>
 
   <div class="nexus-banner">
     <div>
-      <h3>📚 나혼자 끝내는 독학 스페인어 첫걸음 — 공식 자료실</h3>
+      <h3>넥서스 교재 자료실</h3>
       <p>Día 01~16 동영상 강의 · MP3 음원 · 복습 영상 · 단어 암기 영상 일체 제공</p>
     </div>
     <a href="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" target="_blank" rel="noopener noreferrer" class="nexus-open-btn">🔊 공식 자료실 바로가기 ➔</a>
@@ -1313,7 +1313,7 @@
   <div class="grid-2">
     <div class="card">
       <div class="card-title">
-        <div class="card-title-left">🎧 부록 구성</div>
+        <div class="card-title-left">부록 구성</div>
       </div>
       <div style="font-size:13px;line-height:2;">
         <div>📹 <strong>Día 01</strong> — 발음 특훈 동영상 + MP3</div>
@@ -1325,7 +1325,7 @@
     </div>
     <div class="card">
       <div class="card-title">
-        <div class="card-title-left">🌐 추천 무료 자료</div>
+        <div class="card-title-left">추천 무료 자료</div>
       </div>
       <div style="font-size:13px;line-height:2;">
         <div>📱 <strong>Duolingo</strong> — 하루 5분 보조 앱</div>
@@ -1973,9 +1973,9 @@ function renderPlan() {
           <div class="bar-wrap"><div class="bar-fill" id="dia-bar-${dia.num}" style="width:${pct}%"></div></div>
         </div>
         <div class="task-section">
-          <div class="task-section-title">📚 오늘의 학습 문법</div>
+          <div class="task-section-title">오늘의 학습 문법</div>
           <div style="font-size:12.5px;color:var(--muted);padding:6px 0 10px;line-height:1.7;">${dia.grammar}</div>
-          <div class="task-section-title">✅ 학습 체크리스트</div>
+          <div class="task-section-title">학습 체크리스트</div>
           ${dia.tasks.map(t => `
             <div class="task-row">
               <input type="checkbox" id="task-${t.id}" ${s.tasks[t.id]?'checked':''} onchange="checkTask('${t.id}',${dia.num},this.checked)">
@@ -2034,7 +2034,7 @@ async function checkTask(taskId, diaNum, checked) {
     const status = card.querySelector('.dia-status');
     if (status) { status.className = `dia-status ${complete?'done':'todo'}`; status.textContent = complete?'✅ 완료':'📖 학습중'; }
     const numEl = card.querySelector('.dia-num');
-    if (numEl) numEl.style.background = complete ? 'linear-gradient(135deg,var(--green),#2ecc71)' : '';
+    if (numEl) numEl.style.background = complete ? 'var(--ui-soft)' : '';
   }
 
   updateAllStats();
@@ -2065,7 +2065,7 @@ function updateHomeToday() {
   }
   const prog = diaProgress(nextDia.num, s);
   el.innerHTML = `
-    <div style="border-left:4px solid var(--red);padding-left:14px;margin-bottom:14px;">
+    <div style="margin-bottom:var(--ui-s4);">
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">현재 진행중</div>
       <div style="font-size:16px;font-weight:800;color:var(--dark);">Día ${String(nextDia.num).padStart(2,'0')} — ${nextDia.title}</div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px;">${nextDia.sub}</div>
@@ -2074,8 +2074,7 @@ function updateHomeToday() {
       <span>진행률</span><span>${prog.done}/${prog.total} 항목</span>
     </div>
     <div class="bar-wrap"><div class="bar-fill" style="width:${prog.total?Math.round(prog.done/prog.total*100):0}%"></div></div>
-    <button onclick="showTab('plan')" class="study-continue">
-      ${prog.done ? '이어서 학습하기' : '오늘 학습 시작하기'} →
+    <button onclick="showTab('plan')" class="study-continue">${prog.done ? '이어서 학습하기' : '오늘 학습 시작하기'} →
     </button>
   `;
 }

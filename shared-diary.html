@@ -234,6 +234,7 @@
 <link rel="stylesheet" href="css/ui.css">
 <script src="js/app-shell.js" defer></script>
 <link rel="stylesheet" href="css/diary-sync.css">
+<link rel="stylesheet" href="css/app-design.css">
 </head>
 <body>
 
@@ -254,10 +255,10 @@
 <header>
   <div class="header-top">
     <div class="logo">
-      <span class="logo-flag">💌</span>
+      <img class="logo-flag" src="favicon.svg" alt="" width="36" height="36">
       <div class="logo-text">
         <h1>교환일기</h1>
-        <p>함께 쓰는 날짜별 일기 — 실시간 공유</p>
+        <p>서로의 하루를 읽는 곳</p>
       </div>
     </div>
     <div class="header-right">
@@ -278,7 +279,7 @@
   <div class="hero">
     <div>
       <h2 id="heroDate">오늘</h2>
-      <div class="sub">서로의 하루를 일기로 주고받아요 💌</div>
+      <div class="sub">오늘은 어떤 하루였나요?</div>
     </div>
     <div class="date-nav">
       <button onclick="moveDate(-1)">‹</button>
@@ -290,15 +291,15 @@
 
   <!-- 상대방이 써준 일기: 페이지를 열자마자 가장 먼저 읽히도록 맨 위에 둔다 -->
   <div class="card" style="margin-bottom: 18px;">
-    <div class="card-title"><span>💬 <span id="partnerLabel">멤버</span>의 일기</span></div>
+    <div class="card-title"><span><span id="partnerLabel">멤버</span>의 일기</span></div>
     <div id="partnerEntries"></div>
   </div>
 
   <div class="card" style="margin-bottom: 18px;">
-    <div class="card-title"><span>👥 함께 쓰는 사람</span></div>
+    <div class="card-title"><span>함께 쓰는 사람</span></div>
     <div class="member-chips" id="memberChips"></div>
     <div id="soloHint" style="display:none; font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.6;">
-      아직 혼자예요. <a href="./" style="color: var(--rose); font-weight: 700;">Minb</a>에서 초대 코드를 공유하면 함께 쓸 수 있어요!
+      함께 쓸 사람을 초대해 보세요. <a href="./" style="color: var(--rose); font-weight: 700;">Minb</a>에서 초대 코드를 공유하면 함께 쓸 수 있어요.
     </div>
   </div>
 
@@ -306,7 +307,7 @@
     <!-- 목록 -->
     <div class="card">
       <div class="card-title">
-        <span>🗂 일기 목록</span>
+        <span>일기 목록</span>
         <div class="month-nav">
           <button onclick="moveMonth(-1)">‹</button>
           <span class="label" id="monthLabel"></span>
@@ -319,9 +320,9 @@
     <!-- 이 날 내가 쓰는 일기 -->
     <div>
       <div class="card">
-        <div class="card-title"><span>✏️ 나의 일기</span><span class="save-hint" id="saveHint" role="status" aria-live="polite"></span></div>
+        <div class="card-title"><span>나의 일기</span><span class="save-hint" id="saveHint" role="status" aria-live="polite"></span></div>
         <div class="mood-row" id="moodRow"></div>
-        <textarea id="diaryArea" class="diary-area" placeholder="오늘 하루를 함께 쓰는 사람에게 들려주세요 💌" oninput="updateCharCount()"></textarea>
+        <textarea id="diaryArea" class="diary-area" placeholder="오늘 있었던 일을 적어보세요." oninput="updateCharCount()"></textarea>
         <div class="editor-footer">
           <span class="char-count" id="charCount">0자</span>
           <div style="display:flex; gap:8px;">
