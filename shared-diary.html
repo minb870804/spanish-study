@@ -338,6 +338,8 @@
 <div id="toast"></div>
 
 <script src="js/diary-common.js"></script>
+<script src="js/diary-months.js"></script>
+<script src="js/diary-storage.js"></script>
 <script>
 // ══════════════════════════════════════
 // FIREBASE INIT
@@ -379,6 +381,7 @@ auth.getRedirectResult().catch(e => {
   }
 });
 
+let sharedStorage = null;
 let sharedSession = 0;
 let connectionAttempt = 0;
 let subscriptionRevision = 0;
@@ -461,6 +464,8 @@ function activateSharedSpace(id, data) {
 
 auth.onAuthStateChanged(async user => {
   persistSharedDraft();
+  sharedStorage?.stop();
+  sharedStorage = null;
   sharedSession++;
   connectionAttempt++;
   subscriptionRevision++;
@@ -532,14 +537,20 @@ function retryDiarySync() {
 function subscribeSpace() {
   if (!currentUser || !spaceId) return;
   if (unsubSpace) unsubSpace();
+  sharedStorage?.stop();
   const session = sharedSession, id = spaceId, revision = ++subscriptionRevision;
   const current = () => session === sharedSession && id === spaceId && revision === subscriptionRevision;
+  sharedStorage = createDiaryStorage({db, ref:db.collection('spaces').doc(id), field:'sharedDiary', depth:2,
+    current, observe:observeDiarySnapshot, fail:() => setDiarySync('error'),
+    receive:map => applySpaceData({...spaceData, sharedDiary:map})});
   unsubSpace = db.collection('spaces').doc(id).onSnapshot({includeMetadataChanges:true}, doc => {
     if (!current()) return;
     if (!doc.exists) { setDiarySync('error'); return; }
-    observeDiarySnapshot(doc);
     if (doc.metadata?.hasPendingWrites) return;
-    applySpaceData(doc.data());
+    const data = doc.data();
+    spaceData = {...data, sharedDiary:spaceData?.sharedDiary || {}};
+    renderMembers();
+    sharedStorage.read(data, doc);
   }, error => {
     if (!current()) return;
     console.error('스페이스 구독 에러:', error);
@@ -581,7 +592,7 @@ async function saveEntry() {
   persistSharedDraft(); updateSharedActions(); setDiarySync('pending');
   document.getElementById('saveHint').textContent = '저장 중…';
   try {
-    await db.collection('spaces').doc(id).update({[`sharedDiary.${key}.${user.uid}`]:entry, updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    await sharedStorage.write(key, entry, user.uid);
     if (session !== sharedSession || id !== spaceId) return;
     if (!spaceData.sharedDiary) spaceData.sharedDiary = {};
     if (!spaceData.sharedDiary[key]) spaceData.sharedDiary[key] = {};
@@ -596,6 +607,7 @@ async function saveEntry() {
   } catch (error) {
     console.error('저장 실패:', error);
     if (session === sharedSession && id === spaceId) {
+      if (error.code === 'permission-denied') void retryDiarySync();
       setDiarySync('error');
       persistSharedDraft();
       document.getElementById('saveHint').textContent = '저장에 실패했어요. 다시 저장해 주세요.';
@@ -613,7 +625,7 @@ async function deleteEntry() {
   sharedOperation = operation; diarySavePending = true;
   persistSharedDraft(); updateSharedActions(); setDiarySync('pending');
   try {
-    await db.collection('spaces').doc(id).update({[`sharedDiary.${key}.${uid}`]:firebase.firestore.FieldValue.delete()});
+    await sharedStorage.remove(key, uid);
     if (session !== sharedSession || id !== spaceId) return;
     if (spaceData.sharedDiary?.[key]) delete spaceData.sharedDiary[key][uid];
     clearSharedDraft(key, before, uid, id);

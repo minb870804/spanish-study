@@ -1873,6 +1873,8 @@ auth.onAuthStateChanged(async (user) => {
     document.getElementById('userProfile').style.display = 'none';
     if (unsubSpace) { unsubSpace(); unsubSpace = null; }
     if (unsubUser) { unsubUser(); unsubUser = null; }
+    resetDayStorage('personal');
+    resetDayStorage('shared');
     updatePushStatus();
   }
 });

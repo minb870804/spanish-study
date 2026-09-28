@@ -444,6 +444,8 @@
 <div id="toast"></div>
 
 <script src="js/diary-common.js"></script>
+<script src="js/diary-months.js"></script>
+<script src="js/diary-storage.js"></script>
 <script>
 // ══════════════════════════════════════
 // FIREBASE INIT
@@ -505,6 +507,7 @@ auth.getRedirectResult().catch(e => {
 auth.onAuthStateChanged(async (user) => {
   if (currentUser?.uid !== user?.uid) {
     flushDraft();
+    diaryStorage?.stop();
     diaryAuthRevision++;
     currentUser = user;
     diary = {};
@@ -536,6 +539,7 @@ auth.onAuthStateChanged(async (user) => {
 // ══════════════════════════════════════
 // 실시간 구독 — 다른 기기에서 쓴 일기도 즉시 반영
 let unsubDiary = null;
+let diaryStorage = null;
 let diarySubscriptionRevision = 0;
 function retryDiarySync() { if (currentUser) return loadDiary(); }
 function loadDiary() {
@@ -543,20 +547,19 @@ function loadDiary() {
   setDiarySync('loading');
   const subscription = ++diarySubscriptionRevision;
   if (unsubDiary) unsubDiary();
+  diaryStorage?.stop();
   const revision = diaryAuthRevision;
+  diaryStorage = createDiaryStorage({db, ref:db.collection('users').doc(currentUser.uid), field:'diary', depth:1,
+    current:() => revision === diaryAuthRevision && subscription === diarySubscriptionRevision,
+    observe:observeDiarySnapshot, fail:() => setDiarySync('error'),
+    receive:map => {
+      diary = map;
+      if (isDirty() || diaryWritePending) { renderList(); renderStreak(); } else renderAll();
+    }});
   unsubDiary = db.collection('users').doc(currentUser.uid).onSnapshot({includeMetadataChanges:true}, snap => {
     if (revision !== diaryAuthRevision || subscription !== diarySubscriptionRevision) return;
-    observeDiarySnapshot(snap);
     if (snap.metadata?.hasPendingWrites) return;
-    const hasDraft = isDirty();
-    diary = (snap.exists && snap.data().diary) || {};
-    if (hasDraft || diaryWritePending) {
-      // 작성 중인 글은 건드리지 않고 목록·스트릭만 갱신
-      renderList();
-      renderStreak();
-    } else {
-      renderAll();
-    }
+    diaryStorage.read((snap.exists && snap.data()) || {}, snap);
   }, e => {
     if (revision !== diaryAuthRevision || subscription !== diarySubscriptionRevision) return;
     console.error('일기 실시간 구독 실패:', e);
@@ -583,7 +586,7 @@ async function saveEntry() {
   button.textContent = '저장 중…';
   document.getElementById('saveHint').textContent = '저장 중…';
   try {
-    await db.collection('users').doc(uid).set({ diary: { [key]: entry } }, { merge: true });
+    await diaryStorage.write(key, entry);
     if (revision !== diaryAuthRevision) return;
     diary[key] = entry;
     if (editingKey === key) {
@@ -602,6 +605,7 @@ async function saveEntry() {
   } catch (e) {
     console.error('저장 실패:', e);
     if (revision === diaryAuthRevision) {
+      if (e.code === 'permission-denied') loadDiary();
       setDiarySync('error');
       flushDraft();
       document.getElementById('saveHint').textContent = '저장에 실패했어요. 다시 저장해 주세요.';
@@ -623,9 +627,7 @@ async function deleteEntry() {
   const before = diaryEditorValue(), operation = {};
   diaryWritePending = operation;
   try {
-    await db.collection('users').doc(uid).update({
-      [`diary.${key}`]: firebase.firestore.FieldValue.delete()
-    });
+    await diaryStorage.remove(key);
     if (revision !== diaryAuthRevision) return;
     delete diary[key];
     if (editingKey === key && sameDiaryContent(diaryEditorValue(), before, key)) {
