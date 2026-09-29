@@ -489,7 +489,25 @@ Expected: FAIL — `.filter-tabs` 요소가 없다
 .calendar-links button:hover { color: var(--ui-text); }
 ```
 
-- [ ] **Step 7: 테스트 통과 확인**
+- [ ] **Step 7: 쓰이지 않게 된 CSS 삭제**
+
+마크업이 사라졌으므로 아래 규칙들은 죽은 코드다. `css/app.css`에서 지운다.
+
+```css
+  .schedule-filter-bar { ... }        /* 블록 전체 */
+  .schedule-filter-label { ... }      /* 한 줄 */
+  .calendar-tools { ... }             /* 기본 규칙 + 미디어쿼리 안 두 곳 */
+```
+
+`css/ui.css`의 `.calendar-tools { flex-wrap:wrap; }` 한 줄도 지운다.
+
+```bash
+grep -n "schedule-filter-bar\|schedule-filter-label\|calendar-tools" css/app.css css/ui.css index.html
+```
+
+Expected: 아무것도 안 나온다. 남아 있으면 그 줄을 지운다.
+
+- [ ] **Step 8: 테스트 통과 확인**
 
 ```bash
 MINB_PLAYWRIGHT=/Volumes/minb/.hermes/hermes-agent/node_modules/playwright node tests/home-visual.cjs
@@ -497,10 +515,10 @@ MINB_PLAYWRIGHT=/Volumes/minb/.hermes/hermes-agent/node_modules/playwright node 
 
 Expected: `6/6 passed`
 
-- [ ] **Step 8: 커밋**
+- [ ] **Step 9: 커밋**
 
 ```bash
-git add index.html css/app.css tests/home-visual.cjs
+git add index.html css/app.css css/ui.css tests/home-visual.cjs
 git commit -m "feat: 달력 도구를 자리별로 재배치
 
 필터는 밑줄 탭, 리포트·금주·오늘은 달력 아래 링크 줄로.
@@ -655,8 +673,9 @@ test('카테고리 색은 바탕이 아니라 점으로 남는다', 'day', async
   const badge = p.locator('.dm-item .tcat-badge').first();
   assert.equal(await badge.count(), 1);
   // 인라인 배경이 아니라 커스텀 속성으로 넘어와야 한다
-  assert.equal(await badge.getAttribute('style'), await badge.evaluate(el => el.getAttribute('style')));
-  assert.match(await badge.getAttribute('style'), /--cat-color/);
+  const style = await badge.getAttribute('style');
+  assert.match(style, /--cat-color/, style);
+  assert.equal(/background\s*:/.test(style), false, style);
   const bg = await badge.evaluate(el => getComputedStyle(el).backgroundColor);
   assert.equal(bg, 'rgba(0, 0, 0, 0)', '뱃지 바탕은 투명해야 한다');
   const dot = await badge.evaluate(el => getComputedStyle(el, '::before').backgroundColor);
