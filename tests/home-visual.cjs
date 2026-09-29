@@ -1441,7 +1441,9 @@ async function writeBaseline(browser) {
   console.log(`기준 파일 작성(${WRITE}): ${BASELINE_FILE}\n  요소 수 ${WIDTHS.map((w, i) => `${w}px=${n[i]}`).join(' ')}, 시트 ${data.stylesheets.sheets.length}개, 규칙 ${data.stylesheets.totalRules}개, cssHash ${data.stylesheets.cssHash.slice(0, 12)}`);
 }
 
-(async () => {
+module.exports = { PROPS, snapshotInPage, snapshot, sheetInfo, diffSnapshots, findMessageSinks, DECOR_TEXT, MAX_REPORT };
+
+if (require.main === module) (async () => {
   const browser = await chromium.launch();
   try {
     if (WRITE) { await writeBaseline(browser); return; }
