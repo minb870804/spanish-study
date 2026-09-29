@@ -3881,29 +3881,24 @@ function renderCalendarTags(key, dateObj) {
       // 반복 할 일 — 드래그 이동 불가(규칙), 🔁 표시. 완료는 흐리게.
       const done = !!(day.recDone || {})[obj.id];
       const cat = todoCategory(obj);
-      const style = owner
-        ? `background:${hexToRgba(owner.color, 0.16)}; color:${owner.color}; box-shadow:inset 3px 0 ${owner.color};`
-        : `background:${hexToRgba(cat.color, 0.16)}; color:${cat.color};`;
+      // 달력 라벨은 색 바탕 없이 왼쪽 막대(--tag-color)로만 색을 남긴다. 주인 색이 카테고리 색보다 우선.
+      const style = `--tag-color:${owner ? owner.color : cat.color};`;
       const label = obj.text;
       tags.push(`<span class="mcal-tag" style="${done ? 'opacity:0.55;' : ''}${style}" title="반복 할 일">${esc(label)}</span>`);
     } else {
       const t = obj;
       const imp = isImportantTodo(t);
       const label = t.text;
-      // 주인 색은 왼쪽 띠로 남겨 누구 일정인지 계속 알 수 있게 한다.
-      const ownerAccent = owner ? `box-shadow:inset 3px 0 ${owner.color};` : '';
-      const ownerStyle = owner
-        ? `background:${hexToRgba(owner.color, 0.16)}; color:${owner.color}; ${ownerAccent}`
-        : '';
-      // 완료는 기존대로 녹색, 중요는 빨강, 그 외는 주인·카테고리 색
+      // 왼쪽 막대 색: 주인(누구 일정인지) > 카테고리. 중요·완료는 막대 옆 안쪽 띠(--tag-accent)와 글자 굵기·취소선으로 알린다.
       if (t.done) {
-        tags.push(`<span class="mcal-tag t-done" style="${ownerStyle}" ${calendarDragAttrs('todo', key, t.id)}>${esc(label)}</span>`);
+        // 완료: 주인이 없으면 막대가 녹색(CSS 기본값). 주인이 있으면 주인 색 막대 + 녹색 안쪽 띠(t-owned).
+        const doneStyle = owner ? ` style="--tag-color:${owner.color};"` : '';
+        tags.push(`<span class="mcal-tag t-done${owner ? ' t-owned' : ''}"${doneStyle} ${calendarDragAttrs('todo', key, t.id)}>${esc(label)}</span>`);
       } else {
         const cat = todoCategory(t);
-        const style = imp
-          ? `background:${hexToRgba(IMPORTANT_COLOR, 0.18)}; color:${IMPORTANT_COLOR}; font-weight:900; ${ownerAccent}`
-          : (ownerStyle || `background:${hexToRgba(cat.color, 0.16)}; color:${cat.color};`);
-        tags.push(`<span class="mcal-tag t-cat" style="${style}" ${calendarDragAttrs('todo', key, t.id)}${imp ? ' title="중요 일정"' : ''}>${esc(label)}</span>`);
+        const barColor = owner ? owner.color : (imp ? IMPORTANT_COLOR : cat.color);
+        const accent = imp && owner ? `--tag-accent:${IMPORTANT_COLOR};` : '';
+        tags.push(`<span class="mcal-tag t-cat${imp ? ' t-imp' : ''}" style="--tag-color:${barColor};${accent}" ${calendarDragAttrs('todo', key, t.id)}${imp ? ' title="중요 일정"' : ''}>${esc(label)}</span>`);
       }
     }
   });
@@ -4059,16 +4054,16 @@ function renderCalendarLegend() {
   const legend = document.querySelector('.calendar-legend');
   if (!legend) return;
   const catSwatches = getCategories().map(c =>
-    `<span><span class="mcal-tag" style="background:${hexToRgba(c.color, 0.16)}; color:${c.color};">${esc(c.name)}</span></span>`
+    `<span><span class="mcal-tag" style="--tag-color:${c.color};">${esc(c.name)}</span></span>`
   ).join('');
   // 공유 중이면 주인별 색(나·배우자·함께)도 함께 안내한다.
   const partySwatches = isShared()
     ? partyOptions().map(o =>
-        `<span><span class="owner-badge" style="--owner-color:${ownerColorFor(o.key)}; --owner-bg:${hexToRgba(ownerColorFor(o.key), 0.14)};">${esc(o.label)}</span></span>`
+        `<span><span class="mcal-tag" style="--tag-color:${ownerColorFor(o.key)};">${esc(o.label)}</span></span>`
       ).join('')
     : '';
   legend.innerHTML = partySwatches +
-    `<span><span class="mcal-tag" style="background:${hexToRgba(IMPORTANT_COLOR, 0.18)}; color:${IMPORTANT_COLOR}; font-weight:900;">❗중요</span></span>` +
+    `<span><span class="mcal-tag t-imp" style="--tag-color:${IMPORTANT_COLOR};">중요</span></span>` +
     catSwatches +
     `<span><span class="mcal-tag t-done">완료</span></span>` +
     `<span><span class="mcal-tag t-note">메모</span></span>`;

@@ -440,6 +440,200 @@ test('메모 카테고리 선택 뱃지는 색 바탕 뱃지 모양을 그대로
   assert.ok(got.dot === 'none' || got.dot === 'normal', '메모 뱃지에 점이 생겼다: ' + JSON.stringify(got));
 });
 
+// ── 달력 날짜 칸 라벨 ──
+// 홈 fixture 는 일정이 없어 computed 스냅샷이 달력 라벨을 전혀 보지 못한다. 그래서 실제 렌더러(renderAll)로 라벨을 그려 검증한다.
+// 라벨의 색은 인라인 background/color 가 아니라 --tag-color 로 넘어오고, CSS 가 "바탕 없음 + 본문색 글자 + 왼쪽 막대"로 그린다.
+// 기대값은 앱이 런타임에 계산하는 함수(todoOwnerSignature·todoCategory·IMPORTANT_COLOR)에서 읽는다(hex 하드코딩 없음).
+const seedCalendarTags = () => {
+  spaceData.members = ['A', 'B'];
+  spaceData.memberProfiles = { A: { name: '테스트' }, B: { name: '배우자' } };
+  const shared = (o) => ({ visibility: 'shared', ...o });
+  userData.personalDays = {
+    '2026-10-02': { todos: [{ id: 'cat1', text: '카테고리만 있는 일정', by: 'A', cat: 'wk', visibility: 'private' }] },
+    '2026-10-03': { todos: [{ id: 'imp1', text: '중요한 개인 일정', by: 'A', cat: 'wk', visibility: 'private', important: true }] },
+    '2026-10-05': { todos: [{ id: 'done1', text: '끝낸 개인 일정', by: 'A', cat: 'wk', visibility: 'private', done: true }] },
+    '2026-10-09': { recDone: { rec1: true } },
+    '2026-10-12': { todos: [1, 2, 3, 4, 5].map(i => ({ id: 'm' + i, text: '많은 일정 ' + i, by: 'A', cat: 'etc', visibility: 'private' })) },
+    '2026-10-13': { notes: { etc: '메모 내용' } },
+  };
+  userData.personalRecurring = [{ id: 'rec1', text: '반복 일정', days: [5], startDate: '2026-10-09', endDate: '2026-10-09', cat: 'ex', visibility: 'private' }];
+  spaceData.days = {
+    '2026-10-01': { todos: [shared({ id: 'own1', text: '배우자 공유 일정', by: 'B', cat: 'ex' })] },
+    '2026-10-04': { todos: [shared({ id: 'ownimp', text: '중요한 배우자 일정', by: 'B', cat: 'ex', important: true })] },
+    '2026-10-06': { todos: [shared({ id: 'owndone', text: '끝낸 배우자 일정', by: 'B', cat: 'ex', done: true })] },
+    '2026-10-07': { todos: [shared({ id: 'mine1', text: '내 공유 일정', by: 'A', cat: 'st' })] },
+  };
+  calendarView = 'month'; calMonth = new Date(2026, 9, 1);
+  renderAll();
+};
+// 페이지 안에서 실행: 각 라벨의 계산된 모양 + 앱이 계산해 주는 기대 막대 색
+const readCalendarTags = (normSrc) => {
+  const norm = eval(normSrc);
+  const dayOf = (k) => document.querySelector(`#monthCal .mcal-day[data-date="${k}"]`);
+  const look = (el) => {
+    const cs = getComputedStyle(el);
+    return { text: el.textContent, cls: el.className, style: el.getAttribute('style') || '', title: el.getAttribute('title'), role: el.getAttribute('role'),
+      bg: cs.backgroundColor, bgImage: cs.backgroundImage, color: cs.color, barW: cs.borderLeftWidth, barStyle: cs.borderLeftStyle, bar: cs.borderLeftColor,
+      accent: cs.boxShadow, deco: cs.textDecorationLine, weight: cs.fontWeight, opacity: cs.opacity, ws: cs.whiteSpace, ov: cs.textOverflow, padL: cs.paddingLeft };
+  };
+  const tag = (k, i = 0) => { const el = dayOf(k) && dayOf(k).querySelectorAll('.mcal-tag')[i]; return el ? look(el) : null; };
+  const todoOf = (k, id) => getDay(k).todos.find(t => t.id === id);
+  // 막대 색 우선순위(사양): 주인 색 > (완료면 녹색) > (중요면 빨강) > 카테고리 색
+  const barOf = (k, id) => {
+    const t = todoOf(k, id); const o = todoOwnerSignature(t);
+    if (o) return norm(o.color);
+    if (t.done) return norm('var(--green)');
+    return t.important ? norm(IMPORTANT_COLOR) : norm(todoCategory(t).color);
+  };
+  const rec = { id: 'rec1', cat: 'ex', visibility: 'private' };
+  return {
+    body: norm('var(--text)'), muted: norm('var(--ui-muted)'), green: norm('var(--green)'), blue: norm('var(--blue)'), important: norm(IMPORTANT_COLOR),
+    ownerA: norm(todoOwnerSignature(todoOf('2026-10-07', 'mine1')).color), ownerB: norm(todoOwnerSignature(todoOf('2026-10-01', 'own1')).color),
+    catWk: norm(todoCategory(todoOf('2026-10-02', 'cat1')).color), catEx: norm(todoCategory(rec).color),
+    owner: { tag: tag('2026-10-01'), want: barOf('2026-10-01', 'own1') },
+    mine: { tag: tag('2026-10-07'), want: barOf('2026-10-07', 'mine1') },
+    cat: { tag: tag('2026-10-02'), want: barOf('2026-10-02', 'cat1') },
+    imp: { tag: tag('2026-10-03'), want: barOf('2026-10-03', 'imp1') },
+    ownImp: { tag: tag('2026-10-04'), want: barOf('2026-10-04', 'ownimp') },
+    done: { tag: tag('2026-10-05'), want: barOf('2026-10-05', 'done1') },
+    ownDone: { tag: tag('2026-10-06'), want: barOf('2026-10-06', 'owndone') },
+    recDone: { tag: tag('2026-10-09') },
+    many: [...dayOf('2026-10-12').querySelectorAll('.mcal-tag')].map(look),
+    more: (dayOf('2026-10-12').querySelector('.mcal-more') || {}).textContent,
+    note: tag('2026-10-13'),
+  };
+};
+
+test('달력 라벨: 색 바탕이 아니라 본문색 글자 + 왼쪽 색 막대다 (주인·카테고리·중요·완료)', 375, async p => {
+  await p.evaluate(seedCalendarTags);
+  const g = await p.evaluate(readCalendarTags, inPageNorm);
+  const rows = { owner: g.owner, mine: g.mine, cat: g.cat, imp: g.imp, ownImp: g.ownImp, done: g.done, ownDone: g.ownDone };
+  for (const [k, { tag, want }] of Object.entries(rows)) {
+    assert.ok(tag, k + ' 라벨이 그려지지 않았다');
+    // 인라인에는 색 바탕·글자색이 없고 --tag-color 만 있다(인라인이 CSS 를 이기는 함정 방지)
+    assert.equal(/background/.test(tag.style), false, `${k} 인라인 배경: ${tag.style}`);
+    assert.equal(/(^|;)\s*color\s*:/.test(tag.style), false, `${k} 인라인 글자색: ${tag.style}`);
+    if (k !== 'done') assert.match(tag.style, /--tag-color:/, `${k} --tag-color 없음: ${tag.style}`);
+    // 배경 없음, 본문색 글자, 3px 실선 막대
+    assert.equal(tag.bg, TRANSPARENT, `${k} 배경이 틴트다: ${tag.bg}`);
+    assert.equal(tag.bgImage, 'none', `${k} 배경 이미지`);
+    assert.equal(tag.color, g.body, `${k} 글자색이 본문색이 아니다: ${tag.color} (기대 ${g.body})`);
+    assert.equal(tag.barW, '3px', `${k} 막대 두께 ${tag.barW}`);
+    assert.equal(tag.barStyle, 'solid', `${k} 막대 모양 ${tag.barStyle}`);
+    // 막대 색은 앱이 계산한 기대값과 같다. 대체 회색으로 떨어지면(커스텀 속성 철자 오류) 여기서 잡힌다.
+    assert.equal(tag.bar, want, `${k} 막대 색 ${tag.bar} (기대 ${want}, 대체 회색 ${g.muted}, style=${tag.style})`);
+  }
+  // 기대값이 대체 회색과 같으면 위 비교가 오류를 못 잡는다
+  for (const [k, { want }] of Object.entries(rows)) assert.notEqual(want, g.muted, k + ' 기대 색이 대체 회색과 같아 이 검사가 구분을 못 한다');
+  // 소유자: 주인 색이 카테고리 색보다 우선하고, 사람마다 다르게 보인다
+  assert.notEqual(g.ownerA, g.ownerB, '두 사람의 색이 같다');
+  assert.equal(g.owner.tag.bar, g.ownerB);
+  assert.equal(g.mine.tag.bar, g.ownerA);
+  assert.notEqual(g.owner.tag.bar, g.catEx, '주인 색이 카테고리 색에 밀렸다');
+  // 주인이 없으면 카테고리 색
+  assert.equal(g.cat.tag.bar, g.catWk);
+  // 중요: 굵은 글씨 + 빨강. 주인이 없으면 막대가 빨강, 있으면 주인 색 막대 + 빨간 안쪽 띠
+  assert.equal(g.imp.tag.bar, g.important);
+  assert.equal(g.imp.want, g.important);
+  assert.ok(Number(g.imp.tag.weight) > Number(g.cat.tag.weight), `중요가 더 굵지 않다: ${g.imp.tag.weight} vs ${g.cat.tag.weight}`);
+  assert.equal(g.imp.tag.title, '중요 일정');
+  assert.equal(g.ownImp.tag.bar, g.ownerB);
+  assert.ok(g.ownImp.tag.accent.includes(g.important), `주인+중요의 안쪽 띠가 빨강이 아니다: ${g.ownImp.tag.accent}`);
+  assert.ok(Number(g.ownImp.tag.weight) > Number(g.cat.tag.weight));
+  assert.ok(g.cat.tag.accent === 'none' || g.cat.tag.accent.startsWith(TRANSPARENT), '평범한 라벨에 보이는 안쪽 띠가 있다: ' + g.cat.tag.accent);
+  // 완료: 취소선. 주인이 없으면 녹색 막대, 있으면 주인 색 막대 + 녹색 안쪽 띠
+  assert.equal(g.done.tag.deco, 'line-through');
+  assert.equal(g.done.tag.bar, g.green);
+  assert.match(g.done.tag.cls, /t-done/);
+  assert.equal(g.ownDone.tag.deco, 'line-through');
+  assert.equal(g.ownDone.tag.bar, g.ownerB);
+  assert.ok(g.ownDone.tag.accent.includes(g.green), `주인+완료의 안쪽 띠가 녹색이 아니다: ${g.ownDone.tag.accent}`);
+  assert.equal(g.cat.tag.deco, 'none');
+  // 드래그 속성 보존
+  assert.equal(g.cat.tag.role, 'button');
+  assert.equal(g.done.tag.role, 'button');
+});
+
+test('달력 라벨: 반복 일정(완료는 흐리게)·메모·+N·한 줄 자르기', 375, async p => {
+  await p.evaluate(seedCalendarTags);
+  const g = await p.evaluate(readCalendarTags, inPageNorm);
+  const r = g.recDone.tag;
+  assert.ok(r, '반복 일정 라벨이 없다');
+  assert.equal(r.title, '반복 할 일');
+  assert.equal(r.opacity, '0.55', '완료한 반복 일정이 흐리지 않다');
+  assert.equal(r.bg, TRANSPARENT);
+  assert.equal(r.color, g.body);
+  assert.equal(r.bar, g.catEx, '반복 일정 막대는 카테고리 색이다');
+  assert.notEqual(g.catEx, g.muted);
+  assert.equal(/background/.test(r.style), false, r.style);
+  assert.equal(r.role, null, '반복 일정은 드래그할 수 없다');
+  // 메모 라벨은 파란 막대
+  assert.ok(g.note, '메모 라벨이 없다');
+  assert.equal(g.note.bg, TRANSPARENT);
+  assert.equal(g.note.color, g.body);
+  assert.equal(g.note.bar, g.blue);
+  assert.equal(g.note.role, 'button');
+  // 미리보기는 3개 + '+2'
+  assert.equal(g.many.length, 3);
+  assert.equal(g.more, '+2');
+  // 한 줄에서 말줄임표 없이 잘린다(사용자가 명시적으로 요청한 동작)
+  for (const t of g.many) { assert.equal(t.ws, 'nowrap'); assert.equal(t.ov, 'clip'); }
+  // 주 보기도 같은 라벨을 쓴다
+  await p.evaluate(() => { calendarView = 'week'; renderAll(); });
+  const w = await p.evaluate((normSrc) => {
+    const norm = eval(normSrc);
+    const el = document.querySelector('#monthCal .mcal-day[data-date="2026-10-03"] .mcal-tag');
+    const cs = getComputedStyle(el);
+    return { week: document.getElementById('monthCal').classList.contains('calendar-week'), bg: cs.backgroundColor, bar: cs.borderLeftColor, want: norm(IMPORTANT_COLOR), color: cs.color, body: norm('var(--text)') };
+  }, inPageNorm);
+  assert.equal(w.week, true);
+  assert.equal(w.bg, TRANSPARENT);
+  assert.equal(w.bar, w.want);
+  assert.equal(w.color, w.body);
+});
+
+test('달력 범례가 실제 라벨과 같은 모양이다 (공유 공간: 주인·중요·카테고리·완료·메모)', 1280, async p => {
+  await p.evaluate(seedCalendarTags);
+  const g = await p.evaluate((normSrc) => {
+    const norm = eval(normSrc);
+    const items = [...document.querySelectorAll('.calendar-legend .mcal-tag')].map(el => {
+      const cs = getComputedStyle(el);
+      return { text: el.textContent.trim(), cls: el.className, style: el.getAttribute('style') || '', bg: cs.backgroundColor, color: cs.color, barW: cs.borderLeftWidth, bar: cs.borderLeftColor, deco: cs.textDecorationLine, weight: cs.fontWeight };
+    });
+    return { items, body: norm('var(--text)'), green: norm('var(--green)'), blue: norm('var(--blue)'), important: norm(IMPORTANT_COLOR),
+      cats: getCategories().map(c => ({ name: c.name, want: norm(c.color) })),
+      owners: partyOptions().map(o => ({ label: o.label, want: norm(ownerColorFor(o.key)) })),
+      badges: document.querySelectorAll('.calendar-legend .owner-badge').length,
+      visible: getComputedStyle(document.querySelector('.calendar-legend')).display };
+  }, inPageNorm);
+  assert.notEqual(g.visible, 'none');
+  const byText = (t) => g.items.find(i => i.text === t);
+  for (const i of g.items) {
+    assert.equal(/background/.test(i.style), false, `${i.text} 인라인 배경: ${i.style}`);
+    assert.equal(i.bg, TRANSPARENT, `${i.text} 범례가 색 바탕이다`);
+    assert.equal(i.color, g.body, `${i.text} 범례 글자색 ${i.color}`);
+    assert.equal(i.barW, '3px', `${i.text} 범례 막대 ${i.barW}`);
+  }
+  assert.equal(g.badges, 0, '범례에 예전 색 바탕 주인 뱃지가 남았다');
+  for (const c of g.cats) assert.equal(byText(c.name).bar, c.want, `카테고리 ${c.name} 범례 막대`);
+  for (const o of g.owners) assert.equal(byText(o.label).bar, o.want, `주인 ${o.label} 범례 막대`);
+  assert.equal(byText('중요').bar, g.important);
+  assert.ok(Number(byText('중요').weight) >= 700);
+  assert.equal(byText('완료').bar, g.green);
+  assert.equal(byText('완료').deco, 'line-through');
+  assert.equal(byText('메모').bar, g.blue);
+  // 정적 범례 뼈대(렌더 전 상태)도 같은 언어: 한 일은 녹색 + 취소선, 메모는 파랑
+  const base = await p.evaluate((normSrc) => {
+    const norm = eval(normSrc);
+    const probe = (cls) => { const el = document.createElement('span'); el.className = 'mcal-tag ' + cls; el.textContent = 'x'; document.body.appendChild(el); const cs = getComputedStyle(el); const o = { bg: cs.backgroundColor, bar: cs.borderLeftColor, deco: cs.textDecorationLine }; el.remove(); return o; };
+    return { todo: probe('t-todo'), done: probe('t-done'), note: probe('t-note'), green: norm('var(--green)'), blue: norm('var(--blue)') };
+  }, inPageNorm);
+  for (const k of ['todo', 'done', 'note']) assert.equal(base[k].bg, TRANSPARENT, k);
+  assert.equal(base.done.bar, base.green);
+  assert.equal(base.done.deco, 'line-through');
+  assert.equal(base.note.bar, base.blue);
+});
+
 test('스타일시트 순서와 규칙 수가 기준과 같다', 1280, async (p) => {
   const expected = readBaseline().stylesheets;
   const actual = await sheetInfo(p);
