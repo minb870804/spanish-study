@@ -146,6 +146,44 @@ test('헤더 UI에 장식 이모지가 없다', 375, async p => {
   assert.equal(/[\u{1F300}-\u{1FAFF}\u{2190}-\u{21FF}\u{2600}-\u{27BF}]/u.test(text), false, text);
 });
 
+test('달력 도구가 자리별로 나뉜다', 375, async p => {
+  // 주/월 세그먼트는 달력 제목 옆에 남는다
+  assert.equal(await p.locator('.calendar-heading .calendar-mode button').count(), 2);
+  // 월 이동 화살표는 유지
+  assert.equal(await p.locator('#calPrev').isVisible(), true);
+  assert.equal(await p.locator('#calNext').isVisible(), true);
+  // 필터는 밑줄 탭
+  assert.equal(await p.locator('.filter-tabs button[data-schedule-filter]').count(), 3);
+  assert.equal(await p.locator('.schedule-filter-bar .small-btn').count(), 0);
+  // 리포트·금주·오늘은 달력 아래 링크 줄
+  const links = p.locator('.calendar-links button');
+  assert.equal(await links.count(), 3);
+  assert.deepEqual((await links.allInnerTexts()).map(t => t.trim()), ['월 리포트', '금주 현황', '오늘로']);
+  // 핸들러 보존
+  assert.equal(await p.locator('.calendar-links button[onclick="openMonthReport()"]').count(), 1);
+  assert.equal(await p.locator('.calendar-links button[onclick="openSobrietyModal()"]').count(), 1);
+  assert.equal(await p.locator('.calendar-links button[onclick="goToday()"]').count(), 1);
+  // 터치 목표 44px, 글꼴 속성이 실제로 적용됨(font 단축 속성이 무효면 기본 13.33px 로 떨어진다)
+  for (const sel of ['.filter-tabs button', '.calendar-links button']) {
+    const boxes = await p.locator(sel).evaluateAll(els => els.map(e => ({ h: e.getBoundingClientRect().height, fs: getComputedStyle(e).fontSize, ff: getComputedStyle(e).fontFamily, pf: getComputedStyle(e.parentElement).fontFamily })));
+    for (const b of boxes) {
+      assert.ok(b.h >= 43.99, `${sel} 높이 ${b.h}`); // 서브픽셀 반올림 허용
+      assert.equal(b.fs, '14px', `${sel} 글자 크기 ${b.fs}`);
+      assert.equal(b.ff, b.pf, `${sel} 글꼴이 부모를 따르지 않는다: ${b.ff} vs ${b.pf}`);
+    }
+  }
+});
+
+test('필터 선택 상태가 보인다', 375, async p => {
+  const on = p.locator('.filter-tabs button[aria-pressed="true"]');
+  assert.equal(await on.count(), 1);
+  assert.equal((await on.innerText()).trim(), '전체');
+  await p.locator('.filter-tabs button[data-schedule-filter="mine"]').click();
+  assert.equal((await p.locator('.filter-tabs button[aria-pressed="true"]').innerText()).trim(), '내 일정');
+  // 기존 .sel 상태도 같이 맞춰진다
+  assert.equal((await p.locator('.filter-tabs button.sel').innerText()).trim(), '내 일정');
+});
+
 test('스타일시트 순서와 규칙 수가 기준과 같다', 1280, async (p) => {
   const expected = readBaseline().stylesheets;
   const actual = await sheetInfo(p);

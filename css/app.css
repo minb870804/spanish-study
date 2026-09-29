@@ -446,13 +446,7 @@
   .calendar-summary-chip.sober { background: var(--green-light); border-color: transparent; color: var(--green); }
   .calendar-summary-chip.period { background: rgba(209,96,125,0.14); border-color: transparent; color: var(--period); }
   .calendar-summary-chip.exercise { background: var(--blue-light); border-color: transparent; color: var(--blue); }
-  .schedule-filter-bar {
-    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-    margin: -4px 0 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
-  }
-  .schedule-filter-label { margin-right: 2px; color: var(--muted); font-size: 11px; font-weight: 800; }
   .calendar-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; min-width: 0; flex-wrap: wrap; }
-  .calendar-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .month-nav {
     display: grid; grid-template-columns: 36px minmax(96px, auto) 36px;
     align-items: center; gap: 6px; white-space: nowrap;
@@ -986,7 +980,6 @@
     .calendar-titlebar { flex-direction: column; align-items: stretch; gap: 10px; }
     .calendar-heading { justify-content: space-between; }
     .calendar-actions { width: 100%; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
-    .calendar-tools { gap: 6px; }
     .month-nav { grid-template-columns: 34px minmax(92px, auto) 34px; gap: 4px; }
     .month-nav .small-btn { width: 34px; }
     .cat-card { padding: 6px 5px; gap: 4px; min-height: 44px; border-radius: 10px; align-items: center; text-align: center; justify-content: center; }
@@ -1072,7 +1065,6 @@
     .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .cat-card { min-height: 44px; }
     .calendar-actions { justify-content: center; }
-    .calendar-tools { width: 100%; justify-content: center; }
   }
 
   /* 일정 편집·삭제 확인: 앱의 종이 카드와 색상 토큰을 그대로 쓰는 독립 오버레이. */
@@ -1161,3 +1153,21 @@
   background: var(--ui-card); color: var(--ui-text); cursor: pointer;
 }
 .icon-btn .ui-icon { width: 20px; height: 20px; }
+
+/* 일정 범위 필터 — 알약 대신 밑줄 탭 */
+.filter-tabs { display: flex; gap: var(--ui-s5); margin: var(--ui-s4) 0 var(--ui-s3); }
+.filter-tab {
+  min-height: var(--ui-control); padding: 0 var(--ui-s1);
+  border: 0; border-bottom: 2px solid transparent; background: none;
+  color: var(--ui-muted); font-family: inherit; font-size: var(--ui-small); font-weight: 500; line-height: 1.6; cursor: pointer;
+}
+.filter-tab[aria-pressed="true"] { color: var(--ui-text); border-bottom-color: var(--ui-text); font-weight: 700; }
+
+/* 자주 쓰지 않는 달력 도구 — 달력 아래 조용한 링크 줄 */
+.calendar-links { display: flex; gap: var(--ui-s5); margin-top: var(--ui-s4); flex-wrap: wrap; }
+.calendar-links button {
+  min-height: var(--ui-control); padding: 0; border: 0; background: none;
+  color: var(--ui-muted); font-family: inherit; font-size: var(--ui-small); font-weight: 500; line-height: 1.6; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ui-border);
+}
+.calendar-links button:hover { color: var(--ui-text); }

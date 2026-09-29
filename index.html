@@ -105,15 +105,10 @@
   <div class="card calendar-card">
     <div class="card-title calendar-titlebar">
       <div class="calendar-heading">
-        <span>내 달력</span><div class="calendar-mode" aria-label="달력 보기"><button class="ui-button" data-calendar-view="week" aria-pressed="false" onclick="setCalendarView('week')">주간</button><button class="ui-button" data-calendar-view="month" aria-pressed="true" onclick="setCalendarView('month')">월간</button></div>
+        <span>내 달력</span><div class="calendar-mode" aria-label="달력 보기"><button class="ui-button" data-calendar-view="week" aria-pressed="false" onclick="setCalendarView('week')">주</button><button class="ui-button" data-calendar-view="month" aria-pressed="true" onclick="setCalendarView('month')">월</button></div>
         <div class="calendar-day-summary" id="calendarDaySummary" aria-live="polite"></div>
       </div>
       <div class="calendar-actions">
-        <div class="calendar-tools">
-          <button class="small-btn" onclick="openMonthReport()">월 리포트</button>
-          <button class="small-btn" onclick="openSobrietyModal()">금주 현황</button>
-          <button class="small-btn" onclick="goToday()">오늘</button>
-        </div>
         <div class="month-nav" aria-label="달력 월 이동">
           <button class="small-btn" id="calPrev" onclick="moveCalMonth(-1)" aria-label="이전 달">‹</button>
           <span id="calMonthLabel" class="month-label"></span>
@@ -121,13 +116,17 @@
         </div>
       </div>
     </div>
-    <div class="schedule-filter-bar" aria-label="일정 표시 범위">
-      <span class="schedule-filter-label">일정 보기</span>
-      <button class="small-btn sel" data-schedule-filter="all" onclick="setScheduleFilter('all')">전체</button>
-      <button class="small-btn" data-schedule-filter="mine" onclick="setScheduleFilter('mine')">내 일정</button>
-      <button class="small-btn" data-schedule-filter="shared" onclick="setScheduleFilter('shared')">공유 일정</button>
+    <div class="filter-tabs" role="group" aria-label="일정 표시 범위">
+      <button type="button" class="filter-tab" data-schedule-filter="all" aria-pressed="true" onclick="setScheduleFilter('all')">전체</button>
+      <button type="button" class="filter-tab" data-schedule-filter="mine" aria-pressed="false" onclick="setScheduleFilter('mine')">내 일정</button>
+      <button type="button" class="filter-tab" data-schedule-filter="shared" aria-pressed="false" onclick="setScheduleFilter('shared')">공유 일정</button>
     </div>
     <div id="monthCal"></div>
+    <div class="calendar-links">
+      <button type="button" onclick="openMonthReport()">월 리포트</button>
+      <button type="button" onclick="openSobrietyModal()">금주 현황</button>
+      <button type="button" onclick="goToday()">오늘로</button>
+    </div>
     <section class="selected-agenda" aria-labelledby="selectedAgendaTitle"><div class="ui-section-head"><h3 id="selectedAgendaTitle">선택한 날의 일정</h3><button class="ui-button" onclick="openDayDetail(dateKey(selectedDate))">일정·메모</button></div><div id="selectedAgendaList" class="ui-agenda"></div></section>
     <div class="calendar-legend" style="display:flex; gap:10px; margin-top:10px; font-size:11px; color:var(--muted); flex-wrap:wrap;">
       <span><span class="mcal-tag t-todo">할 일</span> 남은 할 일</span>
@@ -2677,7 +2676,9 @@ function renderAll() {
   if (datePickerEl) datePickerEl.value = key;
   document.getElementById('todoDateLabel').textContent = isToday ? '오늘' : `${selectedDate.getMonth()+1}/${selectedDate.getDate()}`;
   document.querySelectorAll('[data-schedule-filter]').forEach(btn => {
-    btn.classList.toggle('sel', btn.dataset.scheduleFilter === scheduleFilter);
+    const on = btn.dataset.scheduleFilter === scheduleFilter;
+    btn.classList.toggle('sel', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
 
   const day = getDay(key);

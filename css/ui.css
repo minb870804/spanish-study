@@ -81,7 +81,6 @@ body:has(.app-nav) .header-right > a.hbtn,body:has(.app-nav) .header-right > a.n
   .today-card { padding:var(--ui-s4); }
   .today-card .ui-section-head h2 { font-size:var(--ui-title); }
   .calendar-card { padding:var(--ui-s4); }
-  .calendar-tools { flex-wrap:wrap; }
   .calendar-heading { width:100%; justify-content:space-between; }
   .calendar-heading > span { font-size:var(--ui-body); }
   .calendar-mode .ui-button { padding:var(--ui-s2) var(--ui-s3); }
