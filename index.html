@@ -2618,17 +2618,17 @@ function notifyScheduleShared(dayKey, text) {
 function scheduleScopeBadge(todo, key = '', kind = 'todo') {
   const shared = todoScope(todo, 'private') === 'shared';
   const mine = isTodoAuthor(todo);
-  if (!mine) return `<span class="scope-badge shared">👫 공유</span>`;
+  if (!mine) return `<span class="scope-badge shared">공유</span>`;
   // 배우자가 있는 할 일은 공유 여부와 주인(나·배우자·우리)을 한 번에 고른다.
-  // '🔒 나만'은 상태처럼 보여 눌러볼 생각을 하기 어려웠던 터라 할 일을 라벨에 적는다.
+  // '나만'은 상태처럼 보여 눌러볼 생각을 하기 어려웠던 터라 할 일을 라벨에 적는다.
   if (kind !== 'rec' && isShared()) {
-    const pickLabel = shared ? '👫 공유 중 · 변경' : '🔒 나만 · 공유하기';
+    const pickLabel = shared ? '공유 중 · 변경' : '나만 · 공유하기';
     return `<button type="button" class="scope-badge scope-control ${shared ? 'shared' : ''}" onclick="openSharePicker(event, ${jsArg(key)}, ${jsArg(todo.id)})" title="공유 범위와 주인 고르기">${pickLabel}</button>`;
   }
   const action = kind === 'rec'
     ? `toggleRecurringSharing(${jsArg(todo.id)})`
     : `toggleTodoSharing(${jsArg(key)}, ${jsArg(todo.id)})`;
-  const label = shared ? '👫 공유 중 · 취소' : '🔒 나만';
+  const label = shared ? '공유 중 · 취소' : '나만';
   const title = shared ? '공유 취소 — 상대방 달력에서 숨기기' : '배우자와 공유';
   return `<button type="button" class="scope-badge scope-control ${shared ? 'shared' : ''}" onclick="${action}" title="${title}">${label}</button>`;
 }
@@ -3256,8 +3256,8 @@ function activateActionTooltips(root) {
 function todoMetaHtml(todo) {
   const parts = [];
   if (isPeriodTodo(todo)) parts.push(`<span class="todo-meta-chip">📅 ${shortDateLabel(todo.startDate)}~${shortDateLabel(todo.endDate)}</span>`);
-  if (todo.time) parts.push(`<span class="todo-meta-chip">🕐 ${esc(todo.time)}</span>`);
-  if (todo.location) parts.push(`<span class="todo-meta-chip location">📍 ${esc(todo.location)}</span>`);
+  if (todo.time) parts.push(`<span class="todo-meta-chip">${esc(todo.time)}</span>`);
+  if (todo.location) parts.push(`<span class="todo-meta-chip location">${esc(todo.location)}</span>`);
   return parts.length ? `<span class="todo-meta">${parts.join('')}</span>` : '';
 }
 
@@ -3365,8 +3365,8 @@ function renderWeekOverview() {
     const isToday = item.key === todayKey;
     const dateLabel = isToday ? '오늘' : `${item.date.getMonth() + 1}/${item.date.getDate()}<br>${DAYS_KO[item.date.getDay()]}`;
     const meta = [];
-    if (todo.time) meta.push(`🕐 ${esc(todo.time)}`);
-    if (todo.location) meta.push(`📍 ${esc(todo.location)}`);
+    if (todo.time) meta.push(esc(todo.time));
+    if (todo.location) meta.push(esc(todo.location));
     if (item.recurring) meta.push('🔁 반복');
     if (owner) meta.push(`<span class="owner-badge" style="--owner-color:${owner.color}; --owner-bg:${hexToRgba(owner.color, 0.14)};">${owner.label}</span>`);
     if (todoScope(todo, 'private') === 'shared') meta.push('👫 공유');
@@ -3443,8 +3443,8 @@ function renderUpcomingTodos() {
     const [, month, day] = dueKey.split('-').map(Number);
     const dueDate = new Date(+dueKey.slice(0, 4), month - 1, day);
     const meta = [];
-    if (todo.time) meta.push(`🕐 ${esc(todo.time)}`);
-    if (todo.location) meta.push(`📍 ${esc(todo.location)}`);
+    if (todo.time) meta.push(esc(todo.time));
+    if (todo.location) meta.push(esc(todo.location));
     if (owner) meta.push(owner.label);
     if (isPeriodTodo(todo)) meta.push(`기간 ${shortDateLabel(todo.startDate || sourceKey)}–${shortDateLabel(todo.endDate)}`);
     if (!meta.length) meta.push(esc(cat.name));
@@ -3456,7 +3456,7 @@ function renderUpcomingTodos() {
         <span class="upcoming-todo-title">${isImportantTodo(todo) ? '<span style="color:var(--red); font-weight:900;">❗</span>' : ''}${esc(todo.text)}</span>
         <span class="upcoming-todo-meta">${meta.join(' · ')}</span>
       </span>
-      <span class="tcat-badge" style="background:${cat.color}; cursor:default;">${esc(cat.name)}</span>
+      <span class="tcat-badge" style="--cat-color:${cat.color}; cursor:default;">${esc(cat.name)}</span>
     </div>`;
   }).join('');
   const more = allItems.length > 8
@@ -3510,7 +3510,7 @@ function renderTodos(day) {
       <input type="checkbox" ${done ? 'checked' : ''} ${rMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleRecurringDone(${jsArg(r.id)}, this.checked)">
       <button type="button" class="todo-content" data-todo-detail-key="${escAttr(currentKey)}" data-todo-detail-id="${escAttr(r.id)}" data-todo-detail-kind="rec"><span class="txt">${esc(r.text)}</span>${todoMetaHtml(r)}</button>
       <span class="todo-actions" onclick="event.stopPropagation()">
-        <button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, ${jsArg(dateKey(selectedDate))}, 'rec', ${jsArg(r.id)})" title="카테고리 변경">${esc(cat.name)}</button>
+        <button class="tcat-badge" style="--cat-color:${cat.color};" onclick="openCatPicker(event, ${jsArg(dateKey(selectedDate))}, 'rec', ${jsArg(r.id)})" title="카테고리 변경">${esc(cat.name)}</button>
         ${scheduleScopeBadge(r, '', 'rec')}
         ${authorChip(r)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
         <span class="by" title="반복 할 일">🔁</span>
@@ -3529,8 +3529,8 @@ function renderTodos(day) {
       ? `<button class="del move-handle" onpointerdown="startTodoItemDrag(event, ${jsArg(currentKey)}, ${jsArg(t.id)})" title="드래그해서 날짜 이동">↕</button>`
       : `<span class="move-handle" style="visibility:hidden;">↕</span>`;
     const badge = mine
-      ? `<button class="tcat-badge" style="background:${cat.color};" onclick="openCatPicker(event, ${jsArg(dateKey(selectedDate))}, 'todo', ${jsArg(t.id)})" title="카테고리 변경">${esc(cat.name)}</button>`
-      : `<span class="tcat-badge" style="background:${cat.color}; cursor:default;">${esc(cat.name)}</span>`;
+      ? `<button class="tcat-badge" style="--cat-color:${cat.color};" onclick="openCatPicker(event, ${jsArg(dateKey(selectedDate))}, 'todo', ${jsArg(t.id)})" title="카테고리 변경">${esc(cat.name)}</button>`
+      : `<span class="tcat-badge" style="--cat-color:${cat.color}; cursor:default;">${esc(cat.name)}</span>`;
     const menu = mine ? `
         <button type="button" class="todo-menu-btn" onclick="toggleRowActions(event, this)" title="더보기" aria-label="더보기">⋯</button>
         <span class="todo-btns">
@@ -3624,7 +3624,7 @@ function authorChip(todo) {
 // ── 중요 표시 ── 꼭 챙겨야 하는 일정은 빨간색으로 눈에 띄게 한다.
 function isImportantTodo(t) { return !!(t && t.important); }
 function importantFlag(t) {
-  return isImportantTodo(t) ? '<span class="important-flag" title="중요 일정">❗중요</span>' : '';
+  return isImportantTodo(t) ? '<span class="important-flag" title="중요 일정">중요</span>' : '';
 }
 async function toggleTodoImportant(key, id) {
   const day = getDay(key);

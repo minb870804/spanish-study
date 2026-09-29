@@ -244,6 +244,58 @@ test('기록을 켜도 아이콘과 글자가 그대로고 켜진 상태가 눈�
   assert.equal(tones.size, 1, [...tones].join(' / '));
 });
 
+test('일정 줄 뱃지에 이모지가 없다', 375, async p => {
+  await p.evaluate(() => {
+    userData.personalDays['2026-10-02'] = { todos: [
+      { id: 'a', text: '감사팀 면담', by: 'A', time: '14:00', cat: 'etc', visibility: 'private', important: true }
+    ] };
+    openDayDetail('2026-10-02');
+  });
+  // 날짜 팝업의 일정 줄은 .todo-item 이다(.dm-item 은 렌더되지 않는다)
+  const row = await p.locator('#dmBody .todo-item').first().innerText();
+  assert.equal(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(row), false, row);
+  assert.match(row, /중요/);
+  assert.match(row, /14:00/);
+});
+
+test('카테고리 색은 바탕이 아니라 점으로 남는다', 375, async p => {
+  await p.evaluate(() => {
+    userData.personalDays['2026-10-02'] = { todos: [
+      { id: 'a', text: '감사팀 면담', by: 'A', time: '14:00', cat: 'etc', visibility: 'private' }
+    ] };
+    openDayDetail('2026-10-02');
+  });
+  const badge = p.locator('#dmBody .todo-item .tcat-badge').first();
+  assert.equal(await badge.count(), 1);
+  // 인라인 배경이 아니라 커스텀 속성으로 넘어와야 한다
+  const style = await badge.getAttribute('style');
+  assert.match(style, /--cat-color/, style);
+  assert.equal(/background\s*:/.test(style), false, style);
+  const bg = await badge.evaluate(el => getComputedStyle(el).backgroundColor);
+  assert.equal(bg, 'rgba(0, 0, 0, 0)', '뱃지 바탕은 투명해야 한다');
+  const dot = await badge.evaluate(el => getComputedStyle(el, '::before').backgroundColor);
+  assert.notEqual(dot, 'rgba(0, 0, 0, 0)', '카테고리 색 점이 있어야 한다');
+});
+
+test('메모 카테고리 선택 뱃지는 색 바탕 뱃지 모양을 그대로 유지한다', 375, async p => {
+  // .tcat-badge 는 메모 카테고리 선택에도 쓰이며 거기서는 색 바탕이 선택지 구분이다. 일정 줄용 조용한 스타일이 새면 안 된다.
+  const got = await p.evaluate(() => {
+    const host = document.createElement('div');
+    host.className = 'memo-entry-item';
+    host.innerHTML = '<button class="tcat-badge" style="background:rgb(10, 20, 30);">메모</button>';
+    document.body.appendChild(host);
+    const cs = getComputedStyle(host.firstChild);
+    const o = { bg: cs.backgroundColor, color: cs.color, radius: cs.borderRadius, pad: cs.padding, dot: getComputedStyle(host.firstChild, '::before').content };
+    host.remove();
+    return o;
+  });
+  assert.equal(got.bg, 'rgb(10, 20, 30)');
+  assert.equal(got.color, 'rgb(255, 255, 255)', '글자색이 흰색이 아니다: ' + JSON.stringify(got));
+  assert.equal(got.radius, '10px', JSON.stringify(got));
+  assert.notEqual(got.pad, '0px', JSON.stringify(got));
+  assert.ok(got.dot === 'none' || got.dot === 'normal', '메모 뱃지에 점이 생겼다: ' + JSON.stringify(got));
+});
+
 test('스타일시트 순서와 규칙 수가 기준과 같다', 1280, async (p) => {
   const expected = readBaseline().stylesheets;
   const actual = await sheetInfo(p);
