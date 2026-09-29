@@ -473,6 +473,52 @@ test('기간 일정 칩에 📅 이모지가 없고 날짜는 그대로다', 375
   assert.equal(EMOJI.test(chips.join('')), false, chips.join('|'));
 });
 
+test('앞으로 예정 제목: ❗ 대신 붉은 "중요" 글자이고, 중요하지 않으면 아무것도 없다', 375, async p => {
+  await p.evaluate(() => {
+    userData.personalDays['2026-10-05'] = { todos: [
+      { id: 'i1', text: '중요한 약속', by: 'A', time: '10:00', cat: 'wk', visibility: 'private', important: true },
+      { id: 'i2', text: '평범한 약속', by: 'A', time: '11:00', cat: 'wk', visibility: 'private' },
+    ] };
+    renderUpcomingTodos();
+  });
+  const got = await p.evaluate((normSrc) => {
+    const norm = eval(normSrc);
+    const read = id => { const t = document.querySelector(`#upcomingTodoList .upcoming-todo[data-todo-id="${id}"] .upcoming-todo-title`); const f = t.querySelector('.important-flag'); return { text: t.textContent, flag: f && f.textContent, color: f && getComputedStyle(f).color }; };
+    return { imp: read('i1'), plain: read('i2'), red: norm('var(--red)') };
+  }, inPageNorm);
+  assert.equal(got.imp.flag, '중요', JSON.stringify(got));
+  assert.equal(got.imp.color, got.red, JSON.stringify(got));
+  assert.equal(got.imp.text, '중요중요한 약속', '제목 글자: ' + got.imp.text);
+  assert.equal(EMOJI.test(got.imp.text), false, got.imp.text);
+  assert.equal(got.plain.flag, null, JSON.stringify(got));
+  assert.equal(got.plain.text, '평범한 약속');
+});
+
+test('반복 일정 줄의 표시는 이모지 대신 "반복" 글자다 (날짜 팝업, 데스크톱)', 1280, async p => {
+  await p.evaluate(() => {
+    userData.personalRecurring = [{ id: 'r1', text: '금요일 운동', days: [5], cat: 'ex', by: 'A', visibility: 'private' }];
+    openDayDetail('2026-10-02');
+  });
+  const by = p.locator('#dmBody .todo-item.recurring .by');
+  assert.equal(await by.count(), 1, '반복 표시가 없다');
+  assert.equal((await by.innerText()).trim(), '반복');
+  assert.equal(await by.isVisible(), true);
+  assert.equal(await by.getAttribute('data-tooltip'), '반복 할 일');
+});
+
+test('일정 줄 더보기 메뉴의 날짜 변경·복사 버튼은 이모지 없이 글자이고 동작 연결이 그대로다', 375, async p => {
+  await p.evaluate(seedTwoMemberSchedules);
+  await p.evaluate(() => openDayDetail('2026-10-02'));
+  const btns = await p.locator('#dmBody .todo-item[data-id="p1"] .todo-btns button').evaluateAll(els => els.map(e => ({ text: e.textContent.trim(), label: e.getAttribute('aria-label'), on: e.getAttribute('onclick') })));
+  const move = btns.find(b => b.label === '날짜 변경'), copy = btns.find(b => b.label === '다른 날짜에 한 번 복사');
+  assert.ok(move && copy, JSON.stringify(btns));
+  assert.equal(move.text, '날짜');
+  assert.equal(copy.text, '복사');
+  assert.match(move.on, /moveTodoToDateFromKey/);
+  assert.match(copy.on, /copyTodoToDateFromKey/);
+  assert.equal(EMOJI.test(move.text + copy.text), false, JSON.stringify([move, copy]));
+});
+
 test('홈 "앞으로 예정" 줄도 같은 조용한 뱃지와 카테고리 점을 쓴다', 375, async p => {
   await p.evaluate(seedTwoMemberSchedules);
   await p.evaluate(() => renderUpcomingTodos());

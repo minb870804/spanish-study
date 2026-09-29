@@ -3453,7 +3453,7 @@ function renderUpcomingTodos() {
       <input type="checkbox" aria-label="완료" ${upMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onclick="event.stopPropagation()" onchange="completeUpcomingTodo(${jsArg(sourceKey)}, ${jsArg(todo.id)}, this.checked)">
       <span class="upcoming-todo-date">${month}/${day}<br>${DAYS_KO[dueDate.getDay()]}</span>
       <span class="upcoming-todo-main">
-        <span class="upcoming-todo-title">${isImportantTodo(todo) ? '<span style="color:var(--red); font-weight:900;">❗</span>' : ''}${esc(todo.text)}</span>
+        <span class="upcoming-todo-title">${importantFlag(todo)}${esc(todo.text)}</span>
         <span class="upcoming-todo-meta">${meta.join(' · ')}</span>
       </span>
       <span class="tcat-badge" style="--cat-color:${cat.color}; cursor:default;">${esc(cat.name)}</span>
@@ -3513,7 +3513,7 @@ function renderTodos(day) {
         <button class="tcat-badge" style="--cat-color:${cat.color};" onclick="openCatPicker(event, ${jsArg(dateKey(selectedDate))}, 'rec', ${jsArg(r.id)})" title="카테고리 변경">${esc(cat.name)}</button>
         ${scheduleScopeBadge(r, '', 'rec')}
         ${authorChip(r)}${typeof day.recDone[r.id] === 'string' ? doneByChip({ done: true, doneBy: day.recDone[r.id], by: r.by }) : ''}
-        <span class="by" title="반복 할 일">🔁</span>
+        <span class="by" title="반복 할 일">반복</span>
       </span>
     </div>`;
   }).join('');
@@ -3536,8 +3536,8 @@ function renderTodos(day) {
         <span class="todo-btns">
           <button type="button" class="quick-move-btn" onclick="event.stopPropagation(); quickMoveTodo(${jsArg(currentKey)}, ${jsArg(t.id)}, 1)" title="내일로 이동">내일</button>
           <button type="button" class="quick-move-btn" onclick="event.stopPropagation(); quickMoveTodo(${jsArg(currentKey)}, ${jsArg(t.id)}, 7)" title="다음 주로 이동">+7</button>
-          <button type="button" class="del" onclick="event.stopPropagation(); moveTodoToDateFromKey(${jsArg(currentKey)}, ${jsArg(t.id)})" title="날짜 변경">📅</button>
-          <button type="button" class="del" onclick="event.stopPropagation(); copyTodoToDateFromKey(${jsArg(currentKey)}, ${jsArg(t.id)})" title="다른 날짜에 한 번 복사">📋</button>
+          <button type="button" class="del" onclick="event.stopPropagation(); moveTodoToDateFromKey(${jsArg(currentKey)}, ${jsArg(t.id)})" title="날짜 변경">날짜</button>
+          <button type="button" class="del" onclick="event.stopPropagation(); copyTodoToDateFromKey(${jsArg(currentKey)}, ${jsArg(t.id)})" title="다른 날짜에 한 번 복사">복사</button>
           ${author ? `<button type="button" class="del" onclick="event.stopPropagation(); deleteTodo(${jsArg(t.id)})" title="삭제">✕</button>` : ''}
         </span>` : '';
     return `<div class="todo-item ${mine ? 'swipeable' : ''} ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${escAttr(t.id)}" style="${borderStyle}">
@@ -3545,7 +3545,7 @@ function renderTodos(day) {
       <input type="checkbox" ${t.done ? 'checked' : ''} ${mine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onchange="toggleTodo(${jsArg(t.id)}, this.checked)">
       <button type="button" class="todo-content" data-todo-detail-key="${escAttr(currentKey)}" data-todo-detail-id="${escAttr(t.id)}" data-todo-detail-kind="todo"><span class="txt">${esc(t.text)}</span>${todoMetaHtml(t)}</button>
       <span class="todo-actions" onclick="event.stopPropagation()">
-        ${importantFlag(t)}
+        ${importantFlag(t, true)}
         ${badge}
         ${scheduleScopeBadge(t, currentKey)}
         ${reminderChip(t)}
@@ -3623,8 +3623,10 @@ function authorChip(todo) {
 }
 // ── 중요 표시 ── 꼭 챙겨야 하는 일정은 빨간색으로 눈에 띄게 한다.
 function isImportantTodo(t) { return !!(t && t.important); }
-function importantFlag(t) {
-  return isImportantTodo(t) ? '<span class="important-flag" title="중요 일정">중요</span><span class="meta-sep" aria-hidden="true">·</span>' : '';
+// withSep: 뒤에 카테고리 뱃지가 이어지는 일정 줄에서는 구분점(·)까지 함께 내보낸다
+function importantFlag(t, withSep) {
+  if (!isImportantTodo(t)) return '';
+  return '<span class="important-flag" title="중요 일정">중요</span>' + (withSep ? '<span class="meta-sep" aria-hidden="true">·</span>' : '');
 }
 async function toggleTodoImportant(key, id) {
   const day = getDay(key);
