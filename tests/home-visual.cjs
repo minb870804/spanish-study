@@ -1185,6 +1185,38 @@ test('콘솔 오류 없이 홈이 뜬다', 375, async (p, errors) => {
   assert.equal(await p.locator('#monthCal').isVisible(), true);
 });
 
+// 폭 375/768/1280 × 밝음/어두움: 가로 넘침이 없어야 한다.
+// computed 스냅샷은 375·1280 두 폭의 "값"만 본다. 768(태블릿 구간)과 실제 넘침(스크롤폭)은 여기서만 본다.
+// 긴 일정 제목·라벨을 넣어 두어 빈 화면에서는 안 보이는 넘침도 잡는다.
+for (const width of [375, 768, 1280]) {
+  for (const dark of [false, true]) {
+    test(`가로 넘침 없음 (${width}px ${dark ? '어두움' : '밝음'})`, width, async p => {
+      await p.evaluate(() => {
+        const long = '아주아주아주 긴 일정 제목이 한 줄에 다 안 들어가는 경우를 확인합니다 ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        userData.personalDays['2026-10-02'] = { todos: [1, 2, 3, 4].map(i => ({ id: 'ov' + i, text: long + i, by: 'A', cat: 'etc' })) };
+        userData.personalDays['2026-10-14'] = { todos: [{ id: 'ov9', text: long, by: 'A', cat: 'etc' }] };
+        renderAll();
+      });
+      if (dark) await p.evaluate(() => document.body.classList.add('dark'));
+      const r = await p.evaluate(() => {
+        const de = document.documentElement, vw = de.clientWidth;
+        const scrolls = el => { for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) { const o = getComputedStyle(n).overflowX; if (o === 'auto' || o === 'scroll' || o === 'hidden') return true; } return false; };
+        const stray = [...document.body.querySelectorAll('*')].filter(el => {
+          const cs = getComputedStyle(el), b = el.getBoundingClientRect();
+          if (cs.display === 'none' || cs.visibility === 'hidden' || cs.position === 'fixed' || !b.width || !b.height) return false;
+          return b.right > vw + 1 && !scrolls(el);
+        }).slice(0, 8).map(el => el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).join('.') : '') + ' right=' + Math.round(el.getBoundingClientRect().right));
+        return { dark: document.body.classList.contains('dark'), vw, docOver: de.scrollWidth - vw, bodyOver: document.body.scrollWidth - vw, stray };
+      });
+      assert.equal(r.dark, dark, '테마 전환 실패');
+      assert.equal(r.vw, width, `뷰포트 폭 ${r.vw}`);
+      assert.ok(r.docOver <= 1, `문서 가로 넘침 ${r.docOver}px`);
+      assert.ok(r.bodyOver <= 1, `body 가로 넘침 ${r.bodyOver}px`);
+      assert.deepEqual(r.stray, [], `뷰포트 밖으로 나간 요소: ${r.stray.join(' | ')}`);
+    });
+  }
+}
+
 async function writeBaseline(browser) {
   const prev = fs.existsSync(BASELINE_FILE) ? JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8')) : null;
   const computed = {};
