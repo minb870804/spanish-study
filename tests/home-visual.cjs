@@ -184,6 +184,66 @@ test('필터 선택 상태가 보인다', 375, async p => {
   assert.equal((await p.locator('.filter-tabs button.sel').innerText()).trim(), '내 일정');
 });
 
+const REC_BUTTONS = [['dmExerciseBtn', '운동'], ['dmDrinkToggle', '음주'], ['dmPeriodToggle', '생리'], ['dmLoveToggle', '기록']];
+
+test('날짜 팝업 기록 버튼은 선 아이콘이다', 375, async p => {
+  await p.evaluate(() => openDayDetail('2026-10-02'));
+  for (const [id, label] of REC_BUTTONS) {
+    const btn = p.locator('#' + id);
+    assert.equal(await btn.locator('svg').count(), 1, id + ' 아이콘 없음');
+    const box = await btn.boundingBox();
+    assert.ok(box.height >= 43.99, `${id} 높이 ${box.height}`); // 서브픽셀 반올림 허용
+    assert.equal((await btn.innerText()).trim(), label);
+  }
+  // 글꼴 속성이 실제로 적용됨(font 단축 속성이 무효면 기본 13.33px 로 떨어진다)
+  const fs = await p.locator('.dm-header-actions .dm-drink-toggle').evaluateAll(els => els.map(e => getComputedStyle(e).fontSize));
+  assert.deepEqual(fs, ['12px', '12px', '12px', '12px']);
+});
+
+test('날짜 팝업 제목과 닫기에 이모지가 없다', 375, async p => {
+  await p.evaluate(() => openDayDetail('2026-10-02'));
+  const head = await p.locator('.day-modal-card > .card-title').innerText();
+  assert.equal(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2716}]/u.test(head), false, head);
+  assert.equal((await p.locator('.dm-header-actions .small-btn').innerText()).trim(), '닫기');
+  assert.equal((await p.locator('#dmDate').innerText()).trim(), '10월 2일 (금)');
+});
+
+test('기록을 켜도 아이콘과 글자가 그대로고 켜진 상태가 눈에 띈다', 375, async p => {
+  await p.addStyleTag({ content: '*{transition:none!important}' }); // 전환 중간값을 읽지 않도록
+  await p.evaluate(() => openDayDetail('2026-10-02'));
+  const readBtn = (id) => p.locator('#' + id).evaluate(e => {
+    const cs = getComputedStyle(e);
+    return { pressed: e.getAttribute('aria-pressed'), label: e.getAttribute('aria-label'), sel: e.classList.contains('sel'),
+      bg: cs.backgroundColor, border: cs.borderTopColor, color: cs.color, shadow: cs.boxShadow, svg: e.querySelectorAll('svg').length, text: e.innerText.trim() };
+  });
+  const off = {};
+  for (const [id] of REC_BUTTONS) off[id] = await readBtn(id);
+  await p.evaluate(() => {
+    userData.personalDrinkDays = { '2026-10-02': true };
+    userData.personalDays = { '2026-10-02': { notes: { [EXERCISE_CAT_ID]: '[유산소] 러닝 30분' } } };
+    spaceData.periodDays = { '2026-10-02': true };
+    spaceData.loveDays = { '2026-10-02': true };
+    renderDayDrinkToggle();
+  });
+  for (const [id, label] of REC_BUTTONS) {
+    const on = await readBtn(id);
+    assert.equal(on.svg, 1, id + ' 켠 뒤 아이콘이 사라졌다');
+    assert.equal(on.text, label, id + ' 켠 뒤 글자가 바뀌었다: ' + on.text);
+    assert.equal(off[id].pressed, 'false');
+    assert.equal(on.pressed, 'true', id + ' aria-pressed 가 켜지지 않았다');
+    assert.equal(on.sel, true, id + ' .sel 클래스를 더는 토글하지 않는다');
+    assert.notEqual(on.bg, off[id].bg, id + ' 켜진 배경이 같다');
+    assert.notEqual(on.border, off[id].border, id + ' 켜진 테두리가 같다');
+    assert.notEqual(on.color, off[id].color, id + ' 켜진 글자색이 같다');
+    assert.equal(on.shadow, 'none', id + ' 예전 그림자가 남아 있다: ' + on.shadow);
+    assert.ok(on.label && on.label !== off[id].label, id + ' aria-label 이 상태를 담지 않는다: ' + on.label);
+  }
+  // 켜진 상태는 네 버튼이 모두 같은 톤이다(원색 변형 없음)
+  const tones = new Set();
+  for (const [id] of REC_BUTTONS) { const b = await readBtn(id); tones.add(b.bg + '|' + b.border + '|' + b.color); }
+  assert.equal(tones.size, 1, [...tones].join(' / '));
+});
+
 test('스타일시트 순서와 규칙 수가 기준과 같다', 1280, async (p) => {
   const expected = readBaseline().stylesheets;
   const actual = await sheetInfo(p);

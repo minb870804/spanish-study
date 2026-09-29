@@ -337,11 +337,11 @@
     <div class="card-title" style="margin-bottom:4px;">
       <span id="dmDate">날짜</span>
       <span class="dm-header-actions">
-        <button type="button" class="dm-drink-toggle dm-ex-toggle" id="dmExerciseBtn" onclick="openExerciseModal()" aria-pressed="false">💪 운동 기록</button>
-        <button type="button" class="dm-drink-toggle" id="dmDrinkToggle" onclick="toggleDrinkDay(modalKey)" aria-pressed="false">🍺 음주 표시</button>
-        <button type="button" class="dm-drink-toggle dm-period-toggle" id="dmPeriodToggle" onclick="togglePeriodDay(modalKey)" aria-pressed="false">🩸 생리</button>
-        <button type="button" class="dm-drink-toggle dm-love-toggle" id="dmLoveToggle" onclick="toggleLoveDay(modalKey)" aria-pressed="false">❤️ 기록</button>
-        <button class="small-btn" onclick="closeDayModal()">✕ 닫기</button>
+        <button type="button" class="dm-drink-toggle dm-ex-toggle" id="dmExerciseBtn" onclick="openExerciseModal()" aria-pressed="false"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg><span class="dm-rec-label">운동</span></button>
+        <button type="button" class="dm-drink-toggle" id="dmDrinkToggle" onclick="toggleDrinkDay(modalKey)" aria-pressed="false"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10l-1 6a4 4 0 0 1-8 0zM12 13v7M8 21h8"/></svg><span class="dm-rec-label">음주</span></button>
+        <button type="button" class="dm-drink-toggle dm-period-toggle" id="dmPeriodToggle" onclick="togglePeriodDay(modalKey)" aria-pressed="false"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 10a6 6 0 0 1-12 0c0-3.5 6-10 6-10z"/></svg><span class="dm-rec-label">생리</span></button>
+        <button type="button" class="dm-drink-toggle dm-love-toggle" id="dmLoveToggle" onclick="toggleLoveDay(modalKey)" aria-pressed="false"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8.5c0 4.5-8 11-8 11s-8-6.5-8-11a4.5 4.5 0 0 1 8-2.8 4.5 4.5 0 0 1 8 2.8z"/></svg><span class="dm-rec-label">기록</span></button>
+        <button class="small-btn" onclick="closeDayModal()">닫기</button>
       </span>
     </div>
     <div id="dmBody"></div>
@@ -2747,7 +2747,6 @@ function renderDayDrinkToggle() {
   const btn = document.getElementById('dmDrinkToggle');
   if (!btn || !modalKey) return;
   const selected = isDrinkDay(modalKey);
-  btn.textContent = selected ? '✓ 🍺 음주 기록됨' : '🍺 음주 표시';
   btn.classList.toggle('sel', selected);
   btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
   btn.setAttribute('aria-label', selected ? '이 날짜의 음주 기록 해제' : '이 날짜를 음주일로 표시');
@@ -2796,7 +2795,6 @@ function renderDayPeriodToggle() {
   const btn = document.getElementById('dmPeriodToggle');
   if (!btn || !modalKey) return;
   const on = isPeriodDay(modalKey);
-  btn.textContent = on ? '✓ 🩸 생리' : '🩸 생리';
   btn.classList.toggle('sel', on);
   btn.setAttribute('aria-pressed', on ? 'true' : 'false');
   btn.setAttribute('aria-label', on ? '이 날짜의 생리 표시 해제' : '이 날짜를 생리일로 표시');
@@ -2806,7 +2804,6 @@ function renderDayLoveToggle() {
   const btn = document.getElementById('dmLoveToggle');
   if (!btn || !modalKey) return;
   const on = isLoveDay(modalKey);
-  btn.textContent = on ? '✓ ❤️ 기록' : '❤️ 기록';
   btn.classList.toggle('sel', on);
   btn.setAttribute('aria-pressed', on ? 'true' : 'false');
   btn.setAttribute('aria-label', on ? '이 날짜의 기록 해제' : '이 날짜에 기록');
@@ -2914,9 +2911,9 @@ function renderDayExerciseToggle() {
   const btn = document.getElementById('dmExerciseBtn');
   if (!btn || !modalKey) return;
   const has = !!exerciseTextFor(modalKey);
-  btn.textContent = has ? '✓ 💪 운동 기록됨' : '💪 운동 기록';
   btn.classList.toggle('sel', has);
   btn.setAttribute('aria-pressed', has ? 'true' : 'false');
+  btn.setAttribute('aria-label', has ? '이 날짜의 운동 기록 보기·수정' : '이 날짜에 운동 기록하기');
 }
 
 function openExerciseModal(key) {
@@ -4482,7 +4479,7 @@ function openDayDetail(key) {
   todoStartDateEdited = false;
   todoEndDateEdited = false;
   showAllUpcomingTodos = false;
-  document.getElementById('dmDate').textContent = `📅 ${m}월 ${d}일 (${DAYS_KO[dateObj.getDay()]})`;
+  document.getElementById('dmDate').textContent = `${m}월 ${d}일 (${DAYS_KO[dateObj.getDay()]})`;
   renderAll(); // 팝업으로 옮긴 할 일·메모 카드를 해당 날짜로 채움
   document.getElementById('dayModal').classList.add('open');
 }
