@@ -605,7 +605,7 @@ Expected: FAIL — `dmExerciseBtn 아이콘 없음`
   min-height: var(--ui-control); padding: var(--ui-s2) var(--ui-s3);
   border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm);
   background: var(--ui-card); color: var(--ui-muted);
-  font: 500 var(--ui-caption)/1.4 inherit; cursor: pointer;
+  font-family: inherit; font-size: var(--ui-caption); font-weight: 500; line-height: 1.4; cursor: pointer;
 }
 .dm-header-actions .dm-drink-toggle .ui-icon { width: 18px; height: 18px; }
 .dm-header-actions .dm-drink-toggle[aria-pressed="true"] {
@@ -753,7 +753,7 @@ Expected: `바꾼 tcat-badge 수: 4`, `grep -c` 결과 4.
 /* 일정 메타 — 원색 뱃지 대신 조용한 한 줄. 카테고리 색은 점으로, '중요'만 글자 색으로 남긴다 */
 :is(.todo-item, .dm-item, .upcoming-todo) :is(.scope-badge, .tcat-badge) {
   padding: 0; border: 0; background: none; border-radius: 0; box-shadow: none;
-  color: var(--ui-muted); font: 500 var(--ui-caption)/1.6 inherit;
+  color: var(--ui-muted); font-family: inherit; font-size: var(--ui-caption); font-weight: 500; line-height: 1.6;
 }
 :is(.todo-item, .dm-item, .upcoming-todo) :is(.scope-badge, .tcat-badge):hover {
   transform: none; box-shadow: none; color: var(--ui-text);
