@@ -258,7 +258,7 @@ test('일정 줄 뱃지에 이모지가 없다', 375, async p => {
   assert.match(row, /14:00/);
 });
 
-test('카테고리 색은 바탕이 아니라 점으로 남는다', 375, async p => {
+test('카테고리 색은 바탕이 아니라 인라인 커스텀 속성으로 넘어온다', 375, async p => {
   await p.evaluate(() => {
     userData.personalDays['2026-10-02'] = { todos: [
       { id: 'a', text: '감사팀 면담', by: 'A', time: '14:00', cat: 'etc', visibility: 'private' }
@@ -267,14 +267,158 @@ test('카테고리 색은 바탕이 아니라 점으로 남는다', 375, async p
   });
   const badge = p.locator('#dmBody .todo-item .tcat-badge').first();
   assert.equal(await badge.count(), 1);
-  // 인라인 배경이 아니라 커스텀 속성으로 넘어와야 한다
   const style = await badge.getAttribute('style');
   assert.match(style, /--cat-color/, style);
   assert.equal(/background\s*:/.test(style), false, style);
-  const bg = await badge.evaluate(el => getComputedStyle(el).backgroundColor);
-  assert.equal(bg, 'rgba(0, 0, 0, 0)', '뱃지 바탕은 투명해야 한다');
-  const dot = await badge.evaluate(el => getComputedStyle(el, '::before').backgroundColor);
-  assert.notEqual(dot, 'rgba(0, 0, 0, 0)', '카테고리 색 점이 있어야 한다');
+});
+
+// ── 일정 줄(메타 한 줄) 검증용 공용 도구 ──
+// 홈 fixture 는 일정 행을 하나도 그리지 않으므로(computed 스냅샷이 이 변경을 전혀 보지 못한다) 아래 테스트들이 유일한 자동 보호다.
+// 두 사람이 쓰는 공간을 만들어 '나만 · 공유하기' / '공유 중 · 변경' / 배우자 일정('공유' span) 분기를 모두 그린다.
+// (page.evaluate 로 직렬화되므로 바깥 변수를 참조하면 안 된다)
+const seedTwoMemberSchedules = () => {
+  spaceData.members = ['A', 'B'];
+  spaceData.memberProfiles = { A: { name: '테스트' }, B: { name: '배우자' } };
+  userData.personalDays['2026-10-02'] = { todos: [
+    { id: 'p1', text: '내 비공개 일정', by: 'A', time: '19:30', location: '서울역', cat: 'wk', visibility: 'private', important: true },
+    { id: 'p2', text: '내 공유 일정', by: 'A', time: '20:00', cat: 'st', visibility: 'shared' },
+  ] };
+  spaceData.days['2026-10-02'] = { todos: [
+    { id: 's1', text: '배우자 일정', by: 'B', time: '21:00', cat: 'ex', visibility: 'shared' },
+  ] };
+  // 홈의 '앞으로 예정' 목록용(오늘 이후)
+  userData.personalDays['2026-10-05'] = { todos: [
+    { id: 'u1', text: '다음 주 약속', by: 'A', time: '18:30', location: '강남역', cat: 'wk', visibility: 'private' },
+  ] };
+};
+// 페이지 안에서 실행: CSS 색을 브라우저가 계산한 rgb 문자열로 바꾼다(hex 와 computed rgb 를 비교하기 위해)
+const inPageNorm = `(c) => { const i = document.createElement('i'); i.style.color = c; document.body.appendChild(i); const v = getComputedStyle(i).color; i.remove(); return v; }`;
+const TRANSPARENT = 'rgba(0, 0, 0, 0)';
+const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
+
+test('일정 줄 카테고리 점의 색은 그 카테고리의 색이다 (날짜 팝업)', 375, async p => {
+  await p.evaluate(seedTwoMemberSchedules);
+  await p.evaluate(() => openDayDetail('2026-10-02'));
+  const got = await p.evaluate((normSrc) => {
+    const norm = eval(normSrc);
+    const fallback = norm('var(--ui-muted)');
+    const all = [...userData.personalDays['2026-10-02'].todos, ...spaceData.days['2026-10-02'].todos];
+    return all.map(t => {
+      const row = document.querySelector(`#dmBody .todo-item[data-id="${t.id}"]`);
+      const badge = row && row.querySelector('.tcat-badge');
+      return { id: t.id, tag: badge && badge.tagName, want: norm(todoCategory(t).color), fallback,
+        dot: badge && getComputedStyle(badge, '::before').backgroundColor,
+        inline: badge && badge.getAttribute('style') };
+    });
+  }, inPageNorm);
+  assert.equal(got.length, 3);
+  for (const g of got) {
+    assert.ok(g.tag, g.id + ' 행/뱃지가 없다');
+    // '--cat-color' 철자가 틀리면 var() 가 대체값(--ui-muted)으로 떨어진다. 그 회색과 구분되는 색인지부터 확인한다.
+    assert.notEqual(g.want, g.fallback, g.id + ' 카테고리 색이 대체 회색과 같아 이 검사가 구분을 못 한다');
+    assert.equal(g.dot, g.want, `${g.id} 점 색이 카테고리 색이 아니다: ${g.dot} (기대 ${g.want}, 대체 ${g.fallback}, style=${g.inline})`);
+  }
+  // 카테고리마다 점 색이 달라야 한다(모두 같은 값으로 그려지는 회귀를 잡는다)
+  assert.equal(new Set(got.map(g => g.dot)).size, 3, JSON.stringify(got.map(g => g.dot)));
+  // 내 일정은 <button>, 배우자 일정은 <span> 뱃지다 — 두 갈래 모두에서 점이 나온다
+  assert.deepEqual(got.map(g => g.tag), ['BUTTON', 'BUTTON', 'SPAN']);
+});
+
+test('일정 줄 뱃지는 조용한 회색 글자다: 새 CSS 가 없으면 실패한다', 375, async p => {
+  await p.evaluate(seedTwoMemberSchedules);
+  await p.evaluate(() => openDayDetail('2026-10-02'));
+  const got = await p.evaluate((normSrc) => {
+    const norm = eval(normSrc);
+    const probe = document.createElement('i'); probe.style.fontSize = 'var(--ui-caption)'; document.body.appendChild(probe);
+    const caption = getComputedStyle(probe).fontSize; probe.remove();
+    const read = (el) => { const cs = getComputedStyle(el); return { color: cs.color, bg: cs.backgroundColor, radius: cs.borderRadius, pad: cs.padding, border: cs.borderTopWidth, fs: cs.fontSize, weight: cs.fontWeight }; };
+    const row = id => document.querySelector(`#dmBody .todo-item[data-id="${id}"]`);
+    return { muted: norm('var(--ui-muted)'), red: norm('var(--red)'), caption,
+      spanCat: read(row('s1').querySelector('.tcat-badge')),     // <span> 뱃지(배우자 일정): 버튼용 규칙이 섞이지 않는다
+      spanScope: read(row('s1').querySelector('.scope-badge')),
+      btnCat: read(row('p1').querySelector('.tcat-badge')),      // <button> 뱃지(내 일정)
+      important: read(row('p1').querySelector('.important-flag')),
+      chip: read(row('p1').querySelector('.todo-meta-chip')),
+      scopeBefore: getComputedStyle(row('s1').querySelector('.scope-badge'), '::before').content,
+      btnH: row('p1').querySelector('button.tcat-badge').getBoundingClientRect().height };
+  }, inPageNorm);
+  // 예전 원색 뱃지는 흰 글자·둥근 모서리·안쪽 여백이 있었다. 그중 하나라도 남으면 새 CSS 가 적용되지 않은 것이다.
+  for (const [k, s] of [['span 카테고리', got.spanCat], ['span 범위', got.spanScope], ['시간·장소 칩', got.chip]]) {
+    assert.equal(s.color, got.muted, `${k} 글자색이 회색이 아니다: ${JSON.stringify(s)}`);
+    assert.equal(s.fs, got.caption, `${k} 글자 크기: ${JSON.stringify(s)}`);
+    assert.equal(s.radius, '0px', `${k} 모서리: ${JSON.stringify(s)}`);
+    assert.equal(s.pad, '0px', `${k} 여백: ${JSON.stringify(s)}`);
+    assert.equal(s.border, '0px', `${k} 테두리: ${JSON.stringify(s)}`);
+    assert.equal(s.bg, TRANSPARENT, `${k} 바탕: ${JSON.stringify(s)}`);
+  }
+  // 버튼 뱃지도 같은 회색·모서리 없음이고, 대신 세로 터치 영역을 44px 이상으로 넓힌다
+  assert.equal(got.btnCat.color, got.muted, JSON.stringify(got.btnCat));
+  assert.equal(got.btnCat.radius, '0px', JSON.stringify(got.btnCat));
+  assert.equal(got.btnCat.pad, '13px 4px', JSON.stringify(got.btnCat));
+  assert.ok(got.btnH >= 43.99, `버튼 뱃지 높이 ${got.btnH}`);
+  // '중요'만 붉은 글자로 남는다
+  assert.equal(got.important.color, got.red, JSON.stringify(got.important));
+  assert.equal(got.important.bg, TRANSPARENT, JSON.stringify(got.important));
+  // 범위 뱃지 앞의 구분점(·)
+  assert.equal(got.scopeBefore, '"·"');
+});
+
+test('공유 공간의 범위 뱃지: 나만·공유 중·배우자 일정', 375, async p => {
+  await p.evaluate(seedTwoMemberSchedules);
+  await p.evaluate(() => openDayDetail('2026-10-02'));
+  const badge = id => p.locator(`#dmBody .todo-item[data-id="${id}"] .scope-badge`);
+  // 내 비공개 일정: 눌러서 공유하는 버튼
+  assert.equal((await badge('p1').innerText()).trim(), '나만 · 공유하기');
+  assert.equal(await badge('p1').evaluate(e => e.tagName), 'BUTTON');
+  assert.equal(await badge('p1').evaluate(e => e.classList.contains('shared')), false);
+  // 내 공유 일정: 공유 범위·주인을 바꾸는 버튼
+  assert.equal((await badge('p2').innerText()).trim(), '공유 중 · 변경');
+  assert.equal(await badge('p2').evaluate(e => e.tagName), 'BUTTON');
+  assert.equal(await badge('p2').evaluate(e => e.classList.contains('shared')), true);
+  // 배우자 일정: 누를 수 없는 '공유' 글자
+  assert.equal((await badge('s1').innerText()).trim(), '공유');
+  assert.equal(await badge('s1').evaluate(e => e.tagName), 'SPAN');
+  assert.equal(await badge('s1').evaluate(e => e.classList.contains('shared')), true);
+  // 세 갈래 모두 이모지가 없다
+  for (const id of ['p1', 'p2', 's1']) {
+    const t = await p.locator(`#dmBody .todo-item[data-id="${id}"] .todo-actions`).evaluate(e => [...e.querySelectorAll('.scope-badge, .tcat-badge, .important-flag')].map(x => x.textContent).join(' '));
+    assert.equal(EMOJI.test(t), false, id + ': ' + t);
+  }
+});
+
+test('장소·시간 칩에 📍·🕐 이모지가 없다', 375, async p => {
+  await p.evaluate(seedTwoMemberSchedules);
+  await p.evaluate(() => openDayDetail('2026-10-02'));
+  const chips = await p.locator('#dmBody .todo-item[data-id="p1"] .todo-meta-chip').allInnerTexts();
+  assert.deepEqual(chips.map(t => t.trim()), ['19:30', '서울역']);
+  assert.equal(await p.locator('#dmBody .todo-item[data-id="p1"] .todo-meta-chip.location').innerText(), '서울역');
+  assert.equal(EMOJI.test(chips.join('')), false, chips.join('|'));
+});
+
+test('홈 "앞으로 예정" 줄도 같은 조용한 뱃지와 카테고리 점을 쓴다', 375, async p => {
+  await p.evaluate(seedTwoMemberSchedules);
+  await p.evaluate(() => renderUpcomingTodos());
+  const row = p.locator('#upcomingTodoList .upcoming-todo[data-todo-id="u1"]');
+  assert.equal(await row.count(), 1, '앞으로 예정 줄이 그려지지 않았다');
+  const got = await row.evaluate((r, normSrc) => {
+    const norm = eval(normSrc);
+    const badge = r.querySelector('.tcat-badge');
+    const cs = getComputedStyle(badge);
+    return { want: norm(todoCategory(userData.personalDays['2026-10-05'].todos[0]).color), fallback: norm('var(--ui-muted)'), muted: norm('var(--ui-muted)'),
+      dot: getComputedStyle(badge, '::before').backgroundColor, inline: badge.getAttribute('style'),
+      color: cs.color, bg: cs.backgroundColor, radius: cs.borderRadius, pad: cs.padding, meta: r.querySelector('.upcoming-todo-meta').textContent };
+  }, inPageNorm);
+  assert.match(got.inline, /--cat-color/, got.inline);
+  assert.equal(/background\s*:/.test(got.inline), false, got.inline);
+  assert.notEqual(got.want, got.fallback);
+  assert.equal(got.dot, got.want, `점 색 ${got.dot} (기대 ${got.want}, 대체 ${got.fallback})`);
+  assert.equal(got.color, got.muted, JSON.stringify(got));
+  assert.equal(got.bg, TRANSPARENT, JSON.stringify(got));
+  assert.equal(got.radius, '0px', JSON.stringify(got));
+  assert.equal(got.pad, '0px', JSON.stringify(got));
+  // 시간·장소에 이모지가 없다
+  assert.equal(got.meta, '18:30 · 강남역');
+  assert.equal(EMOJI.test(got.meta), false, got.meta);
 });
 
 test('메모 카테고리 선택 뱃지는 색 바탕 뱃지 모양을 그대로 유지한다', 375, async p => {
