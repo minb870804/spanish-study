@@ -39,7 +39,8 @@ function toggleTheme() {
   updateThemeButton();
 }
 function updateThemeButton() {
-  document.getElementById('themeToggle').innerHTML = document.body.classList.contains('dark') ? '☀️ 라이트' : '🌙 다크';
+  // 아이콘은 js/app-shell.js 가 그린다. 첫 로드에는 아직 없으므로 app-shell 이 초기화 때 그린다.
+  if (window.renderThemeToggle) window.renderThemeToggle();
 }
 function loadTheme() {
   if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');

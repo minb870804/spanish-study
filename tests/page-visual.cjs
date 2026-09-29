@@ -152,6 +152,67 @@ for (const page of PAGES) {
   }
 }
 
+// ── Task 4: 테마 아이콘 공용화 ──
+const themeState = p => p.evaluate(() => {
+  const b = document.getElementById('themeToggle');
+  if (!b) return null;
+  const r = b.getBoundingClientRect(), s = getComputedStyle(b);
+  return {
+    text: b.textContent.trim(), svgs: b.querySelectorAll('svg').length,
+    moon: !!b.querySelector('path[d^="M12 3a6.5"]'), sun: !!b.querySelector('circle[r="4.5"]'),
+    label: b.getAttribute('aria-label'), w: r.width, h: r.height,
+    bg: s.backgroundColor, border: s.borderTopColor, radius: s.borderTopLeftRadius,
+  };
+});
+for (const page of ['study.html', 'diary.html', 'shared-diary.html']) {
+  test(`${page} 테마 버튼은 글자 없는 44px 아이콘 버튼`, page, 375, async p => {
+    const t = await themeState(p);
+    assert.ok(t, '#themeToggle 없음');
+    assert.equal(t.text, '', `글자가 남아 있다: "${t.text}"`);
+    assert.equal(t.svgs, 1);
+    assert.equal(t.label, '테마 바꾸기');
+    assert.ok(t.w >= 44 && t.h >= 44, `${t.w}x${t.h}`);
+  });
+  test(`${page} 테마를 바꿔도 아이콘 버튼으로 남고 달↔해가 바뀐다`, page, 375, async p => {
+    const before = await themeState(p);
+    await p.evaluate(() => toggleTheme());
+    const after = await themeState(p);
+    assert.equal(after.text, '');
+    assert.equal(after.svgs, 1);
+    assert.notEqual(before.moon, after.moon, '아이콘이 바뀌지 않았다');
+    await p.evaluate(() => toggleTheme());
+  });
+  test(`${page} 실행 순서와 무관하게 아이콘 — 페이지 코드가 먼저 이모지를 써도 공용 함수가 덮는다`, page, 375, async p => {
+    await p.evaluate(() => { document.getElementById('themeToggle').innerHTML = '🌙 다크'; window.renderThemeToggle(); });
+    assert.equal((await themeState(p)).text, '');
+    await p.evaluate(() => updateThemeButton()); // 공용 함수가 로드된 뒤의 페이지 코드
+    assert.equal((await themeState(p)).svgs, 1);
+  });
+}
+test('reading.html 에는 테마 버튼이 없고 공용 함수도 오류 없이 넘어간다', 'reading.html', 375, async (p, errors) => {
+  assert.equal(await themeState(p), null);
+  await p.evaluate(() => window.renderThemeToggle());
+  assert.deepEqual(errors, []);
+});
+for (const dark of [false, true]) {
+  test(`테마 버튼 모양이 네 페이지와 홈에서 같다 (${dark ? '다크' : '라이트'})`, 'study.html', 375, async (p, _e) => {
+    // 이 테스트는 study.html 에서 시작해 나머지 페이지를 같은 컨텍스트에서 차례로 연다
+    const shapes = {};
+    for (const page of ['index.html', 'study.html', 'diary.html', 'shared-diary.html']) {
+      await p.goto('https://minb.test/' + page);
+      await p.waitForTimeout(400);
+      if (dark) {
+        await p.evaluate(() => { document.body.classList.add('dark'); window.renderThemeToggle(); });
+        await p.waitForTimeout(700); // 버튼의 색 transition(0.22~0.3s)이 끝난 뒤 잰다. 페이지마다 --transition 이 달라 바로 재면 중간값이 나온다
+      }
+      const t = await themeState(p);
+      shapes[page] = { w: t.w, h: t.h, bg: t.bg, border: t.border, radius: t.radius };
+    }
+    const ref = JSON.stringify(shapes['index.html']);
+    for (const [page, s] of Object.entries(shapes)) assert.equal(JSON.stringify(s), ref, `${page}: ${JSON.stringify(s)} ≠ 홈 ${ref}`);
+  });
+}
+
 async function writeBaseline(browser) {
   const prev = fs.existsSync(BASELINE_FILE) ? readBaseline() : {};
   const targets = WRITE_PAGES.length ? WRITE_PAGES : PAGES;

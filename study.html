@@ -726,7 +726,7 @@
         <span id="userName">👤 로딩중...</span>
         <button onclick="logout()" class="logout-btn">로그아웃</button>
       </span>
-      <button id="themeToggle" class="theme-toggle-btn" onclick="toggleTheme()">🌓 테마 변경</button>
+      <button type="button" id="themeToggle" class="hbtn icon-btn" onclick="toggleTheme()" aria-label="테마 바꾸기" title="테마 바꾸기"></button>
       <a href="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" target="_blank" class="nexus-link">📚 넥서스 부록</a>
       <span class="today-badge" id="todayBadge"></span>
     </div>
@@ -2675,10 +2675,8 @@ function toggleTheme() {
 }
 
 function updateThemeButton() {
-  const btn = document.getElementById('themeToggle');
-  if (!btn) return;
-  const isDark = document.body.classList.contains('dark');
-  btn.innerHTML = isDark ? '☀️ 라이트 모드' : '🌙 다크 모드';
+  // 아이콘은 js/app-shell.js 가 그린다. 첫 로드에는 아직 없으므로 app-shell 이 초기화 때 그린다.
+  if (window.renderThemeToggle) window.renderThemeToggle();
 }
 
 function loadTheme() {
