@@ -1,15 +1,26 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.MINB_PLAYWRIGHT||'playwright');
 const root=process.env.MINB_ROOT||path.join(__dirname,'..');
-async function fixture(browser,width=375){
+async function fixture(browser,width=375,mode='recur',opts={}){
  const context=await browser.newContext({viewport:{width,height:900},timezoneId:'Asia/Seoul',serviceWorkers:'block'});
+ if(opts.now)await context.clock.setFixedTime(opts.now);
  await context.addInitScript(()=>{
   const auth={onAuthStateChanged(){},getRedirectResult:async()=>null};
   const db={enablePersistence:async()=>{},collection:name=>({doc:id=>({name,id})}),batch:()=>{const writes=[];return{update:(ref,data)=>writes.push({ref,data}),commit:async()=>{if(window.QA.fail)throw Error('test write failure');window.QA.writes.push(writes);}}}};
   window.QA={writes:[],fail:false};window.firebase={initializeApp(){},auth:()=>auth,app:()=>({functions:()=>({httpsCallable:()=>async()=>({data:{holidays:[]}})})}),firestore:Object.assign(()=>db,{FieldValue:{serverTimestamp:()=>1}})};
  });
  await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.hostname!=='minb.test')return route.fulfill({body:'',contentType:'application/javascript'});const file=path.join(root,url.pathname==='/'?'index.html':url.pathname);if(!fs.existsSync(file))return route.fulfill({status:404,body:''});return route.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.html')?'text/html':file.endsWith('.css')?'text/css':'application/javascript'});});
- const page=await context.newPage();page.setDefaultTimeout(4000);const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('https://minb.test/');await page.evaluate(()=>{currentUser={uid:'A',displayName:'테스트'};userData={personalRecurring:[],personalDays:{}};spaceData={members:['A'],memberProfiles:{A:{name:'테스트'}},days:{},recurring:[]};spaceId='space';selectedDate=new Date(2026,9,2);document.getElementById('loginOverlay').style.display='none';openDayDetail('2026-10-02');toggleRecurPanel();});return{page,context,errors};
+ const page=await context.newPage();page.setDefaultTimeout(4000);const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('https://minb.test/'+(opts.page||''));if(opts.page)return{page,context,errors};await page.evaluate(mode=>{
+ currentUser={uid:'A',displayName:'테스트'};
+ userData={personalRecurring:[],personalDays:{}};
+ spaceData={members:['A'],memberProfiles:{A:{name:'테스트'}},days:{},recurring:[]};
+ spaceId='space';
+ selectedDate=new Date(2026,9,2);
+ document.getElementById('loginOverlay').style.display='none';
+ if(mode==='recur'||mode==='day')openDayDetail('2026-10-02');
+ if(mode==='recur')toggleRecurPanel();
+ if(mode==='home')renderAll();
+},mode);return{page,context,errors};
 }
 const cases=[];const test=(name,fn)=>cases.push({name,fn});
 test('weekly Friday default is explicit and toggle is accessible',async p=>{await p.evaluate(()=>setRecurMode('weekly'));assert.equal(await p.locator('#recurDayBtns [data-day="5"]').getAttribute('aria-pressed'),'true');assert.match(await p.locator('#recurSummary').textContent(),/매주 금/);});

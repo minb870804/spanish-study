@@ -3,6 +3,7 @@
   --ui-accent:#38679b; --ui-soft:#e7f0fa; --ui-ink:#1B1D1F; --ui-on-ink:#fff;
   --ui-caption:12px; --ui-small:14px; --ui-body:16px; --ui-title:20px; --ui-display:28px;
   --ui-s1:4px; --ui-s2:8px; --ui-s3:12px; --ui-s4:16px; --ui-s5:20px; --ui-s6:24px; --ui-s8:32px;
+  --ui-serif:'Noto Serif KR','AppleMyungjo',serif;
   --ui-radius:14px; --ui-radius-sm:8px; --ui-control:44px; --ui-nav-height:68px; --ui-content:1140px;
   --ui-shadow:0 8px 24px rgba(62,52,40,.07),0 1px 2px rgba(62,52,40,.04); --ui-motion:160ms ease-out;
 }
@@ -18,6 +19,7 @@ body.dark { background:var(--ui-bg); }
 :is(.small-btn,.hbtn,.nexus-link,.add-btn,.ui-button) { min-height:var(--ui-control); border-radius:var(--ui-radius-sm); font-size:var(--ui-small); }
 :is(.small-btn,.hbtn,.nexus-link) { color:var(--ui-text); }
 :is(.card,.section-card) { border-radius:var(--ui-radius); box-shadow:var(--ui-shadow); }
+:is(.card,.section-card,.reading-card):hover { box-shadow:var(--ui-shadow); }
 .ui-button { display:inline-flex; align-items:center; justify-content:center; gap:var(--ui-s2); padding:var(--ui-s2) var(--ui-s4); background:var(--ui-card); border:1px solid var(--ui-border); color:var(--ui-text); font:700 var(--ui-small)/1.5 'Noto Sans KR',sans-serif; cursor:pointer; text-decoration:none; }
 .ui-button.primary { background:var(--ui-ink); color:var(--ui-on-ink); border-color:var(--ui-ink); }
 .ui-button:hover { box-shadow:var(--ui-shadow); }
@@ -81,7 +83,6 @@ body:has(.app-nav) .header-right > a.hbtn,body:has(.app-nav) .header-right > a.n
   .today-card { padding:var(--ui-s4); }
   .today-card .ui-section-head h2 { font-size:var(--ui-title); }
   .calendar-card { padding:var(--ui-s4); }
-  .calendar-tools { flex-wrap:wrap; }
   .calendar-heading { width:100%; justify-content:space-between; }
   .calendar-heading > span { font-size:var(--ui-body); }
   .calendar-mode .ui-button { padding:var(--ui-s2) var(--ui-s3); }
