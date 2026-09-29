@@ -10,6 +10,10 @@
 // 실행:       MINB_PLAYWRIGHT=<playwright 경로> node tests/page-visual.cjs
 // 기준 재생성: MINB_WRITE_BASELINE=1 node tests/page-visual.cjs                      # 네 페이지 전부
 //             MINB_WRITE_BASELINE=1 MINB_WRITE_PAGES=diary.html node tests/page-visual.cjs   # 그 페이지만
+//
+// 스냅샷이 증명하지 못하는 것: 동적 목록 행(일기 항목, 교환일기 스레드, 독서 목록 항목), 모달, :hover/:focus 상태는
+// 스냅샷에 들어 있지 않다(로그인 전이라 비어 있거나 열려 있지 않다). 스냅샷이 통과해도 이들에 대해서는 아무것도 증명되지 않으므로,
+// 이후 태스크는 이 부분을 행동 테스트(test() 로 등록)나 정적 소스 검사로 따로 지켜야 한다.
 // 재생성 전에 반드시 실패 메시지의 차이를 읽고 전부 의도한 변경인지 확인할 것.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -69,6 +73,25 @@ for (const page of PAGES) {
   });
 }
 
+// 요소당 한 줄로 쓴다(tests/home-visual.cjs 와 같은 배치): git diff 한 줄 = 요소 하나
+function serialize(data) {
+  const lines = ['{', '"_": "생성물: MINB_WRITE_BASELINE=1 node tests/page-visual.cjs 로 재생성(MINB_WRITE_PAGES 로 페이지 지정). 손으로 고치지 말 것. 자세한 내용은 tests/page-visual.cjs 머리말 참고",'];
+  const pages = PAGES.filter(pg => data[pg]);
+  pages.forEach((pg, pi) => {
+    lines.push(`${JSON.stringify(pg)}: {`, '"computed": {');
+    const widths = Object.keys(data[pg].computed);
+    widths.forEach((w, wi) => {
+      lines.push(`${JSON.stringify(w)}: {`);
+      const keys = Object.keys(data[pg].computed[w]);
+      keys.forEach((k, ki) => lines.push(`${JSON.stringify(k)}: ${JSON.stringify(data[pg].computed[w][k])}${ki < keys.length - 1 ? ',' : ''}`));
+      lines.push('}' + (wi < widths.length - 1 ? ',' : ''));
+    });
+    lines.push('},', `"stylesheets": ${JSON.stringify(data[pg].stylesheets)}`, '}' + (pi < pages.length - 1 ? ',' : ''));
+  });
+  lines.push('}');
+  return lines.join('\n') + '\n';
+}
+
 async function writeBaseline(browser) {
   const prev = fs.existsSync(BASELINE_FILE) ? readBaseline() : {};
   const targets = WRITE_PAGES.length ? WRITE_PAGES : PAGES;
@@ -88,7 +111,7 @@ async function writeBaseline(browser) {
     console.log(`기준 기록: ${page} (375: ${Object.keys(entry.computed[375]).length}개, 1280: ${Object.keys(entry.computed[1280]).length}개 요소)`);
   }
   fs.mkdirSync(path.dirname(BASELINE_FILE), { recursive: true });
-  fs.writeFileSync(BASELINE_FILE, JSON.stringify(out, null, 1) + '\n');
+  fs.writeFileSync(BASELINE_FILE, serialize(out));
 }
 
 module.exports = { test, PAGES, FIXED_NOW };
