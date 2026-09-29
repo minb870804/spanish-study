@@ -17,6 +17,7 @@
 // 재생성 전에 반드시 실패 메시지의 차이를 읽고 전부 의도한 변경인지 확인할 것.
 const fs = require('node:fs');
 const path = require('node:path');
+const assert = require('node:assert/strict');
 const { fixture, chromium } = require('./recurrence.cjs');
 const { snapshot, sheetInfo, diffSnapshots, MAX_REPORT } = require('./home-visual.cjs');
 
@@ -90,6 +91,65 @@ function serialize(data) {
   });
   lines.push('}');
   return lines.join('\n') + '\n';
+}
+
+// ── Task 3: 공용 마감 스타일시트 ──
+const TITLES = {
+  'study.html': ['.logo-text h1', '.hero h2'],
+  'diary.html': ['.logo-text h1', '.streak-banner .big'],
+  'shared-diary.html': ['.logo-text h1', '.hero h2'],
+  'reading.html': ['.brand > span', '.reading-hero h1'],
+};
+const cssOf = (p, sel, prop, pseudo = null) => p.evaluate(([s, pr, ps]) => {
+  const el = document.querySelector(s);
+  if (!el) throw new Error('없는 요소: ' + s);
+  return getComputedStyle(el, ps)[pr];
+}, [sel, prop, pseudo]);
+
+for (const page of PAGES) {
+  for (const w of [375, 1280]) {
+    test(`${page} 로고와 페이지 제목은 명조체 400, 자간 0 (${w}px)`, page, w, async p => {
+      const serif = await p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ui-serif').trim());
+      assert.match(serif, /Noto Serif KR/, '--ui-serif 토큰이 비어 있다');
+      for (const sel of TITLES[page]) {
+        assert.match(await cssOf(p, sel, 'fontFamily'), /Noto Serif KR/, `${sel} 글꼴`);
+        assert.equal(await cssOf(p, sel, 'fontWeight'), '400', `${sel} 굵기`);
+        assert.ok(['normal', '0px'].includes(await cssOf(p, sel, 'letterSpacing')), `${sel} 자간`);
+      }
+    });
+  }
+  test(`${page} 본문과 카드 제목은 고딕 그대로`, page, 1280, async p => {
+    assert.equal(/Noto Serif KR/.test(await cssOf(p, 'body', 'fontFamily')), false, 'body');
+    const hasCardTitle = await p.evaluate(() => !!document.querySelector('.card-title'));
+    if (hasCardTitle) assert.equal(/Noto Serif KR/.test(await cssOf(p, '.card-title', 'fontFamily')), false, '.card-title');
+  });
+  test(`${page} Noto Serif KR 은 400 한 가지만 요청한다`, page, 1280, async p => {
+    const hrefs = await p.evaluate(() => [...document.querySelectorAll('link[rel=stylesheet]')].map(l => l.href));
+    const font = hrefs.find(h => h.includes('fonts.googleapis.com'));
+    assert.ok(font, '폰트 링크 없음');
+    assert.match(decodeURIComponent(font), /family=Noto\+Serif\+KR:wght@400(&|$)/);
+  });
+  test(`${page} paper.css 가 맨 마지막 스타일시트다`, page, 1280, async p => {
+    const hrefs = await p.evaluate(() => [...document.querySelectorAll('link[rel=stylesheet]')].map(l => l.getAttribute('href')));
+    assert.equal(hrefs.at(-1), 'css/paper.css', hrefs.join(' | '));
+  });
+  for (const dark of [false, true]) {
+    test(`${page} 카드는 그림자 없이 선으로 (${dark ? '다크' : '라이트'}, 평상시·호버)`, page, 1280, async p => {
+      if (dark) await p.evaluate(() => document.body.classList.add('dark'));
+      const sel = page === 'reading.html' ? '.reading-card' : '.card';
+      const card = p.locator(sel).first();
+      // 네 페이지 모두 정적 마크업에 카드가 있다 (study 52, diary 4, shared-diary 8, reading 6). 없으면 테스트가 헛돈 것이다.
+      assert.ok(await card.count(), `${sel} 가 없다`);
+      await card.scrollIntoViewIfNeeded();
+      assert.equal(await card.evaluate(el => getComputedStyle(el).boxShadow), 'none', '평상시');
+      assert.equal(await card.evaluate(el => getComputedStyle(el).borderTopWidth), '1px', '선');
+      await card.hover({ force: true });
+      await p.waitForTimeout(500); // transition 이 끝난 뒤 잰다 (tests/cross-page.cjs 와 같은 방식)
+      // force 로 올리면 위에 덮인 요소가 hover 를 가져가 카드는 평상시 값인 채 헛통과할 수 있다. 정말 hover 인지 확인한다.
+      assert.equal(await card.evaluate(el => el.matches(':hover')), true, '카드에 :hover 가 걸리지 않았다 (위에 덮인 요소가 있다)');
+      assert.equal(await card.evaluate(el => getComputedStyle(el).boxShadow), 'none', '호버');
+    });
+  }
 }
 
 async function writeBaseline(browser) {
