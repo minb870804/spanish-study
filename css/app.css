@@ -1151,7 +1151,8 @@
 .calendar-links button {
   min-height: var(--ui-control); padding: 0; border: 0; background: none;
   color: var(--ui-muted); font-family: inherit; font-size: var(--ui-small); font-weight: 500; line-height: 1.6; cursor: pointer;
-  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ui-border);
+  text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: currentColor; /* 글자와 같은 회색: 테두리색(--ui-border)은 카드 바탕에 묻혀 링크로 안 보였다 */
 }
 .calendar-links button:hover { color: var(--ui-text); }
 
@@ -1187,7 +1188,13 @@
   background: var(--cat-color, var(--ui-muted));
 }
 :is(.todo-item, .upcoming-todo) .scope-badge::before {
-  content: '·'; margin: 0 var(--ui-s2); color: var(--ui-border);
+  content: '·'; margin: 0 var(--ui-s2); color: var(--ui-muted);
+}
+/* '중요' 다음에도 다른 항목 사이처럼 구분점을 둔다(뒤에는 항상 카테고리 뱃지가 온다).
+   ::after 는 '중요'의 툴팁이 쓰고 있어서(.todo-actions [data-tooltip]::after) 구분점은 importantFlag() 가 따로 내보내는 요소다.
+   간격은 앞의 .important-flag margin-right 와 맞춘다 */
+.todo-item .meta-sep {
+  margin-right: var(--ui-s2); color: var(--ui-muted); font-size: var(--ui-caption); line-height: 1.6;
 }
 :is(.todo-item, .upcoming-todo) .important-flag {
   background: none; padding: 0; border: 0; color: var(--red); font-weight: 700; font-size: var(--ui-caption);
@@ -1206,8 +1213,8 @@
 
 /* 조용한 종이 노트 — 날짜와 제목만 명조, 본문은 고딕.
    css/app-design.css 가 :is(body,body.dark) 접두로 굵기·자간을 덮어쓰고 나중에 로드된다.
-   아래 선택자 목록에 #homeView 가 들어 있어 :is() 전체가 id 특이도(1,1,1)를 가지므로,
-   접두만으로 app-design.css 의 로고·제목 규칙(0,1,2)을 이긴다. */
+   아래 선택자 목록에 #homeView 가 들어 있어 뒤쪽 :is() 는 id 특이도(1,1,1)를 가지고, 접두 :is(body,body.dark)(0,1,1)와
+   합쳐 이 규칙은 (1,2,2)다. app-design.css 의 로고 규칙(:is(body,body.dark) .logo-text h1)은 (0,2,2)이므로 접두만으로 이긴다. */
 :is(body, body.dark) :is(.logo-text h1,
 #homeView .hero h2,
 .today-card .ui-section-head h2,

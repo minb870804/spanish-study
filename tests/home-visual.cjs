@@ -395,6 +395,84 @@ test('장소·시간 칩에 📍·🕐 이모지가 없다', 375, async p => {
   assert.equal(EMOJI.test(chips.join('')), false, chips.join('|'));
 });
 
+// 페이지 안에서 실행: 요소의 유효 배경색(투명이면 조상으로 올라간다)과 주어진 글자색의 명암비(WCAG)를 계산한다
+const inPageContrast = `(el, fg) => {
+  const parse = c => c.match(/[\\d.]+/g).map(Number);
+  const lum = ([r, g, b]) => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+  let n = el, bg = null;
+  while (n) { const c = getComputedStyle(n).backgroundColor; const a = parse(c); if (a.length === 3 || a[3] > 0.99) { bg = a; break; } n = n.parentElement; }
+  const f = parse(fg), L1 = lum(f), L2 = lum(bg);
+  return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+}`;
+
+// 다크로 바꾸고 색 전환(transition)이 끝난 값을 바로 읽게 한다(전환 중에는 옛 배경색이 읽혀 명암비가 틀어진다)
+const setDarkNow = async p => {
+  await p.addStyleTag({ content: '*, *::before, *::after { transition: none !important; }' });
+  await p.evaluate(() => document.body.classList.add('dark'));
+  assert.notEqual(await p.evaluate(() => getComputedStyle(document.querySelector('.card')).backgroundColor), 'rgb(255, 255, 255)', '다크로 바뀌지 않았다');
+};
+
+test('달력 아래 링크 줄의 밑줄은 링크로 읽힐 만큼 보이되 글자보다 튀지 않는다 (라이트·다크)', 375, async p => {
+  for (const dark of [false, true]) {
+    if (dark) await setDarkNow(p);
+    const got = await p.locator('.calendar-links button').evaluateAll((els, src) => {
+      const ratio = eval(src);
+      const probe = document.createElement('i'); probe.style.color = 'var(--ui-border)'; document.body.appendChild(probe);
+      const border = getComputedStyle(probe).color; probe.remove();
+      return els.map(e => { const cs = getComputedStyle(e); return { t: e.textContent.trim(), line: cs.textDecorationLine, deco: cs.textDecorationColor, color: cs.color, border, ratio: ratio(e, cs.textDecorationColor) }; });
+    }, inPageContrast);
+    assert.equal(got.length, 3);
+    for (const g of got) {
+      assert.equal(g.line, 'underline', JSON.stringify(g));
+      assert.notEqual(g.deco, g.border, `${g.t} 밑줄이 테두리색이다(dark=${dark}): ${JSON.stringify(g)}`);
+      assert.ok(g.ratio >= 3, `${g.t} 밑줄 명암비 ${g.ratio.toFixed(2)} < 3 (dark=${dark}): ${JSON.stringify(g)}`);
+      assert.equal(g.deco, g.color, `${g.t} 밑줄이 글자색과 다르다(더 튄다)(dark=${dark}): ${JSON.stringify(g)}`);
+    }
+  }
+});
+
+test('일정 줄 메타 구분점(·)은 읽을 수 있고 중요 뒤에도 있다 (라이트·다크)', 375, async p => {
+  await p.evaluate(seedTwoMemberSchedules);
+  await p.evaluate(() => openDayDetail('2026-10-02'));
+  for (const dark of [false, true]) {
+    if (dark) await setDarkNow(p);
+    const got = await p.evaluate(([normSrc, src]) => {
+      const norm = eval(normSrc), ratio = eval(src);
+      const row = document.querySelector('#dmBody .todo-item[data-id="p1"]');
+      const flag = row.querySelector('.important-flag'), scope = row.querySelector('.scope-badge');
+      const kids = [...row.querySelector('.todo-actions').children];
+      const sep = flag.nextElementSibling;
+      const info = (el, w) => { const cs = getComputedStyle(el, w); return { text: w ? cs.content : el.textContent, color: cs.color, ratio: ratio(el, cs.color) }; };
+      return { border: norm('var(--ui-border)'), scope: info(scope, '::before'), sep: info(sep), sepClass: sep.className,
+        // '중요' 다음이 구분점이고 그 다음이 카테고리 뱃지다(순서가 바뀌면 구분점이 엉뚱한 곳에 온다)
+        after: kids[kids.indexOf(sep) + 1].className, hidden: sep.getAttribute('aria-hidden'),
+        // '중요' 의 ::after 는 툴팁이 쓴다: 구분점이 그것을 가로채면 안 된다
+        tip: getComputedStyle(flag, '::after').content };
+    }, [inPageNorm, inPageContrast]);
+    assert.equal(got.sepClass, 'meta-sep', JSON.stringify(got));
+    assert.match(got.after, /tcat-badge/, JSON.stringify(got));
+    assert.equal(got.hidden, 'true', '구분점은 스크린리더에 읽히면 안 된다');
+    assert.equal(got.tip, '"중요 일정"', '중요 뱃지의 툴팁이 사라졌다: ' + got.tip);
+    for (const [k, s, want] of [['범위 앞 구분점', got.scope, '"·"'], ['중요 뒤 구분점', got.sep, '·']]) {
+      assert.equal(s.text, want, `${k} 내용(dark=${dark}): ${JSON.stringify(s)}`);
+      assert.notEqual(s.color, got.border, `${k} 색이 테두리색이다(dark=${dark}): ${JSON.stringify(s)}`);
+      assert.ok(s.ratio >= 3, `${k} 명암비 ${s.ratio.toFixed(2)} < 3 (dark=${dark}): ${JSON.stringify(s)}`);
+    }
+  }
+});
+
+test('기간 일정 칩에 📅 이모지가 없고 날짜는 그대로다', 375, async p => {
+  await p.evaluate(() => {
+    userData.personalDays['2026-10-02'] = { todos: [
+      { id: 'pp', text: '제주 출장', by: 'A', startDate: '2026-10-02', endDate: '2026-10-04', cat: 'wk', visibility: 'private' },
+    ] };
+    openDayDetail('2026-10-02');
+  });
+  const chips = await p.locator('#dmBody .todo-item[data-id="pp"] .todo-meta-chip').allInnerTexts();
+  assert.deepEqual(chips.map(t => t.trim()), ['10/2~10/4']);
+  assert.equal(EMOJI.test(chips.join('')), false, chips.join('|'));
+});
+
 test('홈 "앞으로 예정" 줄도 같은 조용한 뱃지와 카테고리 점을 쓴다', 375, async p => {
   await p.evaluate(seedTwoMemberSchedules);
   await p.evaluate(() => renderUpcomingTodos());

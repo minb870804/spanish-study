@@ -3255,7 +3255,7 @@ function activateActionTooltips(root) {
 
 function todoMetaHtml(todo) {
   const parts = [];
-  if (isPeriodTodo(todo)) parts.push(`<span class="todo-meta-chip">📅 ${shortDateLabel(todo.startDate)}~${shortDateLabel(todo.endDate)}</span>`);
+  if (isPeriodTodo(todo)) parts.push(`<span class="todo-meta-chip">${shortDateLabel(todo.startDate)}~${shortDateLabel(todo.endDate)}</span>`);
   if (todo.time) parts.push(`<span class="todo-meta-chip">${esc(todo.time)}</span>`);
   if (todo.location) parts.push(`<span class="todo-meta-chip location">${esc(todo.location)}</span>`);
   return parts.length ? `<span class="todo-meta">${parts.join('')}</span>` : '';
@@ -3624,7 +3624,7 @@ function authorChip(todo) {
 // ── 중요 표시 ── 꼭 챙겨야 하는 일정은 빨간색으로 눈에 띄게 한다.
 function isImportantTodo(t) { return !!(t && t.important); }
 function importantFlag(t) {
-  return isImportantTodo(t) ? '<span class="important-flag" title="중요 일정">중요</span>' : '';
+  return isImportantTodo(t) ? '<span class="important-flag" title="중요 일정">중요</span><span class="meta-sep" aria-hidden="true">·</span>' : '';
 }
 async function toggleTodoImportant(key, id) {
   const day = getDay(key);
