@@ -10,7 +10,7 @@ async function fixture(browser,width=375,mode='recur',opts={}){
   window.QA={writes:[],fail:false};window.firebase={initializeApp(){},auth:()=>auth,app:()=>({functions:()=>({httpsCallable:()=>async()=>({data:{holidays:[]}})})}),firestore:Object.assign(()=>db,{FieldValue:{serverTimestamp:()=>1}})};
  });
  await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.hostname!=='minb.test')return route.fulfill({body:'',contentType:'application/javascript'});const file=path.join(root,url.pathname==='/'?'index.html':url.pathname);if(!fs.existsSync(file))return route.fulfill({status:404,body:''});return route.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.html')?'text/html':file.endsWith('.css')?'text/css':'application/javascript'});});
- const page=await context.newPage();page.setDefaultTimeout(4000);const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('https://minb.test/');await page.evaluate(mode=>{
+ const page=await context.newPage();page.setDefaultTimeout(4000);const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('https://minb.test/'+(opts.page||''));if(opts.page)return{page,context,errors};await page.evaluate(mode=>{
  currentUser={uid:'A',displayName:'테스트'};
  userData={personalRecurring:[],personalDays:{}};
  spaceData={members:['A'],memberProfiles:{A:{name:'테스트'}},days:{},recurring:[]};

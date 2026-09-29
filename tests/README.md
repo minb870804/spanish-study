@@ -19,3 +19,5 @@ Run `node tests/schedule-save.cjs` for new schedules while notification permissi
 Run `node tests/monthly-save.cjs` for migrated (`dayStorage=2`) schedule creation and cross-month copy/rollback. Its mock rejects legacy root writes, covering the production schema boundary missed by the legacy fixtures. Actual production-rule checks are recorded separately in `.omo/evidence/schedule-monthly-20260927.md`.
 
 Run `node tests/schedule-editor.cjs` for editor focus, sharing, collapsed-value preservation, all-day/multi-day controls, failed-save retry, dirty dismissal and the reordered creation fields. Chrome screenshots and viewport assertions cover 375/768/1280px. Set `MINB_EDITOR_EVIDENCE` to redirect its output. Firebase is mocked; this does not verify native iPhone keyboards or notification delivery.
+
+Run `node tests/cross-page.cjs` for pages other than home: a hovered card keeps the calm shadow on study/reading/diary/shared-diary (shared ui.css must beat study.html's own heavier `.card:hover`). Uses MINB_PLAYWRIGHT/MINB_ROOT; Firebase is mocked.

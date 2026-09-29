@@ -762,11 +762,12 @@ test('명조체는 다크 테마에서도 같다', 375, async p => {
   }
 });
 
-test('폰트 링크는 명조 400/600 을 더하고 기존 가족을 지킨다', 375, async () => {
+test('폰트 링크는 명조 400 만 더하고 기존 가족을 지킨다', 375, async () => {
   const html = fs.readFileSync(path.join(process.env.MINB_ROOT || path.join(__dirname, '..'), 'index.html'), 'utf8');
   const link = (html.match(/<link[^>]+href="(https:\/\/fonts\.googleapis\.com\/css2[^"]+)"/) || [])[1];
   assert.ok(link, '구글 폰트 링크가 없다');
-  assert.ok(link.includes('family=Noto+Serif+KR:wght@400;600'), link);
+  // 명조는 400 만 쓴다. 600 은 렌더 차단 폰트 요청만 키우므로 다시 넣지 않는다.
+  assert.ok(/family=Noto\+Serif\+KR:wght@400(&|$)/.test(link), link);
   assert.ok(link.includes('family=Noto+Sans+KR:wght@300;400;500;700;900'), link);
   assert.ok(link.includes('family=Outfit:wght@300;400;600;800'), link);
   assert.ok(link.includes('display=swap'), link);

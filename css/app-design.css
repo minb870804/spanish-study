@@ -20,7 +20,6 @@ body.dark { --ui-accent:#b4c7ad; --ui-soft:#273127; --ui-surface:#232628; color-
 :is(body,body.dark) :is(.hero h2,.streak-banner .big) { font-size:var(--ui-title); font-weight:700; letter-spacing:-.03em; }
 :is(body,body.dark) :is(.hero .sub,.hero > p,.streak-banner .small) { font-size:var(--ui-small); color:var(--ui-muted); opacity:1; line-height:1.7; }
 :is(body,body.dark) #homeView .hero { padding:0 0 var(--ui-s4); }
-:is(body,body.dark) #homeView .hero h2 { font-size:var(--ui-small); font-weight:500; color:var(--ui-muted); }
 :is(body,body.dark) .app-nav a { font-weight:500; }
 :is(body,body.dark) .app-nav a[aria-current] { font-weight:700; }
 :is(body,body.dark) .ui-eyebrow { font-weight:500; }
