@@ -1040,7 +1040,7 @@ async function saveDashboardCategoryEditor() {
       dashboardCategories: items,
       personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    toast('🧩 내 홈 카테고리를 저장했어요!');
+    toast('내 홈 카테고리를 저장했어요!');
   } catch (e) {
     console.error('홈 카테고리 저장 실패:', e);
     toast('카테고리 저장에 실패했어요.');
@@ -1087,7 +1087,7 @@ async function joinSpace() {
     userData.spaceId = code;
     document.getElementById('joinInput').value = '';
     subscribeSpace();
-    toast('🎉 스페이스에 참여했어요!');
+    toast('스페이스에 참여했어요!');
   } catch (e) {
     console.error('참여 실패:', e);
     toast('참여에 실패했어요. 코드를 다시 확인해 주세요.');
@@ -1111,7 +1111,7 @@ async function leaveSpace() {
 
 function copyCode() {
   if (!spaceId) return;
-  navigator.clipboard.writeText(spaceId).then(() => toast('📋 초대 코드가 복사됐어요! 함께 쓸 사람에게 보내주세요.'));
+  navigator.clipboard.writeText(spaceId).then(() => toast('초대 코드가 복사됐어요! 함께 쓸 사람에게 보내주세요.'));
 }
 
 // ══════════════════════════════════════
@@ -1199,7 +1199,7 @@ async function requestPushPermission() {
     await savePushSubscription(sub);
     updatePushStatus('알림 켜짐');
     renderPushBanner();
-    toast('🔔 할 일 알림이 켜졌어요!');
+    toast('할 일 알림이 켜졌어요!');
     return true;
   } catch (e) {
     console.error('알림 등록 실패:', e);
@@ -1473,7 +1473,7 @@ async function addMemoCategory() {
       personalMemoCategories: cats,
       personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    toast(`🏷 메모 카테고리 '${name}'가 추가됐어요!`);
+    toast(`메모 카테고리 '${name}'가 추가됐어요!`);
   } catch (e) { console.error('메모 카테고리 저장 실패:', e); toast('저장에 실패했어요.'); }
 }
 
@@ -1655,7 +1655,7 @@ async function saveCatEditor() {
     } else {
       await db.collection('users').doc(currentUser.uid).update(userUpdate);
     }
-    toast('🎨 카테고리를 수정했어요!');
+    toast('카테고리를 수정했어요!');
   } catch (e) { console.error('카테고리 수정 저장 실패:', e); toast('저장에 실패했어요.'); }
 }
 
@@ -1725,7 +1725,7 @@ async function addMemoEntry() {
   notes[selectedMemoCat] = lines.join('\n');
   input.value = '';
   autoSizeTodoInput(input);
-  await persistMemoEntries(notes, '📝 메모를 추가했어요!');
+  await persistMemoEntries(notes, '메모를 추가했어요!');
 }
 async function editMemoEntry(catId, index) {
   const notes = getDayNotes(getDay(dateKey(selectedDate)));
@@ -1737,7 +1737,7 @@ async function editMemoEntry(catId, index) {
   if (!text) { await deleteMemoEntry(catId, index); return; }
   lines[index] = text;
   notes[catId] = lines.join('\n');
-  await persistMemoEntries(notes, '✏️ 메모를 수정했어요!');
+  await persistMemoEntries(notes, '메모를 수정했어요!');
 }
 async function deleteMemoEntry(catId, index) {
   const notes = getDayNotes(getDay(dateKey(selectedDate)));
@@ -1746,7 +1746,7 @@ async function deleteMemoEntry(catId, index) {
   if (!confirm(`'${lines[index]}' 메모를 삭제할까요?`)) return;
   lines.splice(index, 1);
   notes[catId] = lines.join('\n');
-  await persistMemoEntries(notes, '🗑 메모를 삭제했어요.');
+  await persistMemoEntries(notes, '메모를 삭제했어요.');
 }
 
 // 작성한 메모의 카테고리 변경 — 뱃지 클릭 → 팝오버에서 다른 카테고리로 이동
@@ -1782,7 +1782,7 @@ async function applyMemoCatChange(newCatId) {
   toLines.push(moved);
   notes[newCatId] = toLines.join('\n');
   const catName = (getMemoCats().find(c => c.id === newCatId) || {}).name || '카테고리';
-  await persistMemoEntries(notes, `🏷 '${catName}'(으)로 옮겼어요!`);
+  await persistMemoEntries(notes, `'${catName}'(으)로 옮겼어요!`);
 }
 
 // hex 색을 옅은 배경 rgba로 (달력 카테고리 태그용)
@@ -2042,7 +2042,7 @@ async function saveRecurSetup() {
   if (!(await saveRecurring([...getAllRecurring(), rule]))) return;
   closeRecurSetup();
   renderRecurList(); renderAll();
-  toast(`🔁 ${recurFreqLabel(rule)} 반복으로 등록했어요!`);
+  toast(`${recurFreqLabel(rule)} 반복으로 등록했어요!`);
 }
 
 async function toggleRecurringSharing(id) {
@@ -2062,7 +2062,7 @@ async function toggleRecurringSharing(id) {
   if (!(await saveRecurring(arr))) return;
   renderRecurList(); renderAll();
   if (makeShared) notifyScheduleShared('', rule.text);
-  toast(makeShared ? '👫 반복 일정을 공유했어요.' : '🔒 공유를 취소했어요. 이제 나에게만 보여요.');
+  toast(makeShared ? '반복 일정을 공유했어요.' : '공유를 취소했어요. 이제 나에게만 보여요.');
 }
 
 async function toggleRecurringDone(id, checked) {
@@ -2176,7 +2176,7 @@ async function addCustomCategory() {
       personalCategories: cats,
       personalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    toast(`🏷 '${name}' 카테고리가 만들어졌어요!`);
+    toast(`'${name}' 카테고리가 만들어졌어요!`);
   } catch (e) { console.error('카테고리 저장 실패:', e); toast('저장에 실패했어요.'); }
 }
 
@@ -2247,7 +2247,7 @@ async function applyCatChange(catId) {
     renderAll(); if (modalKey) refreshModal(true);
     await saveDay(key, day);
   }
-  toast(`🏷 카테고리가 '${catById(catId).name}'(으)로 변경됐어요!`);
+  toast(`카테고리가 '${catById(catId).name}'(으)로 변경됐어요!`);
 }
 
 function normalizeTodoText(text) {
@@ -2423,9 +2423,9 @@ async function addTodo() {
   }
   renderAll();
   scheduleLocalReminder(todo); // 네이티브 앱: 기기에 알람 예약(웹은 no-op)
-  if (isPeriod) toast(`✅ ${shortDateLabel(startKey)}~${shortDateLabel(endKey)} 기간 일정을 추가했어요!`);
-  else if (reminderFields.remindAtMs) toast('✅ 할 일과 알림이 추가됐어요!');
-  else if (scheduleTime || scheduleLocation) toast('✅ 시간·장소와 함께 할 일을 추가했어요!');
+  if (isPeriod) toast(`${shortDateLabel(startKey)}~${shortDateLabel(endKey)} 기간 일정을 추가했어요!`);
+  else if (reminderFields.remindAtMs) toast('할 일과 알림이 추가됐어요!');
+  else if (scheduleTime || scheduleLocation) toast('시간·장소와 함께 할 일을 추가했어요!');
   if (reminderFields.remindAtMs && !capIsNative()) void requestPushPermission();
 }
 
@@ -2573,7 +2573,7 @@ async function deleteTodoAt(key, id, confirmed = false) {
   renderAll();
   await saveDay(key, day);
   cancelLocalReminder(id); // 네이티브 앱 예약 알람 취소
-  showUndoToast('🗑 삭제했어요.', async () => {
+  showUndoToast('삭제했어요.', async () => {
     const d = getDay(key);
     d.todos = [...d.todos, removed];
     setDayLocal(key, d);
@@ -2603,7 +2603,7 @@ async function toggleTodoSharing(key, id) {
   if (modalKey === key) refreshModal(true);
   await saveDay(key, day);
   if (makeShared) notifyScheduleShared(key, todo.text);
-  toast(makeShared ? '👫 배우자와 공유했어요.' : '🔒 공유를 취소했어요. 이제 나에게만 보여요.');
+  toast(makeShared ? '배우자와 공유했어요.' : '공유를 취소했어요. 이제 나에게만 보여요.');
 }
 
 // 배우자와 공유한 순간 상대방 기기로 푸시 알림을 보낸다(서버가 배우자만 골라 발송).
@@ -2785,10 +2785,10 @@ async function toggleSpaceDayMark(field, key, onMsg, offMsg) {
 }
 
 function togglePeriodDay(key) {
-  return toggleSpaceDayMark('periodDays', key, '🩸 생리일로 표시했어요.', '생리 표시를 지웠어요.');
+  return toggleSpaceDayMark('periodDays', key, '생리일로 표시했어요.', '생리 표시를 지웠어요.');
 }
 function toggleLoveDay(key) {
-  return toggleSpaceDayMark('loveDays', key, '❤️ 기록했어요.', '기록을 지웠어요.');
+  return toggleSpaceDayMark('loveDays', key, '기록했어요.', '기록을 지웠어요.');
 }
 
 function renderDayPeriodToggle() {
@@ -2974,7 +2974,7 @@ function copyTextToClipboard(text, msg) {
 function copyVaultField(id, field) {
   const entry = getVaultEntries().find(e => e.id === id);
   if (!entry) return;
-  copyTextToClipboard(entry[field] || '', field === 'password' ? '🔑 비밀번호를 복사했어요.' : '📋 아이디를 복사했어요.');
+  copyTextToClipboard(entry[field] || '', field === 'password' ? '비밀번호를 복사했어요.' : '아이디를 복사했어요.');
 }
 function toggleVaultPw(id) {
   if (vaultShown.has(id)) vaultShown.delete(id); else vaultShown.add(id);
@@ -3036,7 +3036,7 @@ async function addVaultEntry() {
   document.getElementById('vaultId').value = '';
   document.getElementById('vaultPw').value = '';
   await saveVaultEntries(arr);
-  toast(`🔐 '${service}' 계정을 저장했어요!`);
+  toast(`'${service}' 계정을 저장했어요!`);
 }
 
 async function editVaultEntry(id) {
@@ -3054,14 +3054,14 @@ async function editVaultEntry(id) {
   entry.password = password;
   entry.updatedAt = Date.now();
   await saveVaultEntries(arr);
-  toast('✏️ 수정했어요!');
+  toast('수정했어요!');
 }
 
 async function deleteVaultEntry(id) {
   const entry = getVaultEntries().find(e => e.id === id);
   if (!entry || !confirm(`'${entry.service}' 계정 기록을 삭제할까요?`)) return;
   await saveVaultEntries(getVaultEntries().filter(e => e.id !== id));
-  toast('🗑 삭제했어요.');
+  toast('삭제했어요.');
 }
 
 async function saveExerciseEntry() {
@@ -3083,7 +3083,7 @@ async function saveExerciseEntry() {
   closeExerciseModal();
   renderAll();
   await saveDay(key, day);
-  toast(text ? '💪 운동 기록을 저장했어요!' : '운동 기록을 지웠어요.');
+  toast(text ? '운동 기록을 저장했어요!' : '운동 기록을 지웠어요.');
 }
 
 async function toggleDrinkDay(key) {
@@ -3475,7 +3475,7 @@ async function completeUpcomingTodo(sourceKey, id, checked) {
   setDayLocal(sourceKey, day);
   renderAll();
   await saveDay(sourceKey, day);
-  if (checked) { cancelLocalReminder(id); toast('✅ 완료했어요!'); }
+  if (checked) { cancelLocalReminder(id); toast('완료했어요!'); }
   else if (t.remindAtMs) scheduleLocalReminder(t);
 }
 
@@ -3639,7 +3639,7 @@ async function toggleTodoImportant(key, id) {
   setDayLocal(key, day);
   renderAll(); if (modalKey) refreshModal(true);
   await saveDay(key, day);
-  toast(todo.important ? '❗ 중요 일정으로 표시했어요.' : '중요 표시를 해제했어요.');
+  toast(todo.important ? '중요 일정으로 표시했어요.' : '중요 표시를 해제했어요.');
 }
 
 // ── 공유 일정 주인 선택 (입력 영역) ──
@@ -3735,11 +3735,11 @@ async function applySharePick(optId) {
   setDayLocal(key, day);
   renderAll(); if (modalKey) refreshModal(true);
   await saveDay(key, day);
-  if (optId === 'private') { toast('🔒 공유를 취소했어요. 이제 나에게만 보여요.'); return; }
+  if (optId === 'private') { toast('공유를 취소했어요. 이제 나에게만 보여요.'); return; }
   if (!wasShared) notifyScheduleShared(key, todo.text);
   toast(wasShared
-    ? `👤 '${partyLabel(todo.assignee)}' 일정으로 바꿨어요!`
-    : `👫 '${partyLabel(todo.assignee)}' 일정으로 공유했어요!`);
+    ? `'${partyLabel(todo.assignee)}' 일정으로 바꿨어요!`
+    : `'${partyLabel(todo.assignee)}' 일정으로 공유했어요!`);
 }
 
 // ── 공유 일정 색 지정 ──
@@ -3774,7 +3774,7 @@ async function saveOwnerColor(key, color) {
       ownerColors: next,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    toast('🎨 공유 일정 색을 바꿨어요!');
+    toast('공유 일정 색을 바꿨어요!');
   } catch (e) {
     console.error('공유 일정 색 저장 실패:', e);
     toast('색 저장에 실패했어요.');
@@ -4143,8 +4143,8 @@ async function moveCalendarItem(sourceKey, targetKey, kind, id, opts = {}) {
     renderAll();
     if (modalKey === sourceKey || modalKey === targetKey) refreshModal(true);
     if (await saveMovedDays(sourceKey, sourceDay, targetKey, targetDay, moveEvent)) {
-      if (opts.silent) toast('↩️ 원래 날짜로 되돌렸어요.');
-      else showUndoToast(`📆 ${tm}/${td}(${targetDow})로 옮겼어요.`, () => moveCalendarItem(targetKey, sourceKey, 'todo', id, { silent: true }));
+      if (opts.silent) toast('원래 날짜로 되돌렸어요.');
+      else showUndoToast(`${tm}/${td}(${targetDow})로 옮겼어요.`, () => moveCalendarItem(targetKey, sourceKey, 'todo', id, { silent: true }));
     }
     return;
   }
@@ -4168,7 +4168,7 @@ async function moveCalendarItem(sourceKey, targetKey, kind, id, opts = {}) {
     renderAll();
     if (modalKey === sourceKey || modalKey === targetKey) refreshModal(true);
     if (await saveMovedDays(sourceKey, sourceDay, targetKey, targetDay)) {
-      toast('📆 메모를 다른 날짜로 옮겼어요!');
+      toast('메모를 다른 날짜로 옮겼어요!');
     }
   }
 }
@@ -4383,7 +4383,7 @@ async function copyCalendarTodo(sourceKey, targetKey, id) {
   renderAll();
   if (modalKey === targetKey) refreshModal(true);
   if (copied.remindAtMs) scheduleLocalReminder(copied);
-  toast(`📋 ${shortDateLabel(targetKey)}에 한 번 복사했어요.`);
+  toast(`${shortDateLabel(targetKey)}에 한 번 복사했어요.`);
 }
 
 function attachTodoSwipeHandlers(root) {
@@ -4600,7 +4600,7 @@ async function mSaveNote() {
   setDayLocal(modalKey, day);
   renderAll();
   await saveDay(modalKey, day);
-  toast('💾 메모가 저장됐어요!');
+  toast('메모가 저장됐어요!');
   refreshModal(false);
 }
 
@@ -5466,7 +5466,7 @@ function exportBackup() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  toast('📦 백업 파일을 내려받았어요!');
+  toast('백업 파일을 내려받았어요!');
 }
 
 // 지정한 날짜 팝업을 바로 열고 입력칸에 포커스
