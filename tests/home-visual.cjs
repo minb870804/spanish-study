@@ -519,6 +519,36 @@ test('일정 줄 더보기 메뉴의 날짜 변경·복사 버튼은 이모지 �
   assert.equal(EMOJI.test(move.text + copy.text), false, JSON.stringify([move, copy]));
 });
 
+// 모바일 행 메뉴 버튼의 터치 목표. 글자 버튼(날짜·복사)은 padding 만으로 키우면 44x35 에 그쳤다(회귀).
+// 눌리는 칸은 44px 이상이어야 하고, 그렇다고 줄 높이(=행 높이)가 그만큼 늘어나면 안 된다.
+for (const w of [320, 375]) {
+  test(`행 메뉴 버튼(⋯·날짜·복사·✕·이동 손잡이)이 44px 터치 목표이고 행은 늘어나지 않는다 (${w}px)`, w, async p => {
+    await p.evaluate(seedTwoMemberSchedules);
+    await p.evaluate(() => openDayDetail('2026-10-02'));
+    const closedH = await p.locator('#dmBody .todo-item[data-id="p2"]').evaluate(e => e.getBoundingClientRect().height);
+    await p.locator('#dmBody .todo-item[data-id="p1"] .todo-menu-btn').click();
+    const boxes = await p.evaluate(() => {
+      const row = document.querySelector('#dmBody .todo-item[data-id="p1"]');
+      const sel = { '⋯': '.todo-menu-btn', '날짜': '.todo-btns [aria-label="날짜 변경"]', '복사': '.todo-btns [aria-label="다른 날짜에 한 번 복사"]',
+        '✕': '.todo-btns [aria-label="삭제"]', '↕': '.move-handle' };
+      const out = {};
+      for (const [k, q] of Object.entries(sel)) {
+        const e = row.querySelector(q);
+        if (!e) { out[k] = null; continue; }
+        const r = e.getBoundingClientRect();
+        out[k] = { w: r.width, h: r.height, visible: !!(r.width && r.height) };
+      }
+      return out;
+    });
+    for (const [k, b] of Object.entries(boxes)) {
+      assert.ok(b && b.visible, `${k} 버튼이 보이지 않는다: ${JSON.stringify(boxes)}`);
+      assert.ok(b.w >= 43.99 && b.h >= 43.99, `${k} 터치 목표 ${b.w}x${b.h} (44x44 미만)`); // 서브픽셀 반올림 허용
+    }
+    // 메뉴가 닫힌 행의 높이: 수정 전 99.3px, 음수 여백 없이 44px 칸만 키우면 약 112px 로 늘어난다(-6px 여백이 막는다).
+    assert.ok(closedH <= 104, `닫힌 행 높이 ${closedH} (수정 전 99.3, 44px 칸이 줄을 밀면 112 안팎)`);
+  });
+}
+
 test('홈 "앞으로 예정" 줄도 같은 조용한 뱃지와 카테고리 점을 쓴다', 375, async p => {
   await p.evaluate(seedTwoMemberSchedules);
   await p.evaluate(() => renderUpcomingTodos());
