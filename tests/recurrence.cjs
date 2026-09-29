@@ -1,8 +1,9 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.MINB_PLAYWRIGHT||'playwright');
 const root=process.env.MINB_ROOT||path.join(__dirname,'..');
-async function fixture(browser,width=375,mode='recur'){
+async function fixture(browser,width=375,mode='recur',opts={}){
  const context=await browser.newContext({viewport:{width,height:900},timezoneId:'Asia/Seoul',serviceWorkers:'block'});
+ if(opts.now)await context.clock.setFixedTime(opts.now);
  await context.addInitScript(()=>{
   const auth={onAuthStateChanged(){},getRedirectResult:async()=>null};
   const db={enablePersistence:async()=>{},collection:name=>({doc:id=>({name,id})}),batch:()=>{const writes=[];return{update:(ref,data)=>writes.push({ref,data}),commit:async()=>{if(window.QA.fail)throw Error('test write failure');window.QA.writes.push(writes);}}}};
