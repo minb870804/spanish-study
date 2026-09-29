@@ -457,6 +457,7 @@ const seedCalendarTags = () => {
     '2026-10-13': { notes: { etc: '메모 내용' } },
   };
   userData.personalRecurring = [{ id: 'rec1', text: '반복 일정', days: [5], startDate: '2026-10-09', endDate: '2026-10-09', cat: 'ex', visibility: 'private' }];
+  spaceData.recurring = [{ id: 'rec2', text: '배우자 반복 일정', by: 'B', days: [5], startDate: '2026-10-16', endDate: '2026-10-16', cat: 'ex', visibility: 'shared' }];
   spaceData.days = {
     '2026-10-01': { todos: [shared({ id: 'own1', text: '배우자 공유 일정', by: 'B', cat: 'ex' })] },
     '2026-10-04': { todos: [shared({ id: 'ownimp', text: '중요한 배우자 일정', by: 'B', cat: 'ex', important: true })] },
@@ -474,7 +475,7 @@ const readCalendarTags = (normSrc) => {
     const cs = getComputedStyle(el);
     return { text: el.textContent, cls: el.className, style: el.getAttribute('style') || '', title: el.getAttribute('title'), role: el.getAttribute('role'),
       bg: cs.backgroundColor, bgImage: cs.backgroundImage, color: cs.color, barW: cs.borderLeftWidth, barStyle: cs.borderLeftStyle, bar: cs.borderLeftColor,
-      accent: cs.boxShadow, deco: cs.textDecorationLine, weight: cs.fontWeight, opacity: cs.opacity, ws: cs.whiteSpace, ov: cs.textOverflow, padL: cs.paddingLeft };
+      accent: cs.boxShadow, deco: cs.textDecorationLine, weight: cs.fontWeight, opacity: cs.opacity, ws: cs.whiteSpace, ov: cs.textOverflow, ovX: cs.overflowX, ovY: cs.overflowY, padL: cs.paddingLeft };
   };
   const tag = (k, i = 0) => { const el = dayOf(k) && dayOf(k).querySelectorAll('.mcal-tag')[i]; return el ? look(el) : null; };
   const todoOf = (k, id) => getDay(k).todos.find(t => t.id === id);
@@ -498,6 +499,7 @@ const readCalendarTags = (normSrc) => {
     done: { tag: tag('2026-10-05'), want: barOf('2026-10-05', 'done1') },
     ownDone: { tag: tag('2026-10-06'), want: barOf('2026-10-06', 'owndone') },
     recDone: { tag: tag('2026-10-09') },
+    recOwner: { tag: tag('2026-10-16'), want: (() => { const o = todoOwnerSignature(spaceData.recurring[0]); return o ? norm(o.color) : null; })() },
     many: [...dayOf('2026-10-12').querySelectorAll('.mcal-tag')].map(look),
     more: (dayOf('2026-10-12').querySelector('.mcal-more') || {}).textContent,
     note: tag('2026-10-13'),
@@ -567,6 +569,18 @@ test('달력 라벨: 반복 일정(완료는 흐리게)·메모·+N·한 줄 자
   assert.notEqual(g.catEx, g.muted);
   assert.equal(/background/.test(r.style), false, r.style);
   assert.equal(r.role, null, '반복 일정은 드래그할 수 없다');
+  // 공유 공간의 반복 일정: 막대는 주인 색이다(카테고리 색이 아니다)
+  const ro = g.recOwner;
+  assert.ok(ro.tag, '공유 반복 일정 라벨이 없다');
+  assert.equal(ro.tag.title, '반복 할 일');
+  assert.ok(ro.want, '공유 반복 일정의 주인 색을 앱에서 읽지 못했다');
+  assert.notEqual(ro.want, g.muted);
+  assert.notEqual(ro.want, g.catEx, '이 검사가 주인 색과 카테고리 색을 구분하지 못한다');
+  assert.equal(ro.want, g.ownerB);
+  assert.equal(ro.tag.bar, ro.want, `공유 반복 일정 막대 ${ro.tag.bar} (기대 주인 색 ${ro.want}, 카테고리 색 ${g.catEx}, style=${ro.tag.style})`);
+  assert.equal(ro.tag.bg, TRANSPARENT);
+  assert.equal(ro.tag.color, g.body);
+  assert.equal(/background/.test(ro.tag.style), false, ro.tag.style);
   // 메모 라벨은 파란 막대
   assert.ok(g.note, '메모 라벨이 없다');
   assert.equal(g.note.bg, TRANSPARENT);
@@ -577,7 +591,20 @@ test('달력 라벨: 반복 일정(완료는 흐리게)·메모·+N·한 줄 자
   assert.equal(g.many.length, 3);
   assert.equal(g.more, '+2');
   // 한 줄에서 말줄임표 없이 잘린다(사용자가 명시적으로 요청한 동작)
-  for (const t of g.many) { assert.equal(t.ws, 'nowrap'); assert.equal(t.ov, 'clip'); }
+  // overflow: hidden 이 없으면 긴 제목이 칸 밖으로 넘친다(자르기 요구의 일부)
+  for (const t of [...g.many, g.recDone.tag, g.recOwner.tag, g.note]) { assert.equal(t.ws, 'nowrap'); assert.equal(t.ov, 'clip'); assert.equal(t.ovX, 'hidden'); assert.equal(t.ovY, 'hidden'); }
+  // 실제로 긴 제목이 셀 폭 안에서 잘리는지(넘치지 않는지)도 확인한다
+  const clip = await p.evaluate(() => {
+    userData.personalDays['2026-10-14'] = { todos: [{ id: 'long', text: '아주아주아주아주아주아주아주아주아주 긴 일정 제목입니다 끝까지 보이면 안 된다', by: 'A', cat: 'etc', visibility: 'private' }] };
+    renderAll();
+    const day = document.querySelector('#monthCal .mcal-day[data-date="2026-10-14"]');
+    const el = day.querySelector('.mcal-tag');
+    const d = day.getBoundingClientRect(), r = el.getBoundingClientRect();
+    return { tagRight: r.right, dayRight: d.right, scrollW: el.scrollWidth, clientW: el.clientWidth, height: r.height };
+  });
+  assert.ok(clip.tagRight <= clip.dayRight + 0.5, `라벨이 칸 밖으로 넘친다: ${JSON.stringify(clip)}`);
+  assert.ok(clip.scrollW > clip.clientW, `긴 제목이 잘리지 않았다(테스트 전제): ${JSON.stringify(clip)}`);
+  assert.ok(clip.height < 30, `라벨이 여러 줄이다: ${JSON.stringify(clip)}`);
   // 주 보기도 같은 라벨을 쓴다
   await p.evaluate(() => { calendarView = 'week'; renderAll(); });
   const w = await p.evaluate((normSrc) => {
@@ -590,6 +617,27 @@ test('달력 라벨: 반복 일정(완료는 흐리게)·메모·+N·한 줄 자
   assert.equal(w.bg, TRANSPARENT);
   assert.equal(w.bar, w.want);
   assert.equal(w.color, w.body);
+});
+
+test('달력 라벨 글자색은 다크 테마에서 다크 본문색을 따른다', 375, async p => {
+  await p.evaluate(seedCalendarTags);
+  const read = () => p.evaluate((normSrc) => {
+    const norm = eval(normSrc);
+    const tags = [...document.querySelectorAll('#monthCal .mcal-tag')];
+    return { dark: document.body.classList.contains('dark'), body: norm('var(--text)'), colors: [...new Set(tags.map(el => getComputedStyle(el).color))], n: tags.length,
+      done: getComputedStyle(document.querySelector('#monthCal .mcal-tag.t-done')).color };
+  }, inPageNorm);
+  const light = await read();
+  assert.equal(light.dark, false);
+  assert.ok(light.n >= 8, '라벨이 충분히 그려지지 않았다: ' + light.n);
+  assert.deepEqual(light.colors, [light.body]);
+  await p.evaluate(() => { document.body.classList.add('dark'); renderAll(); });
+  const dark = await read();
+  assert.equal(dark.dark, true);
+  // 다크 본문색은 라이트와 달라야 한다(값이 고정돼 있으면 여기서 구분된다)
+  assert.notEqual(dark.body, light.body, '다크/라이트 본문색이 같아 이 검사가 구분을 못 한다');
+  assert.deepEqual(dark.colors, [dark.body], `다크 테마 라벨 글자색이 본문색이 아니다: ${JSON.stringify(dark.colors)} (기대 ${dark.body})`);
+  assert.equal(dark.done, dark.body);
 });
 
 test('달력 범례가 실제 라벨과 같은 모양이다 (공유 공간: 주인·중요·카테고리·완료·메모)', 1280, async p => {
