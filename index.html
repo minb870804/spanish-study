@@ -1697,7 +1697,7 @@ function renderHomeMemo(day) {
       <span class="memo-entry-text">${esc(text)}</span>
       <span class="memo-entry-actions">
         <button onclick="editMemoEntry(${jsArg(cat.id)}, ${index})" title="메모 수정">수정</button>
-        <button onclick="deleteMemoEntry(${jsArg(cat.id)}, ${index})" title="메모 삭제">✕</button>
+        <button onclick="deleteMemoEntry(${jsArg(cat.id)}, ${index})" title="메모 삭제">삭제</button>
       </span>
     </div>`).join('') : '<div class="empty-msg" style="padding:12px 0 4px;">아직 추가한 메모가 없어요.</div>';
 }
@@ -2991,7 +2991,7 @@ function renderVaultList() {
         <span>${esc(e.service)}</span>
         <span class="vault-actions">
           <button onclick="editVaultEntry(${jsArg(e.id)})" title="수정">수정</button>
-          <button onclick="deleteVaultEntry(${jsArg(e.id)})" title="삭제">✕</button>
+          <button onclick="deleteVaultEntry(${jsArg(e.id)})" title="삭제">삭제</button>
         </span>
       </div>
       <div class="vault-field">
@@ -4119,7 +4119,7 @@ async function moveCalendarItem(sourceKey, targetKey, kind, id, opts = {}) {
   // 실수 이동 방지: 옮기기 전에 한 번 확인 (실행 취소로 되돌릴 땐 생략)
   const [, tm, td] = targetKey.split('-').map(Number);
   const targetDow = DAYS_KO[new Date(targetKey.slice(0, 4), tm - 1, td).getDay()];
-  if (!opts.silent && !confirm(`📆 ${tm}/${td}(${targetDow})로 이동하시겠습니까?`)) return;
+  if (!opts.silent && !confirm(`${tm}/${td}(${targetDow})로 이동하시겠습니까?`)) return;
   const sourceDay = getDay(sourceKey);
   const targetDay = getDay(targetKey);
 

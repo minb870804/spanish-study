@@ -994,6 +994,45 @@ test('섹션 눈썹 글씨는 작고 조용하다', 375, async p => {
   assert.equal(got.c, muted);
 });
 
+// 44px 칸이 이웃의 눌리는 자리를 훔치지 않는다. 위 테스트는 상자 크기만 재므로 구조적으로 이것을 못 본다:
+// 음수 여백으로 넘친 44px 칸이 옆 요소(공유 뱃지 글자 오른쪽 끝, 체크박스 왼쪽 끝)를 덮으면 그 자리의 클릭이 엉뚱한 버튼으로 간다.
+// 행의 눌리는 요소마다 '눈에 보이는 자리'(글자 범위, 체크박스는 상자)를 안쪽 가장자리까지 훑어 elementFromPoint 가 자기 자신을 돌려주는지 본다.
+for (const w of [320, 375]) {
+  for (const open of [false, true]) {
+    test(`행의 눌리는 요소는 눈에 보이는 자리에서 자기 자신이 눌린다: 44px 칸이 이웃을 덮지 않는다 (${w}px, 메뉴 ${open ? '열림' : '닫힘'})`, w, async p => {
+      await p.evaluate(seedTwoMemberSchedules);
+      await p.evaluate(() => openDayDetail('2026-10-02'));
+      if (open) await p.locator('#dmBody .todo-item[data-id="p1"] .todo-menu-btn').click();
+      const got = await p.evaluate(() => {
+        const out = { checked: 0, stolen: [] };
+        for (const id of ['p1', 'p2']) {
+          const row = document.querySelector(`#dmBody .todo-item[data-id="${id}"]`);
+          row.scrollIntoView({ block: 'center' });
+          for (const el of row.querySelectorAll('button, input, a')) {
+            let r;
+            if (el.tagName === 'INPUT') r = el.getBoundingClientRect();
+            else { const g = document.createRange(); g.selectNodeContents(el); r = g.getBoundingClientRect(); }
+            if (!r.width || !r.height) continue; // 숨겨진 요소(모바일에서 display:none 인 빠른 이동 등)
+            const name = `${id} ${el.tagName.toLowerCase()}.${(el.className || '').toString().split(/\s+/)[0] || el.type} '${(el.textContent || '').trim().slice(0, 8)}'`;
+            for (const fx of [0, 0.5, 1]) for (const fy of [0.15, 0.5, 0.85]) {
+              // 안쪽 1px: 넘친 칸이 훔치는 자리는 2~5px 다.
+              const x = r.left + Math.min(Math.max(r.width * fx, 1), r.width - 1), y = r.top + r.height * fy;
+              const hit = document.elementFromPoint(x, y);
+              out.checked++;
+              // 알려진 예외(이 작업 이전부터, 5ba3a92 에서도 3px): 공유 뱃지의 ·앞 여백이 카테고리 뱃지 글자 오른쪽 끝을 덮는다. 따로 고칠 일.
+              if (el.classList.contains('tcat-badge') && hit && hit.closest('.scope-badge')) continue;
+              if (!(hit && el.contains(hit))) out.stolen.push(`${name} @fx=${fx},fy=${fy} -> ${hit && ((hit.className || hit.tagName).toString().split(/\s+/)[0])}`);
+            }
+          }
+        }
+        return out;
+      });
+      assert.ok(got.checked > 40, `훑은 점이 너무 적다: ${got.checked}`);
+      assert.deepEqual(got.stolen, [], '이웃이 가로챈 자리:\n' + got.stolen.join('\n'));
+    });
+  }
+}
+
 // 이모지를 글자(수정·삭제·닫기)로 바꾼 버튼도 모바일에서 44px 터치 목표여야 한다. 메모 줄·금고·카테고리 편집·모달 닫기.
 for (const w of [320, 375]) {
   test(`이모지를 뗀 글자 버튼(메모 수정·금고 수정·카테고리 삭제·모달 닫기)이 44px 터치 목표다 (${w}px)`, w, async p => {
@@ -1049,7 +1088,7 @@ function sweepDecorInPage(memoIcons) {
   };
   const hits = [];
   // 행의 삭제 버튼은 글자가 ✕ 하나뿐이다(title·aria-label 로 이름이 있다). 정확히 '✕' 인 글자만, 그런 버튼 안에서만 허용한다.
-  const DELETE_X = '.todo-btns button, .memo-entry-actions button, .vault-actions button, #recurList button.del';
+  const DELETE_X = '.todo-btns button, #recurList button.del';
   const check = (el, kind, text) => {
     if (!text || el.closest(ALLOW)) return;
     if (kind === 'text' && text.trim() === '\u2715' && el.closest(DELETE_X)) return;
@@ -1134,6 +1173,7 @@ test('홈 UI 글자에 장식 이모지가 없다 (홈·날짜 팝업·설정·�
     openDashboardCategoryEditor(); run('홈 카테고리 편집');
     openVaultModal(); run('공유 계정');
     moveTodoToDateFromKey(KEY, 'p1'); run('날짜 변경');
+    openTodoDetail(KEY, 'p1'); run('일정 수정'); document.querySelector('.todo-editor-modal').remove();
     void confirmScheduleDeletion('운동', true); run('삭제 확인');
     return all;
   }, [sweepDecorInPage.toString()]);

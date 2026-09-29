@@ -1008,14 +1008,18 @@
     /* 터치 목표 44px. 글자 버튼(날짜·복사)은 padding 만으로는 높이가 35px 에 그친다: min-* 로 못 박는다.
        inline-flex + 가운데 정렬이라 짧은 ✕·⋯ 도 같은 44px 칸 안에서 글자가 중앙에 온다.
        음수 여백은 44px 칸이 레이아웃을 밀지 않게 한다: 눌리는 칸만 넓어지고 줄 높이(32px)·줄 바꿈 위치는 그대로다.
-       세로 6px 은 행 안쪽 여백(9px)과 줄 사이 간격이 받아 준다. 가로는 좁은 폭(320px)에서 ⋯ 가 44px 로 넓어져
-       칩 줄을 한 줄 더 만드는 것을 막는다(⋯ 6px, 이동 손잡이 9px: 손잡이는 원래 25px 폭이라 44px 를 채우려면 9px 씩). */
+       세로 6px 은 행 안쪽 여백(9px)과 줄 사이 간격이 받아 준다.
+       가로로는 '눌리는 다른 것' 쪽으로 넘치면 안 된다(넘치면 이웃의 눌리는 자리를 훔친다):
+       ⋯ 는 왼쪽 이웃이 공유 뱃지 등이라 오른쪽으로만 12px, 이동 손잡이는 오른쪽 이웃이 체크박스라 왼쪽으로만 넘친다.
+       오른쪽·왼쪽 바깥은 카드 안쪽 여백이라 아무것도 없다. 손잡이는 글자를 오른쪽에 붙여 원래 자리를 지킨다. */
     .todo-item .del, .todo-menu-btn {
       display: inline-flex; align-items: center; justify-content: center;
       min-width: 44px; min-height: 44px; margin: -6px 0; box-sizing: border-box; padding: 0 9px; font-size: 15px;
     }
-    .todo-menu-btn { margin-inline: -6px; }
-    .todo-item .del.move-handle { margin-inline: -9px; }
+    .todo-menu-btn { margin-inline: 0 -12px; }
+    /* 메뉴가 열리면 바로 오른쪽에 날짜·복사·✕ 가 붙는다: ⋯ 의 넘친 12px 만큼 띄워 서로 겹치지 않게 한다 */
+    .todo-item.menu-open .todo-btns { margin-inline-start: 12px; }
+    .todo-item .del.move-handle { margin-inline: -18px 0; justify-content: flex-end; }
     /* 이모지 대신 글자(수정·삭제)가 된 버튼도 같은 44px 칸. 메모·금고·카테고리 편집 줄. */
     .memo-entry-actions button, .vault-service .vault-actions button, .cat-edit-del {
       display: inline-flex; align-items: center; justify-content: center;
@@ -1079,7 +1083,6 @@
     padding:18px 20px 14px; border-bottom:1px solid var(--border);
   }
   .todo-editor-box .modal-head strong { display:flex; align-items:center; gap:9px; font-size:17px; font-weight:900; letter-spacing:-.2px; }
-  .todo-editor-box .modal-head strong::before { content:"✦"; display:grid; place-items:center; width:30px; height:30px; border-radius:10px; background:var(--blue-light); color:var(--blue); }
   .todo-editor-form { min-height:0; display:grid; gap:14px; overflow:auto; overscroll-behavior:contain; padding:18px 20px 0; scrollbar-gutter:stable; }
   .todo-editor-form label { display:grid; gap:7px; min-width:0; color:var(--text); font-size:12.5px; font-weight:900; letter-spacing:-.1px; }
   .todo-editor-form .modal-input {
