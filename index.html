@@ -68,10 +68,13 @@
     </div>
     <div class="header-right">
       <span id="userProfile" class="profile-badge" style="display: none;">
-        <span id="userName">👤 로딩중...</span>
+        <span id="userName">로딩중...</span>
         <button onclick="logout()" class="logout-btn">로그아웃</button>
       </span>
-      <button id="themeToggle" class="hbtn" onclick="toggleTheme()">🌓 테마</button>
+      <button type="button" class="hbtn icon-btn" onclick="openSearchModal()" aria-label="검색" title="검색">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </button>
+      <button type="button" id="themeToggle" class="hbtn icon-btn" onclick="toggleTheme()" aria-label="테마 바꾸기" title="테마 바꾸기"></button>
     </div>
   </div>
 </header>
@@ -109,7 +112,6 @@
         <div class="calendar-tools">
           <button class="small-btn" onclick="openMonthReport()">월 리포트</button>
           <button class="small-btn" onclick="openSobrietyModal()">금주 현황</button>
-          <button class="small-btn" onclick="openSearchModal()">🔍 검색</button>
           <button class="small-btn" onclick="goToday()">오늘</button>
         </div>
         <div class="month-nav" aria-label="달력 월 이동">
@@ -668,7 +670,7 @@ async function finishSignedInUser(user) {
   if (changedAccount) { userData = null; resetDayStorage('personal'); resetDayStorage('shared'); initializeUiPreferences(user.uid); }
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('userProfile').style.display = 'flex';
-  document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
+  document.getElementById('userName').textContent = `${user.displayName || '사용자'}`;
   setLoginBusy(false);
 
   if (signedInInitUid === user.uid && signedInInitPromise) return signedInInitPromise;
@@ -5393,7 +5395,12 @@ function toggleTheme() {
 }
 function updateThemeButton() {
   const btn = document.getElementById('themeToggle');
-  btn.innerHTML = document.body.classList.contains('dark') ? '☀️ 라이트' : '🌙 다크';
+  const dark = document.body.classList.contains('dark');
+  // 달 = 지금 밝음(누르면 어두워짐), 해 = 지금 어두움(누르면 밝아짐)
+  btn.innerHTML = dark
+    ? '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>'
+    : '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6.5 6.5 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>';
+  btn.setAttribute('aria-label', '테마 바꾸기');
 }
 function loadTheme() {
   // 저장된 선택이 있으면 그대로, 없으면 기기(시스템) 설정을 따른다

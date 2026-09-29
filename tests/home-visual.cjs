@@ -130,6 +130,22 @@ for (const w of WIDTHS) {
   });
 }
 
+test('검색과 테마는 헤더의 아이콘 버튼이다', 375, async p => {
+  const header = p.locator('header .header-right');
+  assert.equal(await header.locator('button[onclick="openSearchModal()"]').count(), 1);
+  assert.equal(await p.locator('.calendar-tools button[onclick="openSearchModal()"]').count(), 0);
+  assert.equal(await p.locator('#themeToggle svg').count(), 1);
+  assert.equal((await p.locator('#themeToggle').textContent()).trim(), '');
+  assert.equal(await p.locator('#themeToggle').getAttribute('aria-label'), '테마 바꾸기');
+  const box = await p.locator('#themeToggle').boundingBox();
+  assert.ok(box.height >= 44, `테마 버튼 높이 ${box.height}`);
+});
+
+test('헤더 UI에 장식 이모지가 없다', 375, async p => {
+  const text = await p.locator('header').innerText();
+  assert.equal(/[\u{1F300}-\u{1FAFF}\u{2190}-\u{21FF}\u{2600}-\u{27BF}]/u.test(text), false, text);
+});
+
 test('스타일시트 순서와 규칙 수가 기준과 같다', 1280, async (p) => {
   const expected = readBaseline().stylesheets;
   const actual = await sheetInfo(p);
