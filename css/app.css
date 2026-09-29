@@ -422,7 +422,6 @@
   }
   .mcal-tag[role="button"] { cursor: grab; touch-action: pan-y; user-select: none; }
   .mcal-tag[role="button"]:active { cursor: grabbing; }
-  .mcal-tag.t-todo { --tag-bar: var(--ui-muted); } /* 범례 전용: 아직 남은 일정(색 없음) */
   .mcal-tag.t-imp { font-weight: 800; }
   .mcal-tag.t-done { --tag-bar: var(--tag-color, var(--green)); text-decoration: line-through; }
   .mcal-tag.t-done.t-owned { --tag-accent: var(--green); }
@@ -477,31 +476,11 @@
   }
   /* 날짜별 음주 상태는 헤더에서 바로 확인·변경 */
   .dm-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-  .dm-drink-toggle {
-    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-    min-height: 34px; padding: 6px 12px; border: 1.5px solid var(--gold); border-radius: 10px;
-    background: rgba(245,124,0,0.10); color: var(--gold); cursor: pointer;
-    font-family: inherit; font-size: 12px; font-weight: 900; white-space: nowrap;
-    transition: var(--transition);
-  }
-  .dm-drink-toggle:hover { background: rgba(245,124,0,0.18); transform: translateY(-1px); }
-  .dm-drink-toggle.sel { background: var(--gold); color: #fff; box-shadow: 0 3px 10px rgba(245,124,0,0.28); }
-  /* 운동 기록 버튼: 같은 형태의 녹색 변형 */
-  .dm-ex-toggle { border-color: var(--green); background: rgba(46,125,50,0.10); color: var(--green); }
-  .dm-ex-toggle:hover { background: rgba(46,125,50,0.18); }
-  .dm-period-toggle { border-color: var(--period); background: rgba(209,96,125,0.10); color: var(--period); }
-  .dm-period-toggle:hover { background: rgba(209,96,125,0.18); }
-  .dm-period-toggle.sel { background: var(--period); color: #fff; box-shadow: 0 3px 10px rgba(209,96,125,0.28); }
-  .dm-love-toggle { border-color: var(--red); background: var(--red-light); color: var(--red); }
-  .dm-love-toggle:hover { filter: brightness(0.97); }
-  .dm-love-toggle.sel { background: var(--red); color: #fff; box-shadow: 0 3px 10px rgba(199,83,72,0.28); }
-  .dm-ex-toggle.sel { background: var(--green); color: #fff; box-shadow: 0 3px 10px rgba(46,125,50,0.28); }
+  /* 버튼의 색·크기·테두리는 파일 아래 '하루 기록 버튼' 규칙이 정한다. 여기엔 그 규칙이 다루지 않는 것만 남긴다. */
+  .dm-drink-toggle { justify-content: center; white-space: nowrap; transition: var(--transition); }
   #dmBody > .card { box-shadow: none; border: none; background: transparent; padding: 0; }
   #dmBody > .card + .card { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 16px; }
   .dm-section-title { font-size: 13px; font-weight: 800; margin: 16px 0 8px; color: var(--muted); }
-  .dm-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 9px 4px; font-size: 13.5px; border-bottom: 1px solid var(--border); }
-  .dm-item:last-child { border-bottom: none; }
-  .dm-item.done .dm-txt { text-decoration: line-through; color: var(--muted); }
   .dm-content { min-width: 0; display: grid; gap: 4px; }
   .dm-txt { min-width: 0; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.55; }
   .dm-actions { display: flex; align-items: center; justify-content: flex-end; gap: 3px; flex-wrap: wrap; max-width: 160px; }
@@ -1020,10 +999,6 @@
     .todo-item.recurring { grid-template-columns: auto minmax(0, 1fr); }
     .todo-item.recurring > input[type="checkbox"] { grid-column: 1; }
     .todo-item.recurring > .todo-content, .todo-item.recurring > .todo-actions { grid-column: 2; }
-    .dm-item { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
-    .dm-item > input[type="checkbox"] { grid-column: 1; grid-row: 1; margin-top: 2px; }
-    .dm-item > .dm-content { grid-column: 2; grid-row: 1; }
-    .dm-item > .dm-actions { grid-column: 2; grid-row: 2; justify-content: flex-start; max-width: none; }
     /* 날짜 팝업을 바텀시트로: 아래에서 올라오는 전체 폭 시트 */
     #dayModal { align-items: flex-end; padding: 0; }
     .day-modal-card {
@@ -1037,7 +1012,6 @@
     .fab { width: 60px; height: 60px; }
     .day-modal-card > .card-title { flex-wrap: wrap; }
     .dm-header-actions { gap: 6px; margin-left: auto; }
-    .dm-drink-toggle { min-height: 32px; padding: 5px 9px; font-size: 11.5px; }
     .todo-item .by { display: none; }
     .quick-move-btn { display: none; }
     .note-area { min-height: 86px; font-size: 13.5px; }
@@ -1192,40 +1166,40 @@
 }
 .dm-header-actions .dm-drink-toggle:hover { background: var(--ui-soft); transform: none; filter: none; }
 .dm-header-actions .dm-drink-toggle .ui-icon { width: 18px; height: 18px; }
-/* 켜진 상태: 색 대신 톤 차이. 위 기본 규칙이 예전 .sel 색 규칙(원색 배경·그림자)을 덮고, 이 규칙은 그 위에 얹힌다 */
+/* 켜진 상태: 색 대신 톤 차이 */
 .dm-header-actions .dm-drink-toggle[aria-pressed="true"] {
   background: var(--ui-soft); border-color: var(--ui-accent); color: var(--ui-accent); box-shadow: none;
 }
 
 /* 일정 메타 — 원색 뱃지 대신 조용한 한 줄. 카테고리 색은 점으로, '중요'만 글자 색으로 남긴다.
    .tcat-badge 는 메모 카테고리 선택(.memo-entry-item)에도 쓰이는데 거기서는 색 바탕이 선택지 구분 역할을 하므로,
-   아래 규칙은 일정 줄(.todo-item, .dm-item, .upcoming-todo) 안으로만 좁혀 둔다. */
-:is(.todo-item, .dm-item, .upcoming-todo) :is(.scope-badge, .tcat-badge) {
+   아래 규칙은 일정 줄(.todo-item, .upcoming-todo) 안으로만 좁혀 둔다. */
+:is(.todo-item, .upcoming-todo) :is(.scope-badge, .tcat-badge) {
   padding: 0; border: 0; background: none; border-radius: 0; box-shadow: none;
   color: var(--ui-muted); font-family: inherit; font-size: var(--ui-caption); font-weight: 500; line-height: 1.6;
 }
-:is(.todo-item, .dm-item, .upcoming-todo) :is(.scope-badge, .tcat-badge):hover {
+:is(.todo-item, .upcoming-todo) :is(.scope-badge, .tcat-badge):hover {
   transform: none; box-shadow: none; color: var(--ui-text);
 }
-:is(.todo-item, .dm-item, .upcoming-todo) .tcat-badge::before {
+:is(.todo-item, .upcoming-todo) .tcat-badge::before {
   content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
   margin-right: var(--ui-s1); vertical-align: 1px;
   background: var(--cat-color, var(--ui-muted));
 }
-:is(.todo-item, .dm-item, .upcoming-todo) .scope-badge::before {
+:is(.todo-item, .upcoming-todo) .scope-badge::before {
   content: '·'; margin: 0 var(--ui-s2); color: var(--ui-border);
 }
-:is(.todo-item, .dm-item, .upcoming-todo) .important-flag {
+:is(.todo-item, .upcoming-todo) .important-flag {
   background: none; padding: 0; border: 0; color: var(--red); font-weight: 700; font-size: var(--ui-caption);
   margin-right: var(--ui-s2);
 }
 /* 실제 버튼인 뱃지는 글자가 작아져도 누를 자리를 잃지 않게 세로 터치 영역을 44px 이상으로 넓힌다
    (padding 과 음수 margin 이 상쇄되어 줄 높이는 그대로) */
-:is(.todo-item, .dm-item, .upcoming-todo) :is(button.scope-badge, button.tcat-badge) {
+:is(.todo-item, .upcoming-todo) :is(button.scope-badge, button.tcat-badge) {
   padding: 13px 4px; margin: -13px -4px;
 }
 /* 시간·장소 칩도 같은 회색 글자로 낮춘다(테두리·바탕 없음) */
-:is(.todo-item, .dm-item) .todo-meta-chip {
+.todo-item .todo-meta-chip {
   padding: 0; border: 0; background: none; border-radius: 0;
   color: var(--ui-muted); font-size: var(--ui-caption); font-weight: 500; line-height: 1.6;
 }
