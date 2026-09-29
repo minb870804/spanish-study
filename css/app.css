@@ -1229,3 +1229,19 @@
   padding: 0; border: 0; background: none; border-radius: 0;
   color: var(--ui-muted); font-size: var(--ui-caption); font-weight: 500; line-height: 1.6;
 }
+
+/* 조용한 종이 노트 — 날짜와 제목만 명조, 본문은 고딕.
+   css/app-design.css 가 :is(body,body.dark) 접두로 굵기·자간을 덮어쓰고 나중에 로드되므로,
+   같은 접두에 :root 를 더해 이겨야 한다(그렇지 않으면 로고는 700, 홈 날짜는 -.03em 이 남는다). */
+:root :is(body, body.dark) :is(.logo-text h1,
+#homeView .hero h2,
+.today-card .ui-section-head h2,
+.calendar-heading > span,
+#dmDate) { font-family: var(--ui-serif); font-weight: 400; letter-spacing: 0; }
+
+/* 카드 경계를 그림자에서 선으로 (.reading-card 는 독서 페이지가 쓴다) */
+:is(body, body.dark) :is(.card, .section-card, .reading-card) { box-shadow: none; border: 1px solid var(--ui-border); }
+:is(body, body.dark) :is(.card, .section-card, .reading-card):hover { box-shadow: none; }
+
+/* 섹션 제목은 낮추고 내용이 먼저 읽히게 (ui.css 가 app.css 보다 뒤에 로드되므로 접두로 이긴다) */
+:is(body, body.dark) .ui-eyebrow { font-size: var(--ui-caption); letter-spacing: .14em; color: var(--ui-muted); }

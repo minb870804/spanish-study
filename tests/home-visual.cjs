@@ -707,6 +707,137 @@ test('스타일시트 순서와 규칙 수가 기준과 같다', 1280, async (p)
   if (problems.length) throw new Error('\n' + problems.join('\n'));
 });
 
+// ── Task 8: 조용한 종이 노트 (명조 제목 + 선 카드) ──
+// 아래 검증은 캐스케이드를 직접 읽는다. css/app-design.css 가 :is(body,body.dark) 접두로 나중에 로드되어
+// 굵기·자간·그림자를 덮어쓸 수 있으므로 "규칙이 있다"가 아니라 "계산된 값이 그렇다"를 확인한다.
+// 테스트 하네스는 외부 요청을 막아 Google Fonts 가 실제로 로드되지 않는다. 그래서 그려진 글자 폭이 아니라
+// 선언된 글꼴 체인(--ui-serif 가 풀린 값)과 index.html 의 폰트 링크를 확인한다.
+const SERIF_TARGETS = [
+  ['로고', '.logo-text h1'],
+  ['홈 날짜', '#homeView .hero h2'],
+  ['오늘 할 일 제목', '.today-card .ui-section-head h2'],
+  ['달력 제목', '.calendar-heading > span'],
+];
+const serifChain = (p) => p.evaluate(() => {
+  const i = document.createElement('i'); i.style.fontFamily = 'var(--ui-serif)'; document.body.appendChild(i);
+  const v = getComputedStyle(i).fontFamily; i.remove(); return v;
+});
+const fontOf = (p, sel) => p.locator(sel).first().evaluate(e => {
+  const cs = getComputedStyle(e); return { ff: cs.fontFamily, fw: cs.fontWeight, ls: cs.letterSpacing, fs: cs.fontSize };
+});
+
+for (const w of WIDTHS) {
+  test(`날짜와 제목은 명조체, 본문은 고딕이다 (${w}px)`, w, async p => {
+    const chain = await serifChain(p);
+    // 토큰이 풀렸고, 첫째가 웹폰트, 마지막이 일반 serif 다(macOS 전용 글꼴로 끝나지 않는다)
+    assert.match(chain, /^"?Noto Serif KR"?, /, chain);
+    const parts = chain.split(',').map(s => s.trim().replace(/"/g, ''));
+    assert.deepEqual(parts, ['Noto Serif KR', 'AppleMyungjo', 'serif']);
+    await p.evaluate(() => openDayDetail('2026-10-02'));
+    for (const [label, sel] of [...SERIF_TARGETS, ['날짜 팝업 날짜', '#dmDate']]) {
+      const f = await fontOf(p, sel);
+      assert.equal(f.ff, chain, `${label}(${sel}) 글꼴 ${f.ff}`);
+      assert.equal(f.fw, '400', `${label} 굵기 ${f.fw} (app-design.css 의 700/500 이 이겨 있다)`);
+      assert.ok(f.ls === 'normal' || f.ls === '0px', `${label} 자간 ${f.ls} (app-design.css 의 -.03em 이 이겨 있다)`); // letter-spacing:0 은 normal 로 계산된다
+    }
+    // 본문과 그 밖의 글자는 고딕 그대로
+    for (const sel of ['body', '#todayCount', '.filter-tabs button', '.calendar-mode button', '.card-title:not(.calendar-titlebar)', '#calMonthLabel']) {
+      const loc = p.locator(sel).first();
+      if (!await loc.count()) continue;
+      const ff = await loc.evaluate(e => getComputedStyle(e).fontFamily);
+      assert.equal(/Noto Serif KR|AppleMyungjo/.test(ff), false, `${sel} 는 고딕이어야 한다: ${ff}`);
+      assert.match(ff, /Noto Sans KR/, sel + ' ' + ff);
+    }
+  });
+}
+
+test('명조체는 다크 테마에서도 같다', 375, async p => {
+  await p.evaluate(() => document.body.classList.add('dark'));
+  const chain = await serifChain(p);
+  for (const [label, sel] of SERIF_TARGETS) {
+    const f = await fontOf(p, sel);
+    assert.equal(f.ff, chain, label + ' ' + f.ff);
+    assert.equal(f.fw, '400', label + ' 굵기 ' + f.fw);
+    assert.ok(f.ls === 'normal' || f.ls === '0px', label + ' 자간 ' + f.ls);
+  }
+});
+
+test('폰트 링크는 명조 400/600 을 더하고 기존 가족을 지킨다', 375, async () => {
+  const html = fs.readFileSync(path.join(process.env.MINB_ROOT || path.join(__dirname, '..'), 'index.html'), 'utf8');
+  const link = (html.match(/<link[^>]+href="(https:\/\/fonts\.googleapis\.com\/css2[^"]+)"/) || [])[1];
+  assert.ok(link, '구글 폰트 링크가 없다');
+  assert.ok(link.includes('family=Noto+Serif+KR:wght@400;600'), link);
+  assert.ok(link.includes('family=Noto+Sans+KR:wght@300;400;500;700;900'), link);
+  assert.ok(link.includes('family=Outfit:wght@300;400;600;800'), link);
+  assert.ok(link.includes('display=swap'), link);
+});
+
+test('카드는 그림자 대신 선으로 나뉜다 (평상시·호버·다크)', 375, async p => {
+  await p.addStyleTag({ content: '*{transition:none!important}' });
+  const read = (sel) => p.locator(sel).first().evaluate(e => {
+    const cs = getComputedStyle(e);
+    return { shadow: cs.boxShadow, w: [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth],
+      style: cs.borderTopStyle, color: cs.borderTopColor };
+  });
+  for (const dark of [false, true]) {
+    if (dark) await p.evaluate(() => document.body.classList.add('dark'));
+    const wantColor = await p.evaluate((src) => eval(src)(getComputedStyle(document.body).getPropertyValue('--ui-border').trim()), inPageNorm);
+    for (const sel of ['.today-card', '.calendar-card']) {
+      const rest = await read(sel);
+      assert.equal(rest.shadow, 'none', `${sel} 그림자 ${rest.shadow} (dark=${dark})`);
+      assert.deepEqual(rest.w, ['1px', '1px', '1px', '1px'], `${sel} 테두리 ${rest.w} (dark=${dark})`);
+      assert.equal(rest.style, 'solid');
+      assert.equal(rest.color, wantColor, `${sel} 테두리색 ${rest.color} (dark=${dark})`);
+      await p.locator(sel).first().hover();
+      const hov = await read(sel);
+      assert.equal(hov.shadow, 'none', `${sel} 호버 그림자 ${hov.shadow} (dark=${dark})`);
+    }
+  }
+});
+
+test('.section-card 와 .reading-card 도 같은 선 카드다', 375, async p => {
+  await p.addStyleTag({ content: '*{transition:none!important}' });
+  await p.evaluate(() => {
+    for (const c of ['section-card', 'reading-card']) {
+      const d = document.createElement('div'); d.className = c; d.id = 'probe-' + c; d.style.cssText = 'position:relative;height:40px;margin:8px';
+      document.body.prepend(d);
+    }
+  });
+  for (const c of ['section-card', 'reading-card']) {
+    const loc = p.locator('#probe-' + c);
+    const read = () => loc.evaluate(e => { const cs = getComputedStyle(e); return { s: cs.boxShadow, w: cs.borderTopWidth }; });
+    assert.deepEqual(await read(), { s: 'none', w: '1px' }, c);
+    await loc.hover();
+    assert.deepEqual(await read(), { s: 'none', w: '1px' }, c + ' hover');
+  }
+});
+
+test('날짜 팝업 안의 카드는 선 없이 본문에 녹아 있다(#dmBody > .card 예외가 선 카드 규칙에 지지 않는다)', 375, async p => {
+  await p.evaluate(() => {
+    openDayDetail('2026-10-02');
+    const d = document.createElement('div'); d.className = 'card'; d.id = 'probe-dm-card'; d.textContent = 'x';
+    document.getElementById('dmBody').append(d);
+  });
+  const got = await p.locator('#probe-dm-card').evaluate(e => { const cs = getComputedStyle(e); return { s: cs.boxShadow, r: cs.borderRightWidth, b: cs.borderBottomWidth, l: cs.borderLeftWidth }; });
+  // 윗선은 '.card + .card' 구분선이라 카드 앞 형제 여부에 따라 있을 수 있다. 좌·우·아래 테두리와 그림자만 본다.
+  assert.deepEqual(got, { s: 'none', r: '0px', b: '0px', l: '0px' });
+});
+
+test('오늘 카드 윗선은 3px 강조선이 아니라 1px 헤어라인이다', 375, async p => {
+  const top = await p.locator('.today-card').evaluate(e => getComputedStyle(e).borderTopWidth);
+  assert.equal(top, '1px');
+});
+
+test('섹션 눈썹 글씨는 작고 조용하다', 375, async p => {
+  const got = await p.locator('#settingsView .ui-eyebrow').first().evaluate(e => {
+    const cs = getComputedStyle(e); return { fs: cs.fontSize, ls: cs.letterSpacing, c: cs.color };
+  });
+  assert.equal(got.fs, '12px', '눈썹 글자 크기(ui.css 14px 가 이기고 있다)');
+  assert.equal(got.ls, '1.68px', '자간 .14em');
+  const muted = await p.evaluate((src) => eval(src)('var(--ui-muted)'), inPageNorm);
+  assert.equal(got.c, muted);
+});
+
 test('콘솔 오류 없이 홈이 뜬다', 375, async (p, errors) => {
   assert.deepEqual(errors, []);
   assert.equal(await p.locator('#monthCal').isVisible(), true);

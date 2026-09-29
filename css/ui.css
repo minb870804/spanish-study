@@ -3,6 +3,7 @@
   --ui-accent:#38679b; --ui-soft:#e7f0fa; --ui-ink:#1B1D1F; --ui-on-ink:#fff;
   --ui-caption:12px; --ui-small:14px; --ui-body:16px; --ui-title:20px; --ui-display:28px;
   --ui-s1:4px; --ui-s2:8px; --ui-s3:12px; --ui-s4:16px; --ui-s5:20px; --ui-s6:24px; --ui-s8:32px;
+  --ui-serif:'Noto Serif KR','AppleMyungjo',serif;
   --ui-radius:14px; --ui-radius-sm:8px; --ui-control:44px; --ui-nav-height:68px; --ui-content:1140px;
   --ui-shadow:0 8px 24px rgba(62,52,40,.07),0 1px 2px rgba(62,52,40,.04); --ui-motion:160ms ease-out;
 }

@@ -14,7 +14,6 @@ body.dark { --ui-accent:#b4c7ad; --ui-soft:#273127; --ui-surface:#232628; color-
 :is(body,body.dark) .logout-btn { color:var(--ui-muted); border:0; }
 :is(body,body.dark) .header-right > a.hbtn { display:none; }
 :is(body,body.dark) :is(.hbtn,.nexus-link) { background:transparent; border-color:var(--ui-border); color:var(--ui-text); font-weight:500; box-shadow:none; }
-:is(body,body.dark) :is(.card,.reading-card,.section-card):hover { box-shadow:var(--ui-shadow); }
 :is(body,body.dark) :is(.card-title,.card-title-left) { font-size:var(--ui-body); font-weight:700; color:var(--ui-text); }
 :is(body,body.dark) :is(.hero,.streak-banner) { background:none; color:var(--ui-text); border:0; box-shadow:none; border-radius:0; padding:var(--ui-s3) 0 var(--ui-s5); }
 :is(body,body.dark) :is(.hero,.streak-banner)::after { content:none; }
@@ -24,7 +23,6 @@ body.dark { --ui-accent:#b4c7ad; --ui-soft:#273127; --ui-surface:#232628; color-
 :is(body,body.dark) #homeView .hero h2 { font-size:var(--ui-small); font-weight:500; color:var(--ui-muted); }
 :is(body,body.dark) .app-nav a { font-weight:500; }
 :is(body,body.dark) .app-nav a[aria-current] { font-weight:700; }
-:is(body,body.dark) .today-card { border-top:1px solid var(--ui-border); }
 :is(body,body.dark) .ui-eyebrow { font-weight:500; }
 :is(body,body.dark) .ui-agenda { gap:0; }
 :is(body,body.dark) .ui-agenda-row { border:0; border-bottom:1px solid var(--ui-border); border-radius:0; padding:var(--ui-s4) 0; box-shadow:none; }
