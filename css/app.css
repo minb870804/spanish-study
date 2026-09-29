@@ -508,7 +508,7 @@
   .vault-row { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
   .vault-service { font-size: 13.5px; font-weight: 900; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
   .vault-service .vault-actions { display: flex; gap: 2px; }
-  .vault-service .vault-actions button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 3px 6px; border-radius: 6px; }
+  .vault-service .vault-actions button { background: none; border: none; color: var(--muted); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; padding: 3px 6px; border-radius: 6px; }
   .vault-service .vault-actions button:hover { color: var(--red); background: var(--red-light); }
   .vault-field { display: flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 2px 0; }
   .vault-field .vf-label { flex: 0 0 30px; color: var(--muted); font-weight: 800; font-size: 11px; }
@@ -537,8 +537,8 @@
     color: var(--text); font-family: inherit; font-size: 14px; font-weight: 700; padding: 9px 11px; outline: none;
   }
   .cat-edit-name:focus { border-color: var(--blue); }
-  .cat-edit-del { flex-shrink: 0; background: none; border: none; cursor: pointer; font-size: 16px; padding: 6px 8px; border-radius: 8px; opacity: 0.7; }
-  .cat-edit-del:hover { background: var(--red-light); opacity: 1; }
+  .cat-edit-del { flex-shrink: 0; background: none; border: none; cursor: pointer; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 800; line-height: 1; white-space: nowrap; padding: 8px 9px; border-radius: 8px; }
+  .cat-edit-del:hover { background: var(--red-light); color: var(--red); }
   .cat-signature-notice {
     display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin: 0 0 12px;
     padding: 9px 11px; border: 1px solid var(--border); border-radius: 10px;
@@ -660,7 +660,6 @@
     border: 1px solid var(--border); border-radius: 12px;
     background: var(--bg);
   }
-  .report-sobriety-icon { font-size: 24px; line-height: 1; }
   .report-sobriety-copy { flex: 1; min-width: 0; }
   .report-sobriety-copy strong { display: block; color: var(--green); font-size: 15px; font-weight: 900; }
   .report-sobriety-copy span { display: block; margin-top: 3px; color: var(--muted); font-size: 11.5px; font-weight: 700; }
@@ -725,7 +724,6 @@
   .quick-move-btn:hover { border-color: var(--blue); color: var(--blue); }
   .empty-msg { color: var(--muted); font-size: 13px; text-align: center; padding: 18px 0; }
   .empty-state { text-align: center; padding: 26px 12px 22px; }
-  .empty-state .empty-emoji { font-size: 34px; line-height: 1; margin-bottom: 10px; filter: grayscale(0.1); }
   .empty-state .empty-title { font-size: 14px; font-weight: 800; color: var(--text); }
   .empty-state .empty-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
 
@@ -793,7 +791,7 @@
   .memo-entry-item:last-child { border-bottom: none; }
   .memo-entry-text { min-width: 0; color: var(--text); font-size: 13px; font-weight: 700; line-height: 1.5; word-break: break-word; }
   .memo-entry-actions { display: inline-flex; align-items: center; gap: 2px; }
-  .memo-entry-actions button { background: none; border: none; color: var(--muted); cursor: pointer; padding: 3px 5px; border-radius: 6px; }
+  .memo-entry-actions button { background: none; border: none; color: var(--muted); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; padding: 3px 5px; border-radius: 6px; }
   .memo-entry-actions button:hover { color: var(--blue); background: var(--blue-light); }
 
   /* ── SHARE ── */
@@ -1018,6 +1016,11 @@
     }
     .todo-menu-btn { margin-inline: -6px; }
     .todo-item .del.move-handle { margin-inline: -9px; }
+    /* 이모지 대신 글자(수정·삭제)가 된 버튼도 같은 44px 칸. 메모·금고·카테고리 편집 줄. */
+    .memo-entry-actions button, .vault-service .vault-actions button, .cat-edit-del {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 44px; min-height: 44px; margin-block: -6px; box-sizing: border-box;
+    }
     .memo-entry-actions button { padding: 8px 9px; font-size: 15px; }
     .fab { width: 60px; height: 60px; }
     .day-modal-card > .card-title { flex-wrap: wrap; }
@@ -1116,7 +1119,8 @@
     width:min(390px,100%); padding:24px; background-color:var(--card); background-image:var(--grain-card);
     border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-hover); animation:fadeIn .22s ease;
   }
-  .schedule-confirm-icon { display:grid; place-items:center; width:44px; height:44px; margin-bottom:14px; border-radius:13px; background:var(--red-light); color:var(--red); font-size:20px; }
+  .schedule-confirm-icon { display:grid; place-items:center; width:44px; height:44px; margin-bottom:14px; border-radius:13px; background:var(--red-light); color:var(--red); }
+  .schedule-confirm-icon .ui-icon { width:22px; height:22px; }
   .schedule-confirm-card h2 { margin:0; font-size:18px; font-weight:900; letter-spacing:-.3px; }
   .schedule-confirm-card p { margin:8px 0 21px; color:var(--muted); font-size:13px; font-weight:700; line-height:1.65; }
   .schedule-confirm-actions { display:flex; justify-content:flex-end; gap:9px; }

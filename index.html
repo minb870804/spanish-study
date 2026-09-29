@@ -86,7 +86,7 @@
   <div class="hero">
     <div>
       <h2 id="heroDate">오늘</h2>
-      <div class="sub" id="heroSub">오늘 하루도 차곡차곡 기록해요 ✨</div>
+      <div class="sub" id="heroSub">오늘 하루도 차곡차곡 기록해요</div>
     </div>
   </div>
 
@@ -149,9 +149,9 @@
       <div class="dash-col">
       <div class="card todo-card">
         <div class="card-title">
-          <span>✅ <span id="todoDateLabel">오늘</span>의 할 일</span>
+          <span><span id="todoDateLabel">오늘</span>의 할 일</span>
           <span style="display:flex; gap:8px; align-items:center;">
-            <button class="small-btn" id="recurToggleBtn" onclick="toggleRecurPanel()">🔁 반복</button>
+            <button class="small-btn" id="recurToggleBtn" onclick="toggleRecurPanel()" title="반복 할 일 관리">반복</button>
             <span class="progress-pill" id="todoProgress">0 / 0</span>
           </span>
         </div>
@@ -205,7 +205,7 @@
 
         <!-- 반복 할 일 관리 패널 -->
         <div id="recurPanel" style="display:none; background:var(--bg); border:1.5px dashed var(--border); border-radius:12px; padding:14px 16px; margin-bottom:14px;">
-          <div style="font-size:13px; font-weight:800; margin-bottom:10px;">🔁 반복 할 일 관리</div>
+          <div style="font-size:13px; font-weight:800; margin-bottom:10px;">반복 할 일 관리</div>
           <div class="todo-input-row" style="margin-bottom:10px;">
             <input id="recurInput" placeholder="예: 스페인어 단어 10개 외우기" onkeydown="if(event.key==='Enter') addRecurring()">
             <button class="add-btn" onclick="addRecurring()">추가</button>
@@ -251,7 +251,7 @@
           <div class="todo-scope-row">
             <label class="share-check" for="recurShareInput">
               <input type="checkbox" id="recurShareInput">
-              <span>👫 반복 일정 공유</span>
+              <span>반복 일정 공유</span>
             </label>
             <span class="scope-hint">공유하지 않으면 내 달력에만 표시돼요.</span>
           </div>
@@ -263,9 +263,9 @@
 
       <div class="card note-card">
         <div class="card-title">
-          <span>🌙 오늘 한 일 · 하루 메모</span>
+          <span>오늘 한 일 · 하루 메모</span>
           <button class="small-btn" onclick="addMemoCategory()" title="메모 카테고리 추가">＋ 카테고리</button>
-          <button class="small-btn" onclick="openCatEditor()" title="카테고리 색·이름 편집">🎨</button>
+          <button class="small-btn" onclick="openCatEditor()" title="카테고리 색·이름 편집" aria-label="카테고리 색·이름 편집">편집</button>
         </div>
         <div class="memo-entry-row">
           <textarea id="memoEntryInput" class="note-area" rows="1" placeholder="오늘 한 일이나 메모를 입력하세요."
@@ -293,12 +293,12 @@
       <div class="card share-card">
         <div class="card-title">
           <span>함께 쓰는 사람</span>
-          <button class="small-btn" onclick="openVaultModal()" title="넷플릭스·쿠팡 등 공유 아이디/비밀번호">🔐 공유 계정</button>
+          <button class="small-btn" onclick="openVaultModal()" title="넷플릭스·쿠팡 등 공유 아이디/비밀번호">공유 계정</button>
         </div>
         <div class="member-chips" id="memberChips"></div>
         <!-- 공유 일정 색 지정: 나 / 배우자 / 함께 (두 사람 화면에 같은 색으로 보임) -->
         <div id="ownerColorBox" class="owner-color-box" style="display:none;">
-          <div class="owner-color-title">🎨 공유 일정 색</div>
+          <div class="owner-color-title">공유 일정 색</div>
           <div id="ownerColorRows"></div>
           <span class="scope-hint">색을 바꾸면 두 사람 달력에 똑같이 적용돼요.</span>
         </div>
@@ -307,14 +307,14 @@
         </div>
         <div class="invite-code-box">
           <span class="code" id="inviteCode">······</span>
-          <button class="small-btn" onclick="copyCode()">📋 복사</button>
+          <button class="small-btn" onclick="copyCode()" title="초대 코드 복사">복사</button>
         </div>
         <div class="join-row">
           <input id="joinInput" placeholder="받은 코드 입력" maxlength="8">
           <button class="small-btn" onclick="joinSpace()">참여하기</button>
         </div>
         <div style="margin-top: 14px; display: flex; justify-content: space-between; gap: 8px; align-items: center;">
-          <button class="small-btn" onclick="exportBackup()" title="할 일·메모 전체를 JSON 파일로 저장">📦 데이터 백업</button>
+          <button class="small-btn" onclick="exportBackup()" title="할 일·메모 전체를 JSON 파일로 저장">데이터 백업</button>
           <button class="small-btn" id="leaveBtn" onclick="leaveSpace()" style="display:none; color: var(--red);">스페이스 나가기</button>
         </div>
       </div>
@@ -352,8 +352,8 @@
 <div id="dashCatEditModal" onclick="if(event.target===this) closeDashboardCategoryEditor()">
   <div class="move-date-card" style="max-width:440px;">
     <div class="card-title">
-      <span>🧩 홈 카테고리 편집</span>
-      <button class="small-btn" onclick="closeDashboardCategoryEditor()">✕ 닫기</button>
+      <span>홈 카테고리 편집</span>
+      <button class="small-btn" onclick="closeDashboardCategoryEditor()">닫기</button>
     </div>
     <div class="scope-hint" style="margin-bottom:10px;">색상·아이콘·이름을 바꿀 수 있어요. 이 설정은 내 홈에만 적용되고 기존 기록은 지워지지 않습니다.</div>
     <div id="dashCatEditBody"></div>
@@ -372,7 +372,7 @@
   <div class="move-date-card">
     <div class="card-title">
       <span id="moveDateTitle">일정 변경</span>
-      <button class="small-btn" onclick="closeMoveDateModal()">✕ 닫기</button>
+      <button class="small-btn" onclick="closeMoveDateModal()">닫기</button>
     </div>
     <input id="moveDateInput" class="move-date-input" type="date" aria-label="적용할 날짜">
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
@@ -386,8 +386,8 @@
 <div id="catEditModal" onclick="if(event.target===this) closeCatEditor()">
   <div class="move-date-card" style="max-width:420px;">
     <div class="card-title">
-      <span>🎨 카테고리 편집</span>
-      <button class="small-btn" onclick="closeCatEditor()">✕ 닫기</button>
+      <span>카테고리 편집</span>
+      <button class="small-btn" onclick="closeCatEditor()">닫기</button>
     </div>
     <div class="scope-hint" style="margin-bottom:10px;">왼쪽 색상칸을 누르면 오늘의 할 일·한 일 카테고리 컬러를 직접 바꿀 수 있어요.</div>
     <div id="catEditBody"></div>
@@ -403,8 +403,8 @@
 <div id="vaultModal" onclick="if(event.target===this) closeVaultModal()">
   <div class="move-date-card" style="max-width:460px;">
     <div class="card-title">
-      <span>🔐 공유 계정</span>
-      <button class="small-btn" onclick="closeVaultModal()">✕ 닫기</button>
+      <span>공유 계정</span>
+      <button class="small-btn" onclick="closeVaultModal()">닫기</button>
     </div>
     <div class="scope-hint">부부가 함께 쓰는 서비스의 아이디·비밀번호를 기록해요. 두 사람 모두 보고 수정할 수 있어요.</div>
     <div id="vaultList" class="vault-list"></div>
@@ -414,7 +414,7 @@
       <input id="vaultPw" placeholder="비밀번호" maxlength="60" autocomplete="off">
       <button class="add-btn" onclick="addVaultEntry()">＋ 추가</button>
     </div>
-    <div class="vault-warn">⚠️ 은행·증권 등 금융 비밀번호는 저장하지 마세요. 구독 서비스용으로만 사용하는 걸 권장해요.</div>
+    <div class="vault-warn">주의: 은행·증권 등 금융 비밀번호는 저장하지 마세요. 구독 서비스용으로만 사용하는 걸 권장해요.</div>
   </div>
 </div>
 
@@ -422,20 +422,20 @@
 <div id="exerciseModal" onclick="if(event.target===this) closeExerciseModal()">
   <div class="move-date-card" style="max-width:420px;">
     <div class="card-title">
-      <span>💪 운동 기록</span>
-      <button class="small-btn" onclick="closeExerciseModal()">✕ 닫기</button>
+      <span>운동 기록</span>
+      <button class="small-btn" onclick="closeExerciseModal()">닫기</button>
     </div>
     <div id="exerciseDateLabel" class="scope-hint" style="margin-bottom:8px;"></div>
     <label class="ex-field">
-      <span class="ex-field-label">🏃 유산소</span>
+      <span class="ex-field-label">유산소</span>
       <textarea id="exInputCardio" class="note-area" rows="2" placeholder="예: 러닝 5km, 자전거 30분"></textarea>
     </label>
     <label class="ex-field">
-      <span class="ex-field-label">🏋️ 근육운동</span>
+      <span class="ex-field-label">근육운동</span>
       <textarea id="exInputStrength" class="note-area" rows="2" placeholder="예: 스쿼트 3세트, 벤치프레스 40kg"></textarea>
     </label>
     <label class="ex-field" id="exOtherField" style="display:none;">
-      <span class="ex-field-label">📝 종류 미지정 (예전 기록)</span>
+      <span class="ex-field-label">종류 미지정 (예전 기록)</span>
       <textarea id="exInputOther" class="note-area" rows="2"></textarea>
       <span class="scope-hint">종류를 적기 전에 남긴 기록이에요. 위 칸으로 옮겨 정리할 수 있어요.</span>
     </label>
@@ -451,7 +451,7 @@
   <div class="move-date-card" style="max-width:420px;">
     <div class="card-title">
       <span id="rsTitle">반복 설정</span>
-      <button class="small-btn" onclick="closeRecurSetup()">✕ 닫기</button>
+      <button class="small-btn" onclick="closeRecurSetup()">닫기</button>
     </div>
     <div id="rsTodoText" style="font-size:14px; font-weight:800; margin-bottom:12px;"></div>
     <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; align-items:center;">
@@ -503,8 +503,8 @@
 <div id="searchModal" onclick="if(event.target===this) closeSearchModal()">
   <div class="move-date-card" style="max-width:460px;">
     <div class="card-title">
-      <span>🔍 검색</span>
-      <button class="small-btn" onclick="closeSearchModal()">✕ 닫기</button>
+      <span>검색</span>
+      <button class="small-btn" onclick="closeSearchModal()">닫기</button>
     </div>
     <input id="searchInput" class="search-input" placeholder="할 일·메모 검색 (예: 병원)" oninput="runSearch()">
     <div id="searchResults" class="search-results"></div>
@@ -514,8 +514,8 @@
 <div id="sobrietyModal" onclick="if(event.target===this) closeSobrietyModal()">
   <div class="move-date-card" style="max-width:360px;">
     <div class="card-title">
-      <span>🍺 금주 현황</span>
-      <button class="small-btn" onclick="closeSobrietyModal()">✕ 닫기</button>
+      <span>금주 현황</span>
+      <button class="small-btn" onclick="closeSobrietyModal()">닫기</button>
     </div>
     <div class="sobriety-streak" id="sobrietyStreak">—</div>
     <div class="sobriety-stats" id="sobrietyStats"></div>
@@ -530,7 +530,7 @@
       <span id="reportTitle">월 리포트</span>
       <span style="display:flex; gap:8px; align-items:center;">
         <button class="small-btn" onclick="copyMonthReport()">복사</button>
-        <button class="small-btn" onclick="closeMonthReport()">✕ 닫기</button>
+        <button class="small-btn" onclick="closeMonthReport()">닫기</button>
       </span>
     </div>
     <div id="monthReportBody"></div>
@@ -948,12 +948,12 @@ function renderStudyStats(data) {
   if (!el) return;
   const st = data.stats;
   if (st) {
-    el.innerHTML = `📚 공부한 날 ${st.days} · 단어 ${st.words} · Día ${st.dias}/${st.diasTotal || 16}${st.streak ? ` · 🔥${st.streak}일 연속` : ''}`;
+    el.innerHTML = `공부한 날 ${st.days} · 단어 ${st.words} · Día ${st.dias}/${st.diasTotal || 16}${st.streak ? ` · ${st.streak}일 연속` : ''}`;
     el.style.display = 'block';
   } else if (data.studiedDates || data.words) {
     // 예전 데이터 형식 fallback (stats는 스터디 페이지 첫 동기화 때 생성됨)
     const words = Object.keys(data.words || {}).filter(w => data.words[w]).length;
-    el.innerHTML = `📚 공부한 날 ${(data.studiedDates || []).length} · 단어 ${words}`;
+    el.innerHTML = `공부한 날 ${(data.studiedDates || []).length} · 단어 ${words}`;
     el.style.display = 'block';
   }
 }
@@ -1001,7 +1001,7 @@ function dashboardCategoryEditorRows(items) {
       <input type="color" class="dash-cat-color" value="${escAttr(normalizeDashboardColor(item.color))}" aria-label="${escAttr(item.name)} 색상">
       <input class="dash-cat-icon" value="${escAttr(item.icon)}" maxlength="8" aria-label="${escAttr(item.name)} 아이콘">
       <input class="dash-cat-name" value="${escAttr(item.name)}" maxlength="24" aria-label="${escAttr(item.name)} 이름">
-      <button type="button" class="cat-edit-del" onclick="removeDashboardCategoryRow(this)" title="홈에서 삭제">🗑</button>
+      <button type="button" class="cat-edit-del" onclick="removeDashboardCategoryRow(this)" title="홈에서 삭제">삭제</button>
     </div>`).join('');
 }
 function openDashboardCategoryEditor() {
@@ -1313,8 +1313,8 @@ function formatReminder(todo) {
 
 function reminderChip(todo, key = dateKey(selectedDate), refreshModalAfter = false) {
   if (!todo.remindAtMs) return '';
-  if (todo.reminderSentAt) return '<span class="reminder-chip sent">🔔 완료</span>';
-  return `<button class="reminder-chip" onclick="setTodoReminderForKey(${jsArg(key)}, ${jsArg(todo.id)}, ${refreshModalAfter})" title="알림 시간 변경">🔔 ${formatReminder(todo)}</button>`;
+  if (todo.reminderSentAt) return '<span class="reminder-chip sent">알림 완료</span>';
+  return `<button class="reminder-chip" onclick="setTodoReminderForKey(${jsArg(key)}, ${jsArg(todo.id)}, ${refreshModalAfter})" title="알림 시간 변경">알림 ${formatReminder(todo)}</button>`;
 }
 
 function rebaseTodoReminder(todo, targetKey) {
@@ -1494,7 +1494,7 @@ function catEditRows(scope, cats) {
     <div class="cat-edit-row" data-scope="${scope}" style="--cat-row-color:${color};">
       <input type="color" class="cat-edit-color" value="${escAttr(color)}" data-original-color="${escAttr(color)}" data-prev-color="${escAttr(color)}" data-scope="${scope}" data-id="${escAttr(c.id)}" aria-label="${escAttr(c.name)} 색상" onchange="guardCategoryColor(this)">
       <input type="text" class="cat-edit-name" value="${escAttr(c.name)}" maxlength="20" data-scope="${scope}" data-id="${escAttr(c.id)}" aria-label="${escAttr(c.name)} 이름">
-      <button type="button" class="cat-edit-del" onclick="removeCatEditRow(this, ${jsArg(scope)})" title="카테고리 삭제">🗑</button>
+      <button type="button" class="cat-edit-del" onclick="removeCatEditRow(this, ${jsArg(scope)})" title="카테고리 삭제">삭제</button>
     </div>`;
   }).join('');
 }
@@ -1596,9 +1596,9 @@ function openCatEditor() {
       ${MEMBER_SIGNATURES.map(member => `<span class="owner-badge" style="--owner-color:${member.color}; --owner-bg:${hexToRgba(member.color, 0.14)};">${member.label}</span>`).join('')}
       <span>카테고리 색상에서는 제외돼요.</span>
     </div>
-    <div class="dm-section-title">✅ 할 일 카테고리</div>
+    <div class="dm-section-title">할 일 카테고리</div>
     ${catEditRows('todo', getCategories())}
-    <div class="dm-section-title">🌙 한 일 카테고리</div>
+    <div class="dm-section-title">한 일 카테고리</div>
     ${catEditRows('memo', getMemoCats())}`;
   document.getElementById('catEditModal').classList.add('open');
 }
@@ -1696,7 +1696,7 @@ function renderHomeMemo(day) {
       <button class="tcat-badge" style="background:${cat.color};" onclick="openMemoCatPicker(event, ${jsArg(cat.id)}, ${index})" title="카테고리 변경">${cat.icon ? `${esc(cat.icon)} ` : ''}${esc(cat.name)}</button>
       <span class="memo-entry-text">${esc(text)}</span>
       <span class="memo-entry-actions">
-        <button onclick="editMemoEntry(${jsArg(cat.id)}, ${index})" title="메모 수정">✏️</button>
+        <button onclick="editMemoEntry(${jsArg(cat.id)}, ${index})" title="메모 수정">수정</button>
         <button onclick="deleteMemoEntry(${jsArg(cat.id)}, ${index})" title="메모 삭제">✕</button>
       </span>
     </div>`).join('') : '<div class="empty-msg" style="padding:12px 0 4px;">아직 추가한 메모가 없어요.</div>';
@@ -1711,7 +1711,7 @@ async function persistMemoEntries(notes, message) {
   renderMonthCal();
   document.getElementById('noteSaveHint').textContent = '저장 중…';
   await saveDay(key, day);
-  document.getElementById('noteSaveHint').textContent = '✅ 저장됨';
+  document.getElementById('noteSaveHint').textContent = '저장됨';
   if (message) toast(message);
 }
 async function addMemoEntry() {
@@ -2083,7 +2083,7 @@ function renderRecurList() {
   const arr = getAllRecurring().filter(isScheduleVisible);
   box.innerHTML = arr.length ? arr.map(r => `
     <div class="todo-item">
-      <span class="txt">🔁 ${esc(r.text)}</span>
+      <span class="txt">${esc(r.text)}</span>
       <span class="by">${esc(recurRuleSummary(r))}</span>
       ${scheduleScopeBadge(r, '', 'rec')}
       <button class="del" onclick="deleteRecurring(${jsArg(r.id)})" title="반복 일정 전체 삭제" aria-label="반복 일정 전체 삭제">✕</button>
@@ -2154,7 +2154,7 @@ function renderCatChips() {
     `<button class="tcat-chip ${c.id === selectedTodoCat ? 'sel' : ''}" style="${c.id === selectedTodoCat ? `background:${c.color};` : ''}" onclick="pickTodoCat(${jsArg(c.id)})">${esc(c.name)}</button>`
   ).join('')
     + `<button class="tcat-chip" onclick="addCustomCategory()" title="새 카테고리 만들기">＋ 카테고리</button>`
-    + `<button class="tcat-chip" onclick="openCatEditor()" title="카테고리 색·이름 편집">🎨 편집</button>`;
+    + `<button class="tcat-chip" onclick="openCatEditor()" title="카테고리 색·이름 편집">편집</button>`;
 }
 function pickTodoCat(id) { selectedTodoCat = id; renderCatChips(); }
 
@@ -2537,7 +2537,7 @@ function confirmScheduleDeletion(title, recurring = false) {
     modal.setAttribute("role", "alertdialog");
     modal.setAttribute("aria-modal", "true");
     modal.setAttribute("aria-labelledby", "scheduleConfirmTitle");
-    modal.innerHTML = `<div class="schedule-confirm-card"><div class="schedule-confirm-icon" aria-hidden="true">🗑</div><h2 id="scheduleConfirmTitle">${recurring ? "반복 일정 전체를 삭제할까요?" : "일정을 삭제하시겠습니까?"}</h2><p>${esc(title || "이 일정")} ${recurring ? "반복 규칙 전체가 삭제돼요. 이 날짜만 삭제하는 것이 아니며 되돌릴 수 없어요." : "삭제 후 되돌리기 버튼으로 복구할 수 있습니다."}</p><div class="schedule-confirm-actions"><button type="button" class="small-btn" data-cancel>취소</button><button type="button" class="schedule-confirm-delete" data-confirm>삭제</button></div></div>`;
+    modal.innerHTML = `<div class="schedule-confirm-card"><div class="schedule-confirm-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></div><h2 id="scheduleConfirmTitle">${recurring ? "반복 일정 전체를 삭제할까요?" : "일정을 삭제하시겠습니까?"}</h2><p>${esc(title || "이 일정")} ${recurring ? "반복 규칙 전체가 삭제돼요. 이 날짜만 삭제하는 것이 아니며 되돌릴 수 없어요." : "삭제 후 되돌리기 버튼으로 복구할 수 있습니다."}</p><div class="schedule-confirm-actions"><button type="button" class="small-btn" data-cancel>취소</button><button type="button" class="schedule-confirm-delete" data-confirm>삭제</button></div></div>`;
     let settled = false;
     const close = answer => {
       if (settled) return;
@@ -2990,7 +2990,7 @@ function renderVaultList() {
       <div class="vault-service">
         <span>${esc(e.service)}</span>
         <span class="vault-actions">
-          <button onclick="editVaultEntry(${jsArg(e.id)})" title="수정">✏️</button>
+          <button onclick="editVaultEntry(${jsArg(e.id)})" title="수정">수정</button>
           <button onclick="deleteVaultEntry(${jsArg(e.id)})" title="삭제">✕</button>
         </span>
       </div>
@@ -3158,12 +3158,12 @@ function renderCalendarDaySummary(baseDate) {
   // 다음 생리 예상 — 기록이 두 번 이상 쌓여 주기를 잡을 수 있을 때만 보인다.
   const pred = periodPrediction();
   const predChip = pred
-    ? `<span class="calendar-summary-chip period" title="평균 주기 ${pred.cycle}일 · 평균 기간 ${pred.span}일 · 최근 시작 ${shortDateLabel(pred.lastStart)} (${pred.samples}회 평균)">🩸 다음 예상 ${shortDateLabel(pred.next)}</span>`
+    ? `<span class="calendar-summary-chip period" title="평균 주기 ${pred.cycle}일 · 평균 기간 ${pred.span}일 · 최근 시작 ${shortDateLabel(pred.lastStart)} (${pred.samples}회 평균)">생리 다음 예상 ${shortDateLabel(pred.next)}</span>`
     : '';
   el.innerHTML = `
     <span class="calendar-summary-chip">전체 ${stats.totalDays}일</span>
-    <span class="calendar-summary-chip sober">🌿 금주 ${stats.sober}일</span>
-    <span class="calendar-summary-chip exercise">💪 운동 ${exerciseStats.exercise}일</span>${predChip}`;
+    <span class="calendar-summary-chip sober">금주 ${stats.sober}일</span>
+    <span class="calendar-summary-chip exercise">운동 ${exerciseStats.exercise}일</span>${predChip}`;
   el.title = `${stats.label} · ${scope} · 음주 ${stats.drink}일 · 운동 ${exerciseStats.exercise}일`;
 }
 
@@ -3171,9 +3171,9 @@ function renderSobriety() {
   const streakEl = document.getElementById('sobrietyStreak');
   if (!streakEl) return;
   const streak = sobrietyStreak();
-  streakEl.textContent = streak === null ? '아직 음주 기록 없어요 🎉'
-    : streak === 0 ? '오늘은 음주일로 표시됨 🍺'
-    : `🔥 금주 ${streak}일째`;
+  streakEl.textContent = streak === null ? '아직 음주 기록 없어요'
+    : streak === 0 ? '오늘은 음주일로 표시됨'
+    : `금주 ${streak}일째`;
   streakEl.style.color = streak === 0 ? 'var(--gold)' : 'var(--green)';
 
   const stats = monthDrinkStats(calMonth);
@@ -3184,7 +3184,7 @@ function renderSobriety() {
   const isToday = selKey === dateKey(new Date());
   const dateLabel = isToday ? '오늘' : shortDateLabel(selKey);
   const btn = document.getElementById('sobrietyToggleBtn');
-  btn.textContent = selDrink ? `🍺 ${dateLabel} 음주 해제` : `🍺 ${dateLabel} 음주 표시`;
+  btn.textContent = selDrink ? `${dateLabel} 음주 해제` : `${dateLabel} 음주 표시`;
   btn.classList.toggle('sel', selDrink);
 }
 
@@ -3453,7 +3453,7 @@ function renderUpcomingTodos() {
       <input type="checkbox" aria-label="완료" ${upMine ? '' : 'disabled title="배우자의 일정은 체크할 수 없어요"'} onclick="event.stopPropagation()" onchange="completeUpcomingTodo(${jsArg(sourceKey)}, ${jsArg(todo.id)}, this.checked)">
       <span class="upcoming-todo-date">${month}/${day}<br>${DAYS_KO[dueDate.getDay()]}</span>
       <span class="upcoming-todo-main">
-        <span class="upcoming-todo-title">${importantFlag(todo)}${esc(todo.text)}</span>
+        <span class="upcoming-todo-title">${isImportantTodo(todo) ? importantFlag(todo) + ' ' : ''}${esc(todo.text)}</span>
         <span class="upcoming-todo-meta">${meta.join(' · ')}</span>
       </span>
       <span class="tcat-badge" style="--cat-color:${cat.color}; cursor:default;">${esc(cat.name)}</span>
@@ -3489,12 +3489,11 @@ function renderTodos(day) {
   const total = todos.length + recs.length;
   const allDone = total > 0 && doneCount === total;
   const pill = document.getElementById('todoProgress');
-  pill.textContent = allDone ? `🎉 ${doneCount} / ${total}` : `${doneCount} / ${total}`;
+  pill.textContent = allDone ? `${doneCount} / ${total} 완료` : `${doneCount} / ${total}`;
   pill.classList.toggle('complete', allDone);
 
   if (!total) {
     list.innerHTML = `<div class="empty-state">
-      <div class="empty-emoji">🗒️</div>
       <div class="empty-title">아직 할 일이 없어요</div>
       <div class="empty-sub">위에 첫 할 일을 적어 하루를 시작해 볼까요?</div>
     </div>`;
@@ -3698,11 +3697,11 @@ function openSharePicker(ev, key, id) {
   const shared = todoScope(todo, 'private') === 'shared';
   const cur = assigneeOf(todo);
   const picker = document.getElementById('catPicker');
-  const privateBtn = `<button class="party-btn ${!shared ? 'sel' : ''}" style="--party-color:var(--muted); --party-bg:rgba(102,112,128,0.16);" onclick="applySharePick('private')">${!shared ? '✓ ' : ''}🔒 나만</button>`;
+  const privateBtn = `<button class="party-btn ${!shared ? 'sel' : ''}" style="--party-color:var(--muted); --party-bg:rgba(102,112,128,0.16);" onclick="applySharePick('private')">${!shared ? '✓ ' : ''}나만</button>`;
   picker.innerHTML = privateBtn + partyOptions().map(o => {
     const isCur = shared && o.key === cur;
     const c = ownerColorFor(o.key);
-    return `<button class="party-btn ${isCur ? 'sel' : ''}" style="--party-color:${c}; --party-bg:${hexToRgba(c, 0.16)};" onclick="applySharePick(${jsArg(o.id)})">${isCur ? '✓ ' : ''}👫 ${esc(o.label)}</button>`;
+    return `<button class="party-btn ${isCur ? 'sel' : ''}" style="--party-color:${c}; --party-bg:${hexToRgba(c, 0.16)};" onclick="applySharePick(${jsArg(o.id)})">${isCur ? '✓ ' : ''}${esc(o.label)}</button>`;
   }).join('');
   picker.classList.add('open');
   const x = Math.min(ev.clientX, window.innerWidth - 260);
@@ -3786,7 +3785,7 @@ async function saveOwnerColor(key, color) {
 function doneByChip(t) {
   if (!isShared() || todoScope(t, 'private') !== 'shared' || !t.done || !t.doneBy || t.doneBy === t.by) return '';
   const c = memberColor(t.doneBy);
-  return `<span class="by" style="color:${c}; border-color:${c};" title="완료한 사람">✓ ${esc(memberFirstName(t.doneBy))}</span>`;
+  return `<span class="by" style="color:${c}; border-color:${c};" title="완료한 사람">${esc(memberFirstName(t.doneBy))} 완료</span>`;
 }
 
 function renderMembers() {
@@ -4963,20 +4962,20 @@ function buildMonthReport(baseDate) {
 function buildReportHighlights(report) {
   const list = [];
   if (report.bestDay && (report.bestDay.done || report.bestDay.notes)) {
-    list.push(`🏆 가장 생산적인 날 — ${report.m + 1}/${report.bestDay.day} (완료 ${report.bestDay.done}개, 메모 ${report.bestDay.notes}줄)`);
+    list.push(`가장 생산적인 날 — ${report.m + 1}/${report.bestDay.day} (완료 ${report.bestDay.done}개, 메모 ${report.bestDay.notes}줄)`);
   }
-  if (report.longestStreak >= 2) list.push(`🔥 연속 기록 흐름 최장 ${report.longestStreak}일`);
+  if (report.longestStreak >= 2) list.push(`연속 기록 흐름 최장 ${report.longestStreak}일`);
   const topCat = report.categoryRows[0];
-  if (topCat && topCat.done > 0) list.push(`🏷 가장 많이 해낸 카테고리 — ${topCat.name} (${topCat.done}/${topCat.planned} 완료)`);
+  if (topCat && topCat.done > 0) list.push(`가장 많이 해낸 카테고리 — ${topCat.name} (${topCat.done}/${topCat.planned} 완료)`);
   if (report.exerciseDays > 0) {
     const perWeek = Math.round((report.exerciseDays / Math.max(1, report.elapsedDays || report.days)) * 7 * 10) / 10;
-    list.push(`💪 운동 ${report.exerciseDays}일 — 주 평균 약 ${perWeek}회`);
+    list.push(`운동 ${report.exerciseDays}일 — 주 평균 약 ${perWeek}회`);
   }
-  if (report.elapsedDays > 0 && report.longestSoberRun >= 3) list.push(`🌿 최장 금주 연속 ${report.longestSoberRun}일`);
-  if (report.plannedCount > 0 && report.postponed === 0) list.push('⏰ 미룬 일정 없이 진행 — 계획대로 착착!');
-  else if (report.postponed >= 3) list.push(`⏰ 뒤로 미룬 일정 ${report.postponed}건 — 다음 달엔 여유 있게 계획해 볼까요?`);
-  if (report.events.length) list.push(`📅 기간 이벤트 ${report.events.length}건 — ${report.events.slice(0, 2).map(e => e.text).join(', ')}${report.events.length > 2 ? ' 외' : ''}`);
-  if (report.achievementRate >= 80 && report.plannedCount >= 5) list.push(`✨ 달성률 ${report.achievementRate}% — 아주 훌륭한 한 달!`);
+  if (report.elapsedDays > 0 && report.longestSoberRun >= 3) list.push(`최장 금주 연속 ${report.longestSoberRun}일`);
+  if (report.plannedCount > 0 && report.postponed === 0) list.push('미룬 일정 없이 진행 — 계획대로 착착!');
+  else if (report.postponed >= 3) list.push(`뒤로 미룬 일정 ${report.postponed}건 — 다음 달엔 여유 있게 계획해 볼까요?`);
+  if (report.events.length) list.push(`기간 이벤트 ${report.events.length}건 — ${report.events.slice(0, 2).map(e => e.text).join(', ')}${report.events.length > 2 ? ' 외' : ''}`);
+  if (report.achievementRate >= 80 && report.plannedCount >= 5) list.push(`달성률 ${report.achievementRate}% — 아주 훌륭한 한 달!`);
   return list;
 }
 
@@ -5150,8 +5149,8 @@ function exerciseDowChart(cardioByDow, strengthByDow) {
   }).join('');
   return `<div class="dow-chart">${cols}</div>
     <div class="strip-legend" style="margin-top:6px;">
-      <span><i style="background:var(--ex-cardio);"></i>🏃 유산소</span>
-      <span><i style="background:var(--ex-strength);"></i>🏋️ 근육운동</span>
+      <span><i style="background:var(--ex-cardio);"></i>유산소</span>
+      <span><i style="background:var(--ex-strength);"></i>근육운동</span>
     </div>`;
 }
 
@@ -5185,7 +5184,7 @@ function renderMonthReport(report) {
         : `${shortDateLabel(s.start)}~${shortDateLabel(s.end)} (${s.len}일)`).join(' · ')
     : '';
   const drinkDatesText = report.elapsedDays
-    ? (report.drinkDates.length ? `음주한 날: ${report.drinkDates.map(shortDateLabel).join(', ')}` : '이번 달 음주 기록이 없어요 🎉')
+    ? (report.drinkDates.length ? `음주한 날: ${report.drinkDates.map(shortDateLabel).join(', ')}` : '이번 달 음주 기록이 없어요')
     : '';
 
   // 리드 문단: 한 달 총평 한 줄
@@ -5200,7 +5199,7 @@ function renderMonthReport(report) {
   const eventsHtml = report.events.map(e => `
     <div class="report-row">
       <span class="report-date">${shortDateLabel(e.startDate)}–${shortDateLabel(e.endDate)}</span>
-      <span class="report-text">${esc(e.text)}${e.done ? ' ✓' : ''} <span class="tcat-badge" style="background:${e.catColor}; cursor:default;">${esc(e.catName)}</span></span>
+      <span class="report-text">${esc(e.text)}${e.done ? ' (완료)' : ''} <span class="tcat-badge" style="background:${e.catColor}; cursor:default;">${esc(e.catName)}</span></span>
     </div>`).join('');
 
   const exerciseHtml = report.exerciseItems.length
@@ -5219,43 +5218,43 @@ function renderMonthReport(report) {
     <div class="report-meter"><span style="width:${Math.min(100, report.achievementRate)}%;"></span></div>
 
     <div class="report-section">
-      <h3>📊 한눈에 보기</h3>
+      <h3>한눈에 보기</h3>
       <div class="chart-grid">
         ${ringChart(report.achievementRate, '#2f7d5e', `${report.achievementRate}%`, '달성률', '계획 달성률')}
         ${report.ownerRows.length > 1 ? ownerDonutChart(report.ownerRows) : ''}
         ${report.sobriety.elapsed ? ringChart(report.sobriety.soberRate, '#38679b', `${report.sobriety.soberRate}%`, '금주율', '금주한 날') : ''}
-        ${report.importantPlanned ? ringChart(report.importantRate, IMPORTANT_COLOR, `${report.importantRate}%`, '달성률', '❗중요 일정') : ''}
+        ${report.importantPlanned ? ringChart(report.importantRate, IMPORTANT_COLOR, `${report.importantRate}%`, '달성률', '중요 일정') : ''}
       </div>
       ${report.importantPlanned ? `<div class="chart-sub">중요 일정 ${report.importantDone}/${report.importantPlanned}개 완료</div>` : ''}
       <div class="chart-sub">완료 ${report.completedCount} / 계획 ${report.plannedCount}개${report.sobriety.elapsed ? ` · 금주 ${report.sobriety.sober}일 · 음주 ${report.sobriety.drink}일` : ''}</div>
     </div>
 
     <div class="report-section">
-      <h3>🔥 날짜별 활동</h3>
+      <h3>날짜별 활동</h3>
       ${monthHeatmap(report)}
     </div>
 
     <div class="report-section">
-      <h3>🏷 카테고리별 달성</h3>
+      <h3>카테고리별 달성</h3>
       ${categoryBars(report.categoryRows)}
     </div>
 
     <div class="report-section">
-      <h3>✨ 주목할 만한 점</h3>
+      <h3>주목할 만한 점</h3>
       ${highlightsHtml}
     </div>
 
     ${report.events.length ? `
     <div class="report-section">
-      <h3>📅 이벤트 · 기간 일정</h3>
+      <h3>이벤트 · 기간 일정</h3>
       <div class="report-list">${eventsHtml}</div>
     </div>` : ''}
 
     <div class="report-section">
-      <h3>💪 운동 내역 (${report.exerciseDays}일)</h3>
+      <h3>운동 내역 (${report.exerciseDays}일)</h3>
       ${report.exerciseDays ? `<div class="report-stats" style="margin:0 0 12px;">
-        <div class="report-stat"><div class="num">${report.cardioDays}일</div><div class="label">🏃 유산소</div></div>
-        <div class="report-stat"><div class="num">${report.strengthDays}일</div><div class="label">🏋️ 근육운동</div></div>
+        <div class="report-stat"><div class="num">${report.cardioDays}일</div><div class="label">유산소</div></div>
+        <div class="report-stat"><div class="num">${report.strengthDays}일</div><div class="label">근육운동</div></div>
       </div>` : ''}
       ${exerciseDowChart(report.cardioByDow, report.strengthByDow)}
       ${report.exerciseDays ? '<div class="chart-sub" style="margin-bottom:8px;">요일별 운동 횟수</div>' : ''}
@@ -5263,9 +5262,8 @@ function renderMonthReport(report) {
     </div>
 
     <div class="report-section">
-      <h3>🍺 음주 · 금주</h3>
+      <h3>음주 · 금주</h3>
       <div class="report-sobriety">
-        <span class="report-sobriety-icon">🌿</span>
         <div class="report-sobriety-copy">
           <strong>${report.sobriety.sober}일 금주</strong>
           <span>${sobrietyDescription}</span>
@@ -5278,7 +5276,7 @@ function renderMonthReport(report) {
 
     ${report.periodDates.length || report.periodPredicted.length ? `
     <div class="report-section">
-      <h3>🩸 생리 주기</h3>
+      <h3>생리 주기</h3>
       ${report.periodInfo ? `<div class="report-stats" style="margin:0 0 12px;">
         <div class="report-stat"><div class="num">${report.periodInfo.cycle}일</div><div class="label">평균 주기</div><div class="sub">최근 ${report.periodInfo.samples}회 평균</div></div>
         <div class="report-stat"><div class="num">${report.periodInfo.span}일</div><div class="label">평균 기간</div></div>
@@ -5290,17 +5288,17 @@ function renderMonthReport(report) {
     </div>` : ''}
 
     <div class="report-section">
-      <h3>✅ 완료한 계획 (${report.completedCount})</h3>
+      <h3>완료한 계획 (${report.completedCount})</h3>
       ${reportRows(report.completedItems, '완료된 계획이 아직 없어요.')}
     </div>
 
     <div class="report-section">
-      <h3>🗒 계획 외 기록 (${report.noteCount})</h3>
+      <h3>계획 외 기록 (${report.noteCount})</h3>
       ${reportRows(report.noteItems, '하루 메모에 기록된 추가 한 일이 아직 없어요.')}
     </div>
 
     <div class="report-section">
-      <h3>🔁 일정 변경</h3>
+      <h3>일정 변경</h3>
       <div class="report-muted">${moveText} 미룬 비율 ${report.postponeRate}% · 전체 변경 비율 ${report.moveRate}%.</div>
     </div>
 
@@ -5332,7 +5330,7 @@ function buildMonthReportText(report) {
   if (!report.exerciseItems.length) lines.push('- 없음');
   if (report.elapsedDays) {
     lines.push('', `■ 음주·금주`);
-    lines.push(report.drinkDates.length ? `- 음주한 날: ${report.drinkDates.map(shortDateLabel).join(', ')}` : '- 음주 기록 없음 🎉');
+    lines.push(report.drinkDates.length ? `- 음주한 날: ${report.drinkDates.map(shortDateLabel).join(', ')}` : '- 음주 기록 없음');
     if (report.longestSoberRun) lines.push(`- 최장 금주 연속 ${report.longestSoberRun}일`);
   }
   lines.push('', `■ 완료한 계획 (${report.completedCount})`);

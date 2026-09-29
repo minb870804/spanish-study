@@ -488,7 +488,8 @@ test('앞으로 예정 제목: ❗ 대신 붉은 "중요" 글자이고, 중요�
   }, inPageNorm);
   assert.equal(got.imp.flag, '중요', JSON.stringify(got));
   assert.equal(got.imp.color, got.red, JSON.stringify(got));
-  assert.equal(got.imp.text, '중요중요한 약속', '제목 글자: ' + got.imp.text);
+  // 중요 표시와 제목 사이에 공백이 있어야 스크린 리더·복사에서 '중요중요한'으로 붙지 않는다
+  assert.equal(got.imp.text, '중요 중요한 약속', '제목 글자: ' + got.imp.text);
   assert.equal(EMOJI.test(got.imp.text), false, got.imp.text);
   assert.equal(got.plain.flag, null, JSON.stringify(got));
   assert.equal(got.plain.text, '평범한 약속');
@@ -991,6 +992,152 @@ test('섹션 눈썹 글씨는 작고 조용하다', 375, async p => {
   assert.equal(got.ls, '1.68px', '자간 .14em');
   const muted = await p.evaluate((src) => eval(src)('var(--ui-muted)'), inPageNorm);
   assert.equal(got.c, muted);
+});
+
+// 이모지를 글자(수정·삭제·닫기)로 바꾼 버튼도 모바일에서 44px 터치 목표여야 한다. 메모 줄·금고·카테고리 편집·모달 닫기.
+for (const w of [320, 375]) {
+  test(`이모지를 뗀 글자 버튼(메모 수정·금고 수정·카테고리 삭제·모달 닫기)이 44px 터치 목표다 (${w}px)`, w, async p => {
+    await p.evaluate(() => {
+      spaceData.sharedLogins = [{ id: 'v1', service: '넷플릭스', username: 'a', password: 'b' }];
+      userData.personalDays['2026-10-02'] = { todos: [], notes: { st: '스페인어 단어' } };
+      openDayDetail('2026-10-02'); openVaultModal(); openCatEditor(); openDashboardCategoryEditor();
+    });
+    const sel = { '메모 수정': '#homeMemoEntries .memo-entry-actions button', '금고 수정': '.vault-actions button',
+      '카테고리 삭제': '#catEditBody .cat-edit-del', '홈 카테고리 삭제': '#dashCatEditBody .cat-edit-del', '모달 닫기': '#catEditModal .card-title .small-btn' };
+    const got = await p.evaluate((sel) => Object.fromEntries(Object.entries(sel).map(([k, q]) => {
+      const e = document.querySelector(q); if (!e) return [k, null];
+      const r = e.getBoundingClientRect(); return [k, { w: r.width, h: r.height, text: e.textContent.trim() }];
+    })), sel);
+    for (const [k, b] of Object.entries(got)) {
+      assert.ok(b && b.w && b.h, `${k} 버튼이 없다/보이지 않는다`);
+      assert.ok(b.w >= 43.99 && b.h >= 43.99, `${k} '${b.text}' 터치 목표 ${b.w}x${b.h} (44x44 미만)`);
+    }
+    assert.equal(got['메모 수정'].text, '수정');
+    assert.equal(got['카테고리 삭제'].text, '삭제');
+    assert.equal(got['모달 닫기'].text, '닫기');
+  });
+}
+
+// ── 장식 이모지 스윕 ──
+// 홈 화면의 UI 글자(홈·날짜 팝업·설정·홈에서 여는 모달)에 장식 이모지가 없어야 한다. 새 화면·새 버튼이 이모지를 되들여오면 여기서 걸린다.
+// 페이지 안에서 실행: 화면에 그려진 모든 글자 노드, 접근성 이름 속성, ::before/::after 내용을 훑는다.
+// 허용 목록은 '의미를 지닌' 것뿐이며, 요소 범위로 좁혀 둔다(같은 이모지가 다른 곳에 나오면 걸린다).
+function sweepDecorInPage(memoIcons) {
+  // ✕ 는 '닫기' 앞에 붙던 장식이라 잡는다. 행의 삭제 버튼(글자 ✕ + 제목)만 아래에서 허용한다.
+  const DECOR = /\p{Extended_Pictographic}|\uFE0F|[\u2713\u2714\u2715\u2716\u2726\u2727]/u;
+  const ALLOW = [
+    ['.mcal-drink-mark, .mcal-ex-mark, .mcal-love-mark', '달력 날짜 칸의 음주·운동·함께 표시: 기능 표식'],
+    ['.cat-card .icon', '홈 바로가기 카드 icon 필드(🇪🇸 📚 📔 💌): 사용자 데이터'],
+    ['.move-handle', '드래그로 날짜 옮기기 손잡이 ↕: 기능 표식'],
+    ['.member-chip', '프로필 사진이 없는 멤버의 자리표시 👤(보류: 보고서 참고)'],
+    ['#toast', '토스트 메시지 이모지'],
+  ].map(a => a[0]).join(', ');
+  const MEMO_CHIP = '#memoCatRow .tcat-chip, .memo-entry-item .tcat-badge, #catPicker .tcat-chip';
+  const stripUserIcon = (el, text) => {
+    // 카테고리·공유 팝오버의 '현재 선택' 표시 ✓ 는 선택 상태를 전하는 유일한 글자라 남긴다(보류: 보고서 참고)
+    if (el.closest('#catPicker .sel')) text = text.replace(/^\u2713 /, '');
+    if (!el.closest(MEMO_CHIP)) return text;
+    for (const ic of memoIcons) if (text.startsWith(ic)) return text.slice(ic.length);
+    return text; // 사용자가 고른 메모 카테고리 icon 은 앞머리 한 번만 허용
+  };
+  const pathOf = (el) => {
+    const parts = [];
+    for (let n = el; n && n.nodeType === 1 && n !== document.body; n = n.parentElement) {
+      parts.unshift(n.tagName.toLowerCase() + (n.id ? '#' + n.id : '') + (typeof n.className === 'string' && n.className.trim() ? '.' + n.className.trim().split(/\s+/)[0] : ''));
+    }
+    return parts.slice(-4).join('>');
+  };
+  const hits = [];
+  // 행의 삭제 버튼은 글자가 ✕ 하나뿐이다(title·aria-label 로 이름이 있다). 정확히 '✕' 인 글자만, 그런 버튼 안에서만 허용한다.
+  const DELETE_X = '.todo-btns button, .memo-entry-actions button, .vault-actions button, #recurList button.del';
+  const check = (el, kind, text) => {
+    if (!text || el.closest(ALLOW)) return;
+    if (kind === 'text' && text.trim() === '\u2715' && el.closest(DELETE_X)) return;
+    const t = kind === 'text' ? stripUserIcon(el, text) : text;
+    if (DECOR.test(t)) hits.push(`${pathOf(el)} [${kind}] ${JSON.stringify(text.trim().slice(0, 60))}`);
+  };
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const el = n.parentElement;
+    if (!el || ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(el.tagName)) continue;
+    check(el, 'text', n.nodeValue);
+  }
+  for (const el of document.body.querySelectorAll('*')) {
+    for (const a of ['title', 'aria-label', 'placeholder', 'alt', 'data-tooltip']) check(el, a, el.getAttribute(a));
+    for (const ps of ['::before', '::after']) {
+      const c = getComputedStyle(el, ps).content;
+      if (c && c !== 'none' && c !== 'normal' && !/^attr\(/.test(c)) check(el, ps, c);
+    }
+  }
+  return hits;
+}
+
+test('홈 UI 글자에 장식 이모지가 없다 (홈·날짜 팝업·설정·홈에서 여는 모달; 의미 있는 것만 허용)', 375, async p => {
+  const hits = await p.evaluate(async ([fnSrc]) => {
+    const sweep = eval('(' + fnSrc + ')');
+    const memoIcons = getMemoCats().map(c => c.icon).filter(Boolean);
+    const all = [], seen = new Set();
+    // 같은 자리는 한 번만 적는다(모달을 여는 단계마다 body 전체를 다시 훑기 때문)
+    const run = (label) => { for (const h of sweep(memoIcons)) if (!seen.has(h)) { seen.add(h); all.push(label + ' :: ' + h); } };
+    const KEY = '2026-10-02';
+    // ── 시드: 화면의 모든 갈래(중요·알림·알림 발송됨·배우자 완료·반복·메모·기간 일정·생리 예측·금고 계정·스터디 요약)가 그려지게 ──
+    spaceData.members = ['A', 'B'];
+    spaceData.memberProfiles = { A: { name: '테스트' }, B: { name: '배우자' } };
+    const at = (h, m) => new Date(2026, 9, 2, h, m).getTime();
+    userData.personalDays[KEY] = {
+      todos: [
+        { id: 'p1', text: '내 비공개 일정', by: 'A', time: '19:30', location: '서울역', cat: 'wk', visibility: 'private', important: true, remindAtMs: at(18, 0) },
+        { id: 'p2', text: '알림 나간 일정', by: 'A', time: '20:00', cat: 'st', visibility: 'shared', remindAtMs: at(7, 0), reminderSentAt: at(7, 1) },
+        { id: 'p3', text: '기간 일정', by: 'A', cat: 'etc', visibility: 'private', startDate: KEY, endDate: '2026-10-04', done: true },
+      ],
+      notes: { st: '스페인어 단어 10개', [EXERCISE_CAT_ID]: '[유산소] 러닝 30분\n[근육운동] 스쿼트' },
+      recDone: { rc1: 'B' },
+    };
+    spaceData.days[KEY] = { todos: [{ id: 's1', text: '배우자 일정', by: 'B', time: '21:00', cat: 'ex', visibility: 'shared', done: true, doneBy: 'A' }] };
+    userData.personalRecurring = [{ id: 'rc1', text: '금요일 운동', days: [5], cat: 'ex', by: 'A', visibility: 'shared' }];
+    spaceData.recurring = [];
+    userData.personalDays['2026-10-05'] = { todos: [
+      { id: 'u1', text: '다음 주 약속', by: 'A', time: '18:30', location: '강남역', cat: 'wk', visibility: 'private', important: true },
+    ] };
+    spaceData.periodDays = { '2026-08-01': true, '2026-08-02': true, '2026-08-29': true, '2026-08-30': true };
+    spaceData.sharedLogins = [{ id: 'v1', service: '넷플릭스', username: 'me@example.com', password: 'pw' }];
+    userData.personalDrinkDays = { '2026-09-25': true };
+    renderAll();
+    renderStudyStats({ stats: { days: 3, words: 20, dias: 4, diasTotal: 16, streak: 5 } });
+    renderStudyStats({ studiedDates: ['2026-10-01'], words: { a: true } });
+    run('홈');
+    // 금주 줄: 기록 없음 / 오늘 음주 / 이어지는 중
+    for (const [label, drink] of [['음주 기록 없음', {}], ['오늘 음주', { [KEY]: true }], ['금주 이어지는 중', { '2026-09-25': true }]]) {
+      userData.personalDrinkDays = drink; renderAll(); renderSobriety(); run('금주 줄 ' + label);
+    }
+    // 날짜 팝업: 행 메뉴를 열고, 반복 패널·모든 할 일 완료(진행 알약)·빈 날까지
+    openDayDetail(KEY);
+    toggleRecurPanel();
+    document.querySelector('#dmBody .todo-item[data-id="p1"] .todo-menu-btn').click();
+    run('날짜 팝업');
+    userData.personalDays[KEY].todos.forEach(t => { t.done = true; });
+    renderAll(); openDayDetail(KEY); run('날짜 팝업(모두 완료)');
+    openDayDetail('2026-10-03'); run('날짜 팝업(빈 날)');
+    // 팝오버: 카테고리·메모 카테고리·공유 범위
+    const ev = { stopPropagation() {}, clientX: 40, clientY: 40 };
+    openCatPicker(ev, KEY, 'todo', 'p1'); run('카테고리 팝오버');
+    openMemoCatPicker(ev, 'st', 0); run('메모 카테고리 팝오버');
+    openSharePicker(ev, KEY, 'p1'); run('공유 범위 팝오버');
+    closeCatPicker();
+    // 홈에서 여는 모달
+    openSearchModal(); document.getElementById('searchInput').value = '일정'; runSearch(); run('검색 모달');
+    openMonthReport(); run('월 리포트');
+    openSobrietyModal(); run('금주 현황');
+    openExerciseModal(KEY); run('운동 기록');
+    openRecurSetup(KEY, 'p1'); run('반복 설정');
+    openCatEditor(); run('카테고리 편집');
+    openDashboardCategoryEditor(); run('홈 카테고리 편집');
+    openVaultModal(); run('공유 계정');
+    moveTodoToDateFromKey(KEY, 'p1'); run('날짜 변경');
+    void confirmScheduleDeletion('운동', true); run('삭제 확인');
+    return all;
+  }, [sweepDecorInPage.toString()]);
+  assert.deepEqual(hits, [], `장식 이모지 ${hits.length}곳:\n` + hits.join('\n'));
 });
 
 test('콘솔 오류 없이 홈이 뜬다', 375, async (p, errors) => {
