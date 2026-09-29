@@ -1069,7 +1069,6 @@ function sweepDecorInPage(memoIcons) {
     ['.cat-card .icon', '홈 바로가기 카드 icon 필드(🇪🇸 📚 📔 💌): 사용자 데이터'],
     ['.move-handle', '드래그로 날짜 옮기기 손잡이 ↕: 기능 표식'],
     ['.member-chip', '프로필 사진이 없는 멤버의 자리표시 👤(보류: 보고서 참고)'],
-    ['#toast', '토스트 메시지 이모지'],
   ].map(a => a[0]).join(', ');
   const MEMO_CHIP = '#memoCatRow .tcat-chip, .memo-entry-item .tcat-badge, #catPicker .tcat-chip';
   const stripUserIcon = (el, text) => {
@@ -1178,6 +1177,181 @@ test('홈 UI 글자에 장식 이모지가 없다 (홈·날짜 팝업·설정·�
     return all;
   }, [sweepDecorInPage.toString()]);
   assert.deepEqual(hits, [], `장식 이모지 ${hits.length}곳:\n` + hits.join('\n'));
+});
+
+// ── 토스트·힌트 문구 정적 검사 ──
+// 위 스윕은 '화면에 그려진 글자'만 본다. 토스트·저장 힌트처럼 사용자 동작 뒤에야 생기는 문구는 스윕이 열어 보지 못한다
+// (noteSaveHint 를 '✅ 저장됨' 으로 바꿔도 스윕은 통과했다). 그래서 소스에서 '문구가 흘러 들어가는 자리'를 직접 훑는다.
+//
+// 검사 대상(모두 index.html 소스 안):
+//   1) toast(…) / showUndoToast(…) 호출의 첫 인자 전체(삼항·템플릿 리터럴 포함)
+//   2) 문구를 그대로 toast 로 넘기는 도우미 함수의 호출 인자. 도우미는 하드코딩하지 않고 찾아낸다:
+//      함수 본문 안의 toast(…) 인자에 그 함수의 매개변수가 나오면 그 매개변수 위치가 '문구 자리'다
+//      (지금은 persistMemoEntries·toggleSpaceDayMark·copyTextToClipboard).
+//   3) *Hint 요소(id 가 Hint 로 끝나는 getElementById, 또는 변수 hint)의 textContent/innerText/innerHTML 대입식
+//
+// 검사하지 않는 것(그래서 보호 대상은 건드리지 않는다): .replace(/…✅|✓…/) 같은 정규식, 카테고리 icon 필드, 바로가기 카드 icon,
+// 달력 날짜 표식, ✓·✕·👤 표식, 주석, renderWeekOverview. 이들은 위 세 자리 어디에도 인자로 들어가지 않는다.
+//
+// 한계(정직하게): 문구를 변수에 담아 나중에 toast(변수)로 넘기는 경우 변수에 든 글자는 못 본다
+// (toast(error) 의 error 등; 지금 소스에는 이모지가 없다). 그 경우는 위 스윕과 아래 런타임 토스트 검사가 보완한다.
+// src[i] 가 여는 따옴표/백틱이면 닫힌 뒤 위치를, 아니면 i 를 돌려준다(템플릿의 ${…} 안 중첩 포함).
+function skipString(src, i) {
+  const q = src[i];
+  if (q !== "'" && q !== '"' && q !== '`') return i;
+  for (let j = i + 1; j < src.length; j++) {
+    const c = src[j];
+    if (c === '\\') { j++; continue; }
+    if (c === q) return j + 1;
+    if (q === '`' && c === '$' && src[j + 1] === '{') j = skipBalanced(src, j + 1) - 1;
+  }
+  return src.length;
+}
+// 문자열·주석을 건너뛰며 한 걸음 나아간다. 건너뛸 것이 없으면 j 를 그대로 돌려준다.
+function skipNoise(src, j) {
+  const c = src[j];
+  if (c === "'" || c === '"' || c === '`') return skipString(src, j) - 1;
+  if (c === '/' && src[j + 1] === '/') { while (j < src.length && src[j] !== '\n') j++; return j; }
+  if (c === '/' && src[j + 1] === '*') { const e = src.indexOf('*/', j + 2); return e < 0 ? src.length : e + 1; }
+  return j;
+}
+// src[i] 가 여는 괄호일 때 짝이 되는 닫는 괄호 다음 위치.
+function skipBalanced(src, i) {
+  let depth = 0;
+  for (let j = i; j < src.length; j++) {
+    j = skipNoise(src, j);
+    const c = src[j];
+    if ('([{'.includes(c)) depth++;
+    else if (')]}'.includes(c) && --depth === 0) return j + 1;
+  }
+  return src.length;
+}
+// '(' 바로 뒤 위치 from 에서 시작해 최상위 쉼표로 나눈 인자 원문 목록.
+function splitArgs(src, from) {
+  const args = []; let start = from, depth = 0;
+  for (let j = from; j < src.length; j++) {
+    j = skipNoise(src, j);
+    const c = src[j];
+    if ('([{'.includes(c)) depth++;
+    else if (')]}'.includes(c)) { if (depth === 0) { args.push(src.slice(start, j)); return args; } depth--; }
+    else if (c === ',' && depth === 0) { args.push(src.slice(start, j)); start = j + 1; }
+  }
+  args.push(src.slice(start)); return args;
+}
+function findMessageSinks(src) {
+  const lineOf = pos => src.slice(0, pos).split('\n').length;
+  // 주석 줄 안의 언급은 호출이 아니다.
+  const inLineComment = pos => /^\s*(?:\/\/|\/\*|\*|<!--)/.test(src.slice(src.lastIndexOf('\n', pos - 1) + 1, pos));
+  const isDefinition = pos => /function\s+$/.test(src.slice(Math.max(0, pos - 20), pos));
+  const callRe = name => new RegExp('(?<![\\w$.])' + name + '\\s*\\(', 'g');
+  const calls = (name) => {
+    const out = [];
+    for (let m, re = callRe(name); (m = re.exec(src));) {
+      if (isDefinition(m.index) || inLineComment(m.index)) continue;
+      out.push({ pos: m.index, args: splitArgs(src, m.index + m[0].length) });
+    }
+    return out;
+  };
+  const sinks = [];
+  const add = (kind, pos, text) => sinks.push({ kind, line: lineOf(pos), text: text.trim() });
+
+  // 1) toast / showUndoToast 의 첫 인자(showUndoToast 의 둘째 인자는 실행 취소 함수이므로 제외)
+  let direct = 0;
+  for (const name of ['toast', 'showUndoToast']) for (const c of calls(name)) { direct++; add(name, c.pos, c.args[0] || ''); }
+
+  // 2) 도우미 함수 찾기: function NAME(params) { … toast(… param …) … }
+  const helpers = {};
+  const defRe = /(?:^|\n)[ \t]*(?:async\s+)?function\s+([\w$]+)\s*\(([^)]*)\)\s*\{/g;
+  for (let m; (m = defRe.exec(src));) {
+    const name = m[1];
+    if (name === 'toast' || name === 'showUndoToast') continue;
+    const params = m[2].split(',').map(x => x.trim().replace(/=.*$/, '').trim());
+    const open = m.index + m[0].length - 1, body = src.slice(open, skipBalanced(src, open));
+    const toastArgs = [];
+    for (const t of ['toast', 'showUndoToast']) for (let k, re = callRe(t); (k = re.exec(body));) toastArgs.push(splitArgs(body, k.index + k[0].length)[0]);
+    const idx = params.map((p, i) => (p && toastArgs.some(a => new RegExp('(?<![\\w$.])' + p.replace(/\$/g, '\\$') + '(?![\\w$])').test(a)) ? i : -1)).filter(i => i >= 0);
+    if (idx.length) helpers[name] = idx;
+  }
+  for (const [name, idx] of Object.entries(helpers)) for (const c of calls(name)) for (const i of idx) if (c.args[i] != null) add(name + '#' + i, c.pos, c.args[i]);
+
+  // 3) 힌트 요소 대입식: 우변 끝(; 또는 줄 끝)까지
+  const hintRe = /(?:getElementById\(\s*['"][\w-]*Hint['"]\s*\)|(?<![\w$.])hint)\s*\??\.(?:textContent|innerText|innerHTML)\s*=(?!=)/g;
+  for (let m; (m = hintRe.exec(src));) {
+    if (inLineComment(m.index)) continue;
+    const from = m.index + m[0].length;
+    let j = from, depth = 0;
+    for (; j < src.length; j++) {
+      j = skipNoise(src, j);
+      const c = src[j];
+      if ('([{'.includes(c)) depth++;
+      else if (')]}'.includes(c)) depth--;
+      else if ((c === ';' || c === '\n') && depth <= 0 && src.slice(from, j).trim()) break;
+    }
+    add('hint', m.index, src.slice(from, j));
+  }
+  return { sinks, helpers, direct };
+}
+const DECOR_TEXT = /\p{Extended_Pictographic}|️|[✓✔✕✖✦✧]/u; // 위 sweepDecorInPage 의 DECOR 와 같은 기준
+
+test('토스트·힌트 문구 소스에 이모지가 없다 (정적 검사: toast/showUndoToast 인자, 문구를 넘기는 도우미의 인자, *Hint 대입식)', 375, async () => {
+  const src = fs.readFileSync(path.join(process.env.MINB_ROOT || path.join(__dirname, '..'), 'index.html'), 'utf8');
+  const { sinks, helpers, direct } = findMessageSinks(src);
+  // 검사기가 조용히 아무것도 못 찾는 사고를 막는다: 호출 수가 기대보다 적으면 검사기가 깨진 것이다.
+  assert.ok(direct >= 60, `toast/showUndoToast 호출을 ${direct}개만 찾았다(검사기 이상?)`);
+  for (const h of ['persistMemoEntries', 'toggleSpaceDayMark', 'copyTextToClipboard']) assert.ok(helpers[h], `문구 도우미 ${h} 를 못 찾았다(검사기 이상?)`);
+  assert.ok(sinks.some(s => s.kind === 'hint'), '*Hint 대입식을 못 찾았다(검사기 이상?)');
+  const bad = sinks.filter(s => DECOR_TEXT.test(s.text)).map(s => `index.html:${s.line} [${s.kind}] ${s.text.replace(/\s+/g, ' ').slice(0, 90)}`);
+  assert.deepEqual(bad, [], `문구에 이모지 ${bad.length}곳:\n` + bad.join('\n'));
+});
+
+test('정적 검사기 자체 확인: 이모지가 든 문구는 잡고 보호 대상은 안 잡는다', 375, async () => {
+  const dirty = `
+    function h(m, x) { toast(m); }
+    function j(a) { if (a) toast(a); }
+    toast('🎉 a'); toast(cond ? '님' : \`🔒 \${n}\`); showUndoToast('🗑 b', () => {});
+    h('✅ c', 1); j('✔ d');
+    document.getElementById('noteSaveHint').textContent = '✅ 저장됨';
+    const hint = x; hint.textContent = ok ? '❗ e' : 'f';`;
+  const got = findMessageSinks(dirty).sinks.filter(s => DECOR_TEXT.test(s.text)).map(s => s.kind + ':' + s.text);
+  assert.equal(got.length, 7, '잡혀야 할 7곳(toast 2·showUndoToast 1·도우미 2·힌트 2) 중 ' + got.length + '곳만 잡힘: ' + got.join(' | '));
+  const clean = `
+    // toast('🎉 주석') 은 호출이 아니다
+    function toast(msg) { el.textContent = msg; }
+    function pick(rows) { return rows.map(x => x.replace(/^(?:[-*•·]|✅|✔|✓|\\d+[.)])\\s+/, '')); }
+    const cats = [{ icon: '💪' }, { icon: '🗂' }]; const apps = [{ icon: '📚' }];
+    tags.push('<span class="mcal-love-mark">❤️</span>'); const av = p.photo ? a : '👤'; label = isCur ? '✓ ' : '';
+    toast('완료했어요!'); showUndoToast(\`\${n}로 옮겼어요.\`, () => go('🗑'));
+    document.getElementById('noteSaveHint').textContent = '저장됨';`;
+  const dirtyClean = findMessageSinks(clean).sinks.filter(s => DECOR_TEXT.test(s.text)).map(s => s.kind + ':' + s.text);
+  assert.deepEqual(dirtyClean, [], '보호 대상을 잘못 잡음');
+});
+
+test('실제 토스트가 화면에 그려진 글자에 이모지가 없다 (완료·삭제 실행 취소·메모 추가)', 375, async p => {
+  const got = await p.evaluate(async () => {
+    const KEY = '2026-10-02';
+    userData.personalDays[KEY] = { todos: [
+      { id: 'a1', text: '완료할 일', by: 'A', cat: 'wk', visibility: 'private' },
+      { id: 'a2', text: '지울 일', by: 'A', cat: 'wk', visibility: 'private' },
+    ], notes: {} };
+    renderAll();
+    const el = document.getElementById('toast');
+    // twemoji 가 켜져 있으면 이모지는 <img alt> 로 바뀌므로 alt 까지 글자로 합쳐 본다
+    const shown = () => el.textContent + [...el.querySelectorAll('img[alt]')].map(i => i.alt).join('') + (el.querySelector('img') ? ' <img>' : '');
+    const out = [];
+    await completeUpcomingTodo(KEY, 'a1', true);
+    out.push({ via: '완료', text: el.textContent, all: shown(), show: el.classList.contains('show') });
+    await deleteTodoAt(KEY, 'a2', true);
+    out.push({ via: '삭제(실행 취소)', text: el.textContent, all: shown(), show: el.classList.contains('show'), undo: !!el.querySelector('.toast-undo') });
+    selectedMemoCat = 'st';
+    document.getElementById('memoEntryInput').value = '스페인어 단어';
+    await addMemoEntry();
+    out.push({ via: '메모 추가', text: el.textContent, all: shown(), show: el.classList.contains('show') });
+    return out;
+  });
+  const DECOR = /\p{Extended_Pictographic}|️|[✓✔✕✖✦✧]|<img>/u;
+  assert.deepEqual(got.map(g => g.via + ':' + g.text), ['완료:완료했어요!', '삭제(실행 취소):삭제했어요.실행 취소', '메모 추가:메모를 추가했어요!']);
+  for (const g of got) { assert.ok(g.show, `${g.via}: 토스트가 보이지 않는다`); assert.ok(!DECOR.test(g.all), `${g.via}: 토스트에 이모지 '${g.all}'`); }
+  assert.equal(got[1].undo, true, '삭제 토스트에 실행 취소 버튼이 있어야 한다');
 });
 
 test('콘솔 오류 없이 홈이 뜬다', 375, async (p, errors) => {
