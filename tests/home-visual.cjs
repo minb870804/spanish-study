@@ -18,9 +18,16 @@
 // 그때는 MINB_WRITE_BASELINE=sheets 로 그 항목만 갱신하고, computed 항목은 절대 재생성하지 말 것
 // (computed 가 그대로여야 "모습이 안 변했다"는 증명이 된다). 규칙 총합(totalRules)은 이전 전후로 같아야 한다.
 //
+// 안전장치: computed 스냅샷은 :hover/:focus/:active, 캡처한 두 폭 사이의 미디어쿼리, 필요할 때 생성되는 DOM 을 볼 수 없다.
+// 그래서 stylesheets 항목에는 (1) 규칙 총합 totalRules 와 (2) 모든 시트의 모든 규칙 cssText 를 캐스케이드 순서로 이어 붙인
+// sha256(cssHash) 도 저장한다. 단순 "이동"(인라인 <style> -> css/app.css, 같은 위치)은 시트 정체(id)만 바꾸고
+// totalRules 와 cssHash 는 그대로 둔다. 따라서 MINB_WRITE_BASELINE=sheets 는 이 둘 중 하나라도 바뀌면
+// 기준 파일을 쓰지 않고 오류로 종료한다(규칙 하나가 사라지거나 순서/내용이 바뀐 것을 조용히 받아들이지 않기 위해).
+//
 // MINB_ROOT 로 다른 소스 디렉터리를 대상으로 삼을 수 있다(recurrence.cjs 의 fixture 가 처리).
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const { fixture, chromium } = require('./recurrence.cjs');
 
@@ -66,19 +73,28 @@ function snapshotInPage(props) {
   return out;
 }
 
-// 페이지 안에서 실행: 스타일시트 순서와 (@media 등 중첩 포함) 규칙 수
+// 페이지 안에서 실행: 스타일시트 순서와 (@media 등 중첩 포함) 규칙 수, 그리고 모든 규칙의 cssText(캐스케이드 순서)
 function sheetsInPage() {
   const count = (rules) => { let n = 0; for (const r of rules) { n++; if (r.cssRules) n += count(r.cssRules); } return n; };
+  const texts = [];
+  for (const s of document.styleSheets) {
+    try { for (const r of s.cssRules) texts.push(r.cssText); } catch (e) { /* 교차 출처: 읽을 수 없음 */ }
+  }
   const sheets = [...document.styleSheets].map((s, i) => {
     let rules = -1; // -1: 읽을 수 없음(교차 출처 등)
     try { rules = count(s.cssRules); } catch (e) { /* 교차 출처 */ }
     return { id: s.href ? s.href.replace(location.origin + '/', '') : `inline#${i}`, rules };
   });
-  return { sheets, totalRules: sheets.reduce((a, s) => a + Math.max(s.rules, 0), 0) };
+  return { sheets, totalRules: sheets.reduce((a, s) => a + Math.max(s.rules, 0), 0), texts };
 }
 
 const snapshot = (page) => page.evaluate(snapshotInPage, PROPS);
-const sheetInfo = (page) => page.evaluate(sheetsInPage);
+// 규칙 텍스트는 노드에서 해시한다(시트 경계·id 는 해시에 넣지 않는다: 인라인 -> 외부 파일 이동에 불변이어야 한다).
+// 규칙마다 NUL 로 구분해 "ab"+"c" 와 "a"+"bc" 가 같은 해시가 되지 않게 한다.
+const sheetInfo = async (page) => {
+  const { texts, ...info } = await page.evaluate(sheetsInPage);
+  return { ...info, cssHash: crypto.createHash('sha256').update(texts.join('\0')).digest('hex') };
+};
 
 function diffSnapshots(expected, actual) {
   const diffs = [];
@@ -117,10 +133,26 @@ for (const w of WIDTHS) {
 test('스타일시트 순서와 규칙 수가 기준과 같다', 1280, async (p) => {
   const expected = readBaseline().stylesheets;
   const actual = await sheetInfo(p);
-  assert.deepEqual(actual.sheets.map(s => s.id), expected.sheets.map(s => s.id), '스타일시트 순서/목록');
-  const perSheet = actual.sheets.map((s, i) => [s.id, expected.sheets[i].rules, s.rules]).filter(([, e, a]) => e !== a);
-  assert.equal(perSheet.length, 0, '시트별 규칙 수 차이: ' + perSheet.map(([id, e, a]) => `${id} ${e}->${a}`).join(', '));
-  assert.equal(actual.totalRules, expected.totalRules, '전체 CSS 규칙 수');
+  const problems = [];
+  const ids = (x) => x.sheets.map(s => s.id);
+  if (JSON.stringify(ids(actual)) !== JSON.stringify(ids(expected))) {
+    problems.push('스타일시트 순서/목록이 다르다\n  기준: ' + JSON.stringify(ids(expected), null, 2).replace(/\n/g, '\n  ')
+      + '\n  실제: ' + JSON.stringify(ids(actual), null, 2).replace(/\n/g, '\n  '));
+  } else {
+    const perSheet = actual.sheets.map((s, i) => [s.id, expected.sheets[i].rules, s.rules]).filter(([, e, a]) => e !== a);
+    if (perSheet.length) problems.push('시트별 규칙 수 차이(기준->실제): ' + perSheet.map(([id, e, a]) => `${id} ${e}->${a}`).join(', '));
+  }
+  if (actual.totalRules !== expected.totalRules) {
+    problems.push(`전체 CSS 규칙 수가 다르다: 기준 ${expected.totalRules}, 실제 ${actual.totalRules} (규칙이 ${actual.totalRules < expected.totalRules ? '사라졌' : '늘었'}다)`);
+  }
+  if (!expected.cssHash) {
+    problems.push('기준에 cssHash 가 없다. 수정하지 않은 트리에서 MINB_WRITE_BASELINE=1 로 기준을 재생성해야 한다');
+  } else if (actual.cssHash !== expected.cssHash) {
+    problems.push(`CSS 규칙 텍스트/순서가 바뀌었다(cssHash 불일치): 기준 ${expected.cssHash}, 실제 ${actual.cssHash}\n`
+      + '  렌더된 스타일(computed)은 같아도 어떤 규칙의 텍스트가 바뀌었거나 사라졌거나 순서가 바뀐 것이다'
+      + '(:hover/:focus, 캡처하지 않은 폭의 미디어쿼리, 동적 DOM 용 규칙일 수 있다).');
+  }
+  if (problems.length) throw new Error('\n' + problems.join('\n'));
 });
 
 test('콘솔 오류 없이 홈이 뜬다', 375, async (p, errors) => {
@@ -140,6 +172,26 @@ async function writeBaseline(browser) {
       if (w === 1280) stylesheets = await sheetInfo(page);
     } finally { await context.close(); }
   }
+  if (WRITE === 'sheets') {
+    // 단순 이동은 시트 정체만 바꾼다. 규칙 수나 규칙 텍스트가 바뀌었다면 이동이 아니므로 기준을 덮어쓰지 않는다.
+    const old = prev.stylesheets || {};
+    const refuse = [];
+    if (old.totalRules !== stylesheets.totalRules) {
+      refuse.push(`전체 규칙 수가 다르다: 기준 ${old.totalRules}, 새로 측정 ${stylesheets.totalRules}`);
+    }
+    if (!old.cssHash) {
+      refuse.push('기준에 cssHash 가 없다(구버전 기준). 수정하지 않은 트리에서 MINB_WRITE_BASELINE=1 로 먼저 재생성할 것');
+    } else if (old.cssHash !== stylesheets.cssHash) {
+      refuse.push(`cssHash 가 다르다: 기준 ${old.cssHash}, 새로 측정 ${stylesheets.cssHash}\n`
+        + '  렌더된 스타일은 같아도 어떤 규칙의 텍스트가 바뀌었거나 사라졌거나 순서가 바뀌었다');
+    }
+    if (refuse.length) {
+      console.error('MINB_WRITE_BASELINE=sheets 거부: 이것은 "순수 이동"이 아니다. 기준 파일을 쓰지 않았다.\n- ' + refuse.join('\n- ')
+        + '\n이동 중 규칙을 잃었거나 바꾼 것이 아닌지 확인하라(computed 스냅샷은 :hover 등을 볼 수 없다).');
+      process.exitCode = 1;
+      return;
+    }
+  }
   const data = { computed: WRITE === 'sheets' ? prev.computed : computed, stylesheets };
   // 요소당 한 줄: git diff 로 어느 요소가 바뀌었는지 읽을 수 있게 한다
   const lines = ['{', '"_": "생성물: MINB_WRITE_BASELINE=1 node tests/home-visual.cjs 로 재생성. 손으로 고치지 말 것. 자세한 내용은 tests/home-visual.cjs 머리말 참고",',
@@ -155,7 +207,7 @@ async function writeBaseline(browser) {
   fs.mkdirSync(path.dirname(BASELINE_FILE), { recursive: true });
   fs.writeFileSync(BASELINE_FILE, lines.join('\n') + '\n');
   const n = Object.values(data.computed).map(c => Object.keys(c).length);
-  console.log(`기준 파일 작성(${WRITE}): ${BASELINE_FILE}\n  요소 수 ${WIDTHS.map((w, i) => `${w}px=${n[i]}`).join(' ')}, 시트 ${data.stylesheets.sheets.length}개, 규칙 ${data.stylesheets.totalRules}개`);
+  console.log(`기준 파일 작성(${WRITE}): ${BASELINE_FILE}\n  요소 수 ${WIDTHS.map((w, i) => `${w}px=${n[i]}`).join(' ')}, 시트 ${data.stylesheets.sheets.length}개, 규칙 ${data.stylesheets.totalRules}개, cssHash ${data.stylesheets.cssHash.slice(0, 12)}`);
 }
 
 (async () => {
