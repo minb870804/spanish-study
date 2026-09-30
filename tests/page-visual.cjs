@@ -424,6 +424,31 @@ async function writeBaseline(browser) {
   fs.writeFileSync(BASELINE_FILE, serialize(out));
 }
 
+// 가로 넘침 없음 — 세 폭 × 두 테마. .study-table-region 은 가로 스크롤이 허용된 영역이라 그 내부 요소는 제외.
+for (const page of PAGES) {
+  for (const w of [375, 768, 1280]) {
+    for (const dark of [false, true]) {
+      test(`${page} 가로 넘침 없음 (${w}px ${dark ? '다크' : '라이트'})`, page, w, async p => {
+        if (dark) await p.evaluate(() => { document.body.classList.add('dark'); window.renderThemeToggle && window.renderThemeToggle(); });
+        await p.waitForTimeout(200);
+        const o = await p.evaluate(() => ({
+          doc: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          body: document.body.scrollWidth - document.body.clientWidth,
+          out: [...document.querySelectorAll('body *')].filter(el => {
+            const s = getComputedStyle(el);
+            if (s.position === 'fixed' || s.display === 'none' || s.visibility === 'hidden') return false;
+            if (el.closest('.study-table-region')) return false;
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.right > innerWidth + 1;
+          }).slice(0, 5).map(el => el.tagName + '.' + el.className),
+        }));
+        assert.ok(o.doc <= 1 && o.body <= 1, `넘침 doc=${o.doc} body=${o.body}`);
+        assert.deepEqual(o.out, []);
+      });
+    }
+  }
+}
+
 module.exports = { test, PAGES, FIXED_NOW };
 
 if (require.main === module) (async () => {
