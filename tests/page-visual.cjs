@@ -274,6 +274,29 @@ test('diary.html 감정 태그 8개는 이모지를 그대로 가진다', 'diary
   for (const t of tags) assert.ok(DECOR_TEXT.test(t), `이모지가 빠졌다: ${t}`);
 });
 
+// 스터디 학습 내용 — 문법 설명의 화살표와 진도의 완료 표시
+const STUDY_ALLOW = [
+  /➔/g,                          // 문법 설명 화살표 (학습 내용)
+  /\$\{complete\?'✓':d\.num\}/g,  // 완료한 Día 번호 자리의 완료 표시 (유일한 신호)
+];
+// Task 8 이 맡는 기능 버튼만 좁게 뺀다. 🔊 를 통째로 빼면 팁 박스·자료 목록의 🔊(Task 7 몫)까지 가려진다.
+const TASK8_LATER = [
+  /speak-btn[^>]*>🔊/g,                                           // 발음 듣기 버튼 (정적·템플릿 모두 이 형태)
+  />🔊 듣기</g,                                                    // 연습 답 듣기 버튼
+  />🔊 자동 발음: ON</g, /'🔊 자동 발음: ON' : '🔇 자동 발음: OFF'/g, // 자동 발음 토글
+  /feedbackIcon\.innerHTML = '[✅❌]'/g,                            // 퀴즈 채점
+  /🔀 랜덤 방향|🇪🇸 스→한|🇰🇷 한→스/g,                               // 퀴즈 방향
+  /title="삭제">🗑️<\/button>/g,                                   // 사용자 단어 삭제 버튼 (이모지만 있다) — 브리프에 없던 기능 버튼
+  /prevMonth\(\)[^>]*>◀</g, /nextMonth\(\)[^>]*>▶</g,             // 출석 달력 이전/다음 달 (기호만 있다) — 브리프에 없던 기능 버튼
+];
+test('study.html 화면 장식 이모지가 없다 (Task 7 범위)', 'study.html', 375, async () => {
+  assert.deepEqual(sourceSweep('study.html', [...STUDY_ALLOW, ...TASK8_LATER]), []);
+});
+test('study.html 문법 화살표 ➔ 는 그대로다', 'study.html', 375, async () => {
+  const n = (fs.readFileSync(path.join(ROOT, 'study.html'), 'utf8').match(/➔/g) || []).length;
+  assert.equal(n, 14, `➔ 가 ${n}개다 — 학습 내용이 바뀌었다`);
+});
+
 async function writeBaseline(browser) {
   const prev = fs.existsSync(BASELINE_FILE) ? readBaseline() : {};
   const targets = WRITE_PAGES.length ? WRITE_PAGES : PAGES;

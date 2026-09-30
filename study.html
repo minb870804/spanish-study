@@ -200,7 +200,6 @@
     margin-bottom: 18px; position: relative; overflow: hidden;
     box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,0.16);
   }
-  .hero::after { content: '🇪🇸'; position: absolute; right: 24px; top: 50%; transform: translateY(-50%); font-size: 72px; opacity: 0.15; pointer-events: none; }
   .hero h2 { font-size: 22px; font-weight: 900; letter-spacing: -0.3px; margin-bottom: 6px; }
   .hero p { opacity: .88; font-size: 13px; margin-bottom: 20px; }
   .hero-stats { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -621,6 +620,7 @@
   .notice { background: var(--blue-light); border: 1px solid rgba(56, 103, 155, 0.15); border-radius: 12px; padding: 14px 18px; font-size: 13.5px; color: var(--blue); margin-bottom: 18px; display: flex; gap: 12px; align-items: flex-start; line-height: 1.6; }
   body.dark .notice { color: #90caf9; }
   .notice, .tip-box { word-break: keep-all; }
+  .tip-box > span .ui-icon, .notice > span .ui-icon, .nexus-row > span .ui-icon { display: block; width: 18px; height: 18px; }
 
   /* ══════════════════════════════════════
      LOGIN OVERLAY (메인과 동일)
@@ -720,14 +720,14 @@
       </div>
     </div>
     <div class="header-right">
-      <a href="./" class="nexus-link">🏠 Minb</a>
+      <a href="./" class="nexus-link">Minb</a>
       <!-- [신설] 구글 프로필 영역 -->
       <span id="userProfile" class="profile-badge" style="display: none;">
-        <span id="userName">👤 로딩중...</span>
+        <span id="userName">로딩중...</span>
         <button onclick="logout()" class="logout-btn">로그아웃</button>
       </span>
       <button type="button" id="themeToggle" class="hbtn icon-btn" onclick="toggleTheme()" aria-label="테마 바꾸기" title="테마 바꾸기"></button>
-      <a href="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" target="_blank" class="nexus-link">📚 넥서스 부록</a>
+      <a href="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" target="_blank" class="nexus-link">넥서스 부록</a>
       <span class="today-badge" id="todayBadge"></span>
     </div>
   </div>
@@ -814,16 +814,16 @@
   <details class="card study-guide">
     <summary>진도 체크 방법 · 학습 팁</summary>
   <div class="notice">
-    <span>ℹ️</span>
+    <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.01"/></svg></span>
     <div>
       <strong>진도 체크 방법:</strong> <a href="#" onclick="showTab('plan');return false;">학습 계획 탭</a>에서 각 Día를 열고 학습 항목에 체크하세요. 체크할수록 자동으로 진도·달력·통계가 업데이트됩니다. 별도로 완료 버튼을 누를 필요가 없어요.
     </div>
   </div>
     <div class="study-tips">
-      <div class="tip-box"><span>🔊</span><div><strong>음원을 반드시 활용</strong><br>넥서스 부록 페이지에서 각 Día의 MP3 + 동영상 강의를 무료로 <span style="white-space:nowrap;">들을 수 있어요.</span> 소리 없이 눈으로만 공부하면 발음이 굳어집니다.</div></div>
-      <div class="tip-box"><span>🔄</span><div><strong>복습용 동영상 활용</strong><br>각 Día에는 복습용 동영상이 따로 있어요. 다음 Día로 넘어가기 전에 꼭 복습 영상으로 확인하세요.</div></div>
-      <div class="tip-box"><span>🃏</span><div><strong>단어 암기 동영상</strong><br>Día 02~16에는 단어 암기 동영상이 제공돼요. 플래시카드와 함께 활용하면 함께 복습하기 좋아요.</div></div>
-      <div class="tip-box"><span>📅</span><div><strong>주 3일 리듬 유지</strong><br>매일보다 규칙적인 주 3회가 더 중요해요. 학습 계획 탭에서 체크하며 리듬을 만들어가세요.</div></div>
+      <div class="tip-box"><span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></span><div><strong>음원을 반드시 활용</strong><br>넥서스 부록 페이지에서 각 Día의 MP3 + 동영상 강의를 무료로 <span style="white-space:nowrap;">들을 수 있어요.</span> 소리 없이 눈으로만 공부하면 발음이 굳어집니다.</div></div>
+      <div class="tip-box"><span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4"/></svg></span><div><strong>복습용 동영상 활용</strong><br>각 Día에는 복습용 동영상이 따로 있어요. 다음 Día로 넘어가기 전에 꼭 복습 영상으로 확인하세요.</div></div>
+      <div class="tip-box"><span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 9h6M9 13h6"/></svg></span><div><strong>단어 암기 동영상</strong><br>Día 02~16에는 단어 암기 동영상이 제공돼요. 플래시카드와 함께 활용하면 함께 복습하기 좋아요.</div></div>
+      <div class="tip-box"><span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span><div><strong>주 3일 리듬 유지</strong><br>매일보다 규칙적인 주 3회가 더 중요해요. 학습 계획 탭에서 체크하며 리듬을 만들어가세요.</div></div>
     </div>
   </details>
 </div>
@@ -833,7 +833,7 @@
   <div class="section-title">8주 학습 계획 <span style="font-size:13px;font-weight:400;color:var(--muted);">— 넥서스 Día 01~16 기반</span></div>
 
   <div class="notice">
-    <span>✅</span>
+    <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>
     <div>Día를 열어 공부한 항목에 체크하세요. 진도와 출석 기록에 바로 반영됩니다.</div>
   </div>
 
@@ -845,7 +845,7 @@
   <div class="section-title">단어장</div>
   
   <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
-    <button onclick="toggleCustomForm()" class="filter-btn active" style="background: var(--blue); border-color: var(--blue); display: flex; align-items: center; gap: 6px;">➕ 나만의 단어 추가</button>
+    <button onclick="toggleCustomForm()" class="filter-btn active" style="background: var(--blue); border-color: var(--blue); display: flex; align-items: center; gap: 6px;">나만의 단어 추가</button>
   </div>
   
   <div class="card" id="custom-vocab-card" style="display: none; margin-bottom: 18px; border: 1px solid var(--border);">
@@ -927,7 +927,7 @@
     </div>
     <div class="vocab-summary" id="vocabSummary"></div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-      <input type="text" class="search-input" placeholder="🔍 단어 검색..." oninput="filterVocab(this.value)">
+      <input type="text" class="search-input" placeholder="단어 검색" oninput="filterVocab(this.value)">
       <button class="filter-btn active" onclick="filterByDia('all',this)">전체</button>
       <button class="filter-btn" onclick="filterByDia('1',this)">Día 01~05</button>
       <button class="filter-btn" onclick="filterByDia('2',this)">Día 06~10</button>
@@ -952,20 +952,20 @@
   <div class="section-title">핵심 문법 정리</div>
   <div class="card">
     <div class="grammar-section">
-      <h3>📌 1. 명사의 성 — Día 02</h3>
+      <h3>1. 명사의 성 — Día 02</h3>
       <div class="rule-box">
         <div class="rule-title">남성 vs 여성 핵심 규칙</div>
         • <strong>-o</strong>로 끝나는 명사 ➔ 남성 (el libr<strong>o</strong> 책, el niñ<strong>o</strong> 소년, el perr<strong>o</strong> 개)<br>
         • <strong>-a</strong>로 끝나는 명사 ➔ 여성 (la cas<strong>a</strong> 집, la niñ<strong>a</strong> 소녀, la mes<strong>a</strong> 탁자)<br>
         • <strong>-or, -aje, -ma</strong>로 끝남 ➔ 주로 남성 (el am<strong>or</strong> 사랑, el vi<strong>aje</strong> 여행, el idio<strong>ma</strong> 언어)<br>
         • <strong>-ción, -sión, -dad, -tad</strong> ➔ 주로 여성 (la can<strong>ción</strong> 노래, la ciu<strong>dad</strong> 도시, la liber<strong>tad</strong> 자유)<br>
-        • <strong>⚠️ 대표적인 불규칙 명사:</strong> el día (하루 - 남성), la mano (손 - 여성), el mapa (지도 - 남성), la foto (사진 - 여성)
+        • <strong>주의 — 대표적인 불규칙 명사:</strong> el día (하루 - 남성), la mano (손 - 여성), el mapa (지도 - 남성), la foto (사진 - 여성)
       </div>
-      <div class="tip-box">💡 명사를 외울 때 성별을 결정하는 <strong>정관사(el / la)</strong>를 한 단어처럼 입에 익히는 것이 핵심 비결입니다!</div>
+      <div class="tip-box"><strong>팁</strong> 명사를 외울 때 성별을 결정하는 <strong>정관사(el / la)</strong>를 한 단어처럼 입에 익히는 것이 핵심 비결입니다!</div>
     </div>
     
     <div class="grammar-section">
-      <h3>📌 2. SER 현재형 — Día 03</h3>
+      <h3>2. SER 현재형 — Día 03</h3>
       <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">정체성, 직업, 국적, 성격 등 쉽게 변하지 않는 본질적인 상태를 나타냅니다.</div>
       <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
 <table class="conjugation-table">
@@ -983,7 +983,7 @@
     </div>
     
     <div class="grammar-section">
-      <h3>📌 3. ESTAR 현재형 — Día 05</h3>
+      <h3>3. ESTAR 현재형 — Día 05</h3>
       <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">지리적 위치나 일시적인 감정, 기분, 신체적 상태를 나타냅니다.</div>
       <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
 <table class="conjugation-table">
@@ -1006,7 +1006,7 @@
     </div>
     
     <div class="grammar-section">
-      <h3>📌 4. -AR 규칙동사 — Día 06</h3>
+      <h3>4. -AR 규칙동사 — Día 06</h3>
       <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">동사원형의 어미 <strong>-ar</strong>을 떼어내고 주어에 맞춰 변화시킵니다. (예: hablar 말하다)</div>
       <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
 <table class="conjugation-table">
@@ -1024,7 +1024,7 @@
     </div>
     
     <div class="grammar-section">
-      <h3>📌 5. -ER / -IR 규칙동사 — Día 07</h3>
+      <h3>5. -ER / -IR 규칙동사 — Día 07</h3>
       <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">-er(먹다 comer)과 -ir(살다 vivir)은 복수형 주어(nosotros, vosotros) 외의 모든 인칭 변화형이 일치합니다.</div>
       <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
 <table class="conjugation-table">
@@ -1039,11 +1039,11 @@
         </tbody>
       </table>
 </div>
-      <div class="tip-box">💡 <strong>꿀팁:</strong> 복수 1, 2인칭만 -er동사는 <strong>e</strong>계열(-emos, -éis), -ir동사는 <strong>i</strong>계열(-imos, -ís)을 사용하며 나머지는 완벽히 동형입니다.</div>
+      <div class="tip-box"><strong>꿀팁:</strong> 복수 1, 2인칭만 -er동사는 <strong>e</strong>계열(-emos, -éis), -ir동사는 <strong>i</strong>계열(-imos, -ís)을 사용하며 나머지는 완벽히 동형입니다.</div>
     </div>
     
     <div class="grammar-section">
-      <h3>📌 6. 불규칙동사 TENER / IR — Día 08 · 12</h3>
+      <h3>6. 불규칙동사 TENER / IR — Día 08 · 12</h3>
       <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
 <table class="conjugation-table">
         <thead><tr><th>주어</th><th>tener (가지다)</th><th>ir (가다)</th><th>ir + a + 장소/동사원형</th></tr></thead>
@@ -1060,7 +1060,7 @@
     </div>
     
     <div class="grammar-section">
-      <h3>📌 7. gustar 구문 (역구조 동사) — Día 10</h3>
+      <h3>7. gustar 구문 (역구조 동사) — Día 10</h3>
       <div class="rule-box">
         <div class="rule-title">영어의 like와 구조가 반대입니다! 주어가 뒤에 옵니다.</div>
         • [간접목적격 대명사] + <strong>gusta</strong> + [단수 주어/동사원형]<br>
@@ -1074,7 +1074,7 @@
     </div>
     
     <div class="grammar-section">
-      <h3>📌 8. 단순과거 — Día 15</h3>
+      <h3>8. 단순과거 — Día 15</h3>
       <div class="study-table-region" role="region" aria-label="학습 표 · 좌우로 스크롤하여 전체 내용 보기" tabindex="0">
 <table class="conjugation-table">
         <thead><tr><th>주어</th><th>-AR 어미 변화 (hablar)</th><th>-ER/IR 어미 변화 (comer)</th><th>자주 쓰는 과거 시간 부사</th></tr></thead>
@@ -1199,7 +1199,6 @@
   
   <!-- 퀴즈 결과 화면 -->
   <div class="card" id="quiz-result" style="display: none; text-align: center; padding: 40px 20px;">
-    <div style="font-size: 48px; margin-bottom: 16px;">🏆</div>
     <h3 style="font-size: 22px; font-weight: 800; margin-bottom: 8px;">퀴즈 완료!</h3>
     <div style="margin: 24px 0;">
       <div style="font-size: 36px; font-weight: 900; color: var(--red);" id="quiz-score-num">0 / 10</div>
@@ -1211,14 +1210,14 @@
 
     <!-- 오답노트 -->
     <div id="quiz-wrong-box" style="display: none; text-align: left; max-width: 480px; margin: 0 auto 28px; background: var(--red-light); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px;">
-      <div style="font-size: 13.5px; font-weight: 800; margin-bottom: 10px;">📝 오답노트 — 이번에 틀린 단어</div>
+      <div style="font-size: 13.5px; font-weight: 800; margin-bottom: 10px;">오답노트 — 이번에 틀린 단어</div>
       <div id="quiz-wrong-list" style="display: flex; flex-direction: column; gap: 8px; font-size: 13.5px;"></div>
     </div>
 
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
       <button onclick="resetQuiz()" class="filter-btn" style="padding: 10px 24px;">대기 화면으로</button>
-      <button onclick="retryWrongQuiz()" id="quiz-retry-wrong-btn" class="filter-btn" style="padding: 10px 24px; display: none; border-color: var(--red); color: var(--red);">오답만 다시 풀기 ✍️</button>
-      <button onclick="startQuiz()" class="filter-btn active" style="padding: 10px 24px;">한 번 더 풀기 🔄</button>
+      <button onclick="retryWrongQuiz()" id="quiz-retry-wrong-btn" class="filter-btn" style="padding: 10px 24px; display: none; border-color: var(--red); color: var(--red);">오답만 다시 풀기</button>
+      <button onclick="startQuiz()" class="filter-btn active" style="padding: 10px 24px;">한 번 더 풀기</button>
     </div>
   </div>
 </div>
@@ -1228,7 +1227,7 @@
   <div class="section-title">진도 체크</div>
 
   <div class="notice">
-    <span>📌</span>
+    <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 6 3 3H7l3-3ZM12 13v7"/></svg></span>
     <div><strong>진도는 학습 계획 탭에서 자동 반영됩니다.</strong> 각 Día의 항목에 체크하면 이 페이지의 달력과 통계가 업데이트돼요. 여기서는 전체 진도를 한눈에 확인만 하세요.</div>
   </div>
 
@@ -1298,7 +1297,7 @@
   <div class="section-title">넥서스 공식 부록 연동</div>
   
   <div class="notice">
-    <span>ℹ️</span>
+    <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.01"/></svg></span>
     <div>
       교재 음원과 동영상은 넥서스 자료실에서 새 탭으로 열려요. 학습을 마친 뒤 돌아와 진도를 체크하세요.
     </div>
@@ -1309,7 +1308,7 @@
       <h3>넥서스 교재 자료실</h3>
       <p>Día 01~16 동영상 강의 · MP3 음원 · 복습 영상 · 단어 암기 영상 일체 제공</p>
     </div>
-    <a href="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" target="_blank" rel="noopener noreferrer" class="nexus-open-btn">🔊 공식 자료실 바로가기 ➔</a>
+    <a href="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" target="_blank" rel="noopener noreferrer" class="nexus-open-btn">공식 자료실 바로가기 ➔</a>
   </div>
   <div class="grid-2">
     <div class="card">
@@ -1317,11 +1316,11 @@
         <div class="card-title-left">부록 구성</div>
       </div>
       <div style="font-size:13px;line-height:2;">
-        <div>📹 <strong>Día 01</strong> — 발음 특훈 동영상 + MP3</div>
-        <div>📹 <strong>Día 02~16</strong> — 동영상 강의</div>
-        <div>🔊 <strong>Día 02~16</strong> — MP3 한번에 듣기</div>
-        <div>🔄 <strong>Día 02~16</strong> — 복습용 동영상</div>
-        <div>🃏 <strong>Día 02~16</strong> — 단어 암기 동영상</div>
+        <div><strong>Día 01</strong> — 발음 특훈 동영상 + MP3</div>
+        <div><strong>Día 02~16</strong> — 동영상 강의</div>
+        <div><strong>Día 02~16</strong> — MP3 한번에 듣기</div>
+        <div><strong>Día 02~16</strong> — 복습용 동영상</div>
+        <div><strong>Día 02~16</strong> — 단어 암기 동영상</div>
       </div>
     </div>
     <div class="card">
@@ -1329,11 +1328,11 @@
         <div class="card-title-left">추천 무료 자료</div>
       </div>
       <div style="font-size:13px;line-height:2;">
-        <div>📱 <strong>Duolingo</strong> — 하루 5분 보조 앱</div>
-        <div>🎬 <strong>YouTube: ProfeDeELE</strong> — 무료 문법 강의</div>
-        <div>🃏 <strong>Anki</strong> — 고급 단어 암기 앱</div>
-        <div>🗣️ <strong>HelloTalk</strong> — 원어민 언어교환</div>
-        <div>📻 <strong>SpanishPod101</strong> — 팟캐스트 청취</div>
+        <div><strong>Duolingo</strong> — 하루 5분 보조 앱</div>
+        <div><strong>YouTube: ProfeDeELE</strong> — 무료 문법 강의</div>
+        <div><strong>Anki</strong> — 고급 단어 암기 앱</div>
+        <div><strong>HelloTalk</strong> — 원어민 언어교환</div>
+        <div><strong>SpanishPod101</strong> — 팟캐스트 청취</div>
       </div>
     </div>
   </div>
@@ -1377,7 +1376,7 @@ auth.onAuthStateChanged(async (user) => {
     
     // 프로필 표시 활성화
     document.getElementById('userProfile').style.display = 'flex';
-    document.getElementById('userName').textContent = `👤 ${user.displayName || '학습자'}`;
+    document.getElementById('userName').textContent = `${user.displayName || '학습자'}`;
     
     // Firestore DB 데이터 로드
     await loadDataFromFirestore(user.uid);
@@ -1948,7 +1947,7 @@ function renderPlan() {
     if (dia.week !== lastWeek) {
       lastWeek = dia.week;
       html += `<div class="week-header">
-        <span>📅 ${WEEK_LABELS[dia.week] || dia.week+'주차'}</span>
+        <span>${WEEK_LABELS[dia.week] || dia.week+'주차'}</span>
         <span class="week-badge">주 3일</span>
       </div>`;
     }
@@ -1964,7 +1963,7 @@ function renderPlan() {
           <div class="sub">${dia.sub}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span class="dia-status ${complete?'done':'todo'}">${complete?'✅ 완료':'📖 학습중'}</span>
+          <span class="dia-status ${complete?'done':'todo'}">${complete?'완료':'학습중'}</span>
           <span class="dia-toggle" id="dia-toggle-${dia.num}">▼</span>
         </div>
       </div>
@@ -1984,7 +1983,7 @@ function renderPlan() {
             </div>`).join('')}
         </div>
         <div class="nexus-row">
-          <span>🔊</span>
+          <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></span>
           <a href="http://www.nexusbook.com/qr/books/first_step/sp_main.asp?no=3" target="_blank">넥서스 Día ${String(dia.num).padStart(2,'0')} 음원 · 동영상 바로가기 →</a>
         </div>
       </div>
@@ -2033,7 +2032,7 @@ async function checkTask(taskId, diaNum, checked) {
   if (card) {
     card.className = `dia-card${complete?' completed':''}`;
     const status = card.querySelector('.dia-status');
-    if (status) { status.className = `dia-status ${complete?'done':'todo'}`; status.textContent = complete?'✅ 완료':'📖 학습중'; }
+    if (status) { status.className = `dia-status ${complete?'done':'todo'}`; status.textContent = complete?'완료':'학습중'; }
     const numEl = card.querySelector('.dia-num');
     if (numEl) numEl.style.background = complete ? 'var(--ui-soft)' : '';
   }
@@ -2061,7 +2060,7 @@ function updateHomeToday() {
   // Find the first incomplete Día
   const nextDia = DIAS.find(d => d.tasks.some(task => !s.tasks[task.id]));
   if (!nextDia) {
-    el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--green);font-size:16px;font-weight:800;">🎉 ¡Felicidades! 모든 Día 완료!</div>`;
+    el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--green);font-size:16px;font-weight:800;">¡Felicidades! 모든 Día 완료!</div>`;
     return;
   }
   const prog = diaProgress(nextDia.num, s);
@@ -2483,10 +2482,10 @@ function showQuizResult() {
   document.getElementById('quiz-score-pct').textContent = `정답률: ${scorePct}%`;
   
   let praiseMsg = '';
-  if (scorePct === 100) praiseMsg = '¡Excelente! 스페인어 마스터 인증! 모든 문제를 완벽히 맞히셨습니다! 👑';
-  else if (scorePct >= 80) praiseMsg = '¡Muy bien! 스페인어 실력이 무척 탄탄하시군요! 멋진 성과입니다! 🌟';
-  else if (scorePct >= 50) praiseMsg = '¡Buen trabajo! 좋은 페이스입니다! 헷갈렸던 어휘는 단어장에서 한 번 더 짚어보세요! 👍';
-  else praiseMsg = '¡Ánimo! 힘내세요! 포기하지 않고 반복 학습하면 금세 정답률이 쑥쑥 올라갈 것입니다! 🔥';
+  if (scorePct === 100) praiseMsg = '¡Excelente! 스페인어 마스터 인증! 모든 문제를 완벽히 맞히셨습니다!';
+  else if (scorePct >= 80) praiseMsg = '¡Muy bien! 스페인어 실력이 무척 탄탄하시군요! 멋진 성과입니다!';
+  else if (scorePct >= 50) praiseMsg = '¡Buen trabajo! 좋은 페이스입니다! 헷갈렸던 어휘는 단어장에서 한 번 더 짚어보세요!';
+  else praiseMsg = '¡Ánimo! 힘내세요! 포기하지 않고 반복 학습하면 금세 정답률이 쑥쑥 올라갈 것입니다!';
 
   document.getElementById('quiz-praise-msg').textContent = praiseMsg;
 
@@ -2628,7 +2627,7 @@ function renderDiaProgressList() {
 function renderLog(studied) {
   const el = document.getElementById('study-log');
   if (!studied.length) {
-    el.innerHTML='<div class="empty-state"><div class="icon">📚</div>아직 학습 기록이 없어요.<br>학습 계획 탭에서 체크리스트를 클릭해보세요!</div>';
+    el.innerHTML='<div class="empty-state">아직 학습 기록이 없어요.<br>학습 계획 탭에서 체크리스트를 클릭해보세요!</div>';
     return;
   }
   const sorted=[...studied].sort().reverse().slice(0,12);
@@ -2646,7 +2645,7 @@ function renderLog(studied) {
 // DATA RESET (데이터 초기화 및 DB 동기화)
 // ══════════════════════════════════════
 async function resetAllData() {
-  if (confirm('⚠️ 정말로 모든 학습 기록을 초기화하시겠습니까?\n체크리스트, 단어장 및 출석 달력 기록이 영구 삭제되며 되돌릴 수 없습니다.')) {
+  if (confirm('정말로 모든 학습 기록을 초기화하시겠습니까?\n체크리스트, 단어장 및 출석 달력 기록이 영구 삭제되며 되돌릴 수 없습니다.')) {
     await studySyncQueue;
     localStorage.removeItem(studyStorageKey());
     localStorage.removeItem(studyStorageKey('drafts'));
