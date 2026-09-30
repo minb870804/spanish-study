@@ -371,11 +371,11 @@
       </div>
     </div>
     <div class="header-right">
-      <a href="./" class="hbtn">🏠 Minb</a>
-      <a href="shared-diary.html" class="hbtn">💌 교환일기</a>
-      <a href="study.html" class="hbtn">🇪🇸 스터디</a>
+      <a href="./" class="hbtn">Minb</a>
+      <a href="shared-diary.html" class="hbtn">교환일기</a>
+      <a href="study.html" class="hbtn">스터디</a>
       <span id="userProfile" class="profile-badge" style="display: none;">
-        <span id="userName">👤 로딩중...</span>
+        <span id="userName">로딩중...</span>
         <button onclick="logout()" class="logout-btn">로그아웃</button>
       </span>
       <button type="button" id="themeToggle" class="hbtn icon-btn" onclick="toggleTheme()" aria-label="테마 바꾸기" title="테마 바꾸기"></button>
@@ -523,7 +523,7 @@ auth.onAuthStateChanged(async (user) => {
     currentUser = user;
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('userProfile').style.display = 'flex';
-    document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
+    document.getElementById('userName').textContent = `${user.displayName || '사용자'}`;
     loadDiary();
   } else {
     currentUser = null;
@@ -770,7 +770,7 @@ function loadEntry(key) {
     if (Array.isArray(draft.feelings)) selectedFeelings = draft.feelings.filter(id => FEELINGS.some(f => f.id === id));
     if (draft.prompt) currentPrompt = draft.prompt;
     renderPrompt();
-    hint.textContent = '📝 임시 저장본 복원됨';
+    hint.textContent = '임시 저장본 복원됨';
   } else {
     hint.textContent = '';
   }
@@ -820,7 +820,7 @@ function renderList() {
       .filter(k => (diary[k].text || '').toLowerCase().includes(diarySearchQuery))
       .sort().reverse();
     if (!keys.length) {
-      box.innerHTML = `<div class="empty-msg">"${esc(diarySearchQuery)}"가 들어간 일기가 없어요 🔍</div>`;
+      box.innerHTML = `<div class="empty-msg">"${esc(diarySearchQuery)}"가 들어간 일기가 없어요.</div>`;
       return;
     }
   } else {
@@ -829,7 +829,7 @@ function renderList() {
     const prefix = `${y}-${String(m+1).padStart(2,'0')}`;
     keys = Object.keys(diary).filter(k => k.startsWith(prefix)).sort().reverse();
     if (!keys.length) {
-      box.innerHTML = '<div class="empty-msg">이 달에는 아직 일기가 없어요.<br>첫 일기를 써보세요 🌱</div>';
+      box.innerHTML = '<div class="empty-msg">이 달에는 아직 일기가 없어요.<br>첫 일기를 써보세요.</div>';
       return;
     }
   }

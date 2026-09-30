@@ -262,6 +262,18 @@ test('정적 검사기 자체 확인: 뜻 있는 이모지는 통과, 장식은 
   assert.equal(hits.length, 6, hits.join('\n'));
 });
 
+// 일기장 감정 태그 — 일기를 쓸 때 고르는 내용이므로 유지 (사용자 결정 2026-09-30)
+const EMOTION_TAG = /\{ id:'[a-z]+', icon:'[^']+', label:'[^']+' \}/g;
+test('diary.html 소스에 장식 이모지가 없다 (정적 검사)', 'diary.html', 375, async () => {
+  assert.deepEqual(sourceSweep('diary.html', [...DIARY_ALLOW, EMOTION_TAG]), []);
+});
+test('diary.html 감정 태그 8개는 이모지를 그대로 가진다', 'diary.html', 375, async () => {
+  const src = fs.readFileSync(path.join(ROOT, 'diary.html'), 'utf8');
+  const tags = src.match(EMOTION_TAG) || [];
+  assert.equal(tags.length, 8, tags.join('\n'));
+  for (const t of tags) assert.ok(DECOR_TEXT.test(t), `이모지가 빠졌다: ${t}`);
+});
+
 async function writeBaseline(browser) {
   const prev = fs.existsSync(BASELINE_FILE) ? readBaseline() : {};
   const targets = WRITE_PAGES.length ? WRITE_PAGES : PAGES;
