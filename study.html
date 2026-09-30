@@ -125,7 +125,7 @@
   .logo-text p { font-size: 12px; color: var(--muted); margin-top: 3px; }
 
   .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .theme-toggle-btn, .nexus-link {
+  .nexus-link {
     background: rgba(255,255,255,0.62);
     border: 1px solid var(--border);
     color: var(--text); padding: 6px 14px; border-radius: 20px;
@@ -133,8 +133,8 @@
     text-decoration: none; transition: var(--transition);
     display: inline-flex; align-items: center; gap: 6px; font-family: inherit;
   }
-  body.dark .theme-toggle-btn, body.dark .nexus-link { background: rgba(255,255,255,0.08); }
-  .theme-toggle-btn:hover, .nexus-link:hover { background: var(--red-light); border-color: transparent; color: var(--red); transform: translateY(-1px); }
+  body.dark .nexus-link { background: rgba(255,255,255,0.08); }
+  .nexus-link:hover { background: var(--red-light); border-color: transparent; color: var(--red); transform: translateY(-1px); }
   .today-badge { background: var(--yellow); color: #3c2f00; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
 
   .profile-badge {
@@ -266,10 +266,10 @@
   /* 발음 버튼 — 눈에 보이는 원(--speak-d)은 그대로 두고, 누르는 영역만 44px 로 잡는다.
      원은 ::before 로 그리고, 버튼 상자는 44px 이며 음수 마진으로 배치 자리만 원 크기로 돌려준다(이웃 컨트롤이 없는 쪽으로만 겹친다). */
   .speak-btn {
-    --speak-d: 30px; --speak-bg: rgba(255, 255, 255, 0.12);
+    --speak-d: 30px; --speak-bg: var(--ui-card);
     position: relative; flex: none; box-sizing: border-box;
     width: 44px; height: 44px; margin: calc((var(--speak-d) - 44px) / 2); padding: 0;
-    background: none; border: none; cursor: pointer; font-size: 16px; color: white;
+    background: none; border: none; cursor: pointer; font-size: 16px; color: var(--ui-text);
     display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
   }
   .speak-btn::before {
@@ -279,6 +279,9 @@
   }
   .speak-btn .ui-icon { position: relative; width: 16px; height: 16px; }
   .speak-btn:hover::before { background: var(--red); transform: scale(1.1); }
+  .speak-btn:hover { color: white; }
+  /* 아이콘은 currentColor 로 그려지므로 바탕과 3:1 이상 떨어진 글자색을 쓴다. 카드 앞면은 자기 글자색(--ui-on-ink)을 따라간다 */
+  .flashcard-front .speak-btn { --speak-bg: color-mix(in srgb, currentColor 14%, transparent); color: inherit; }
   .vocab-table .speak-btn { --speak-bg: var(--red-light); color: var(--red); }
   .vocab-table .speak-btn:hover { color: white; }
   button[onclick^="deleteCustomWord"] { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin-block: -11px; }
@@ -616,7 +619,6 @@
 
   .section-title { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
   .empty-state { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
-  .empty-state .icon { font-size: 42px; margin-bottom: 10px; }
 
   /* NOTICE BOX */
   .notice { background: var(--blue-light); border: 1px solid rgba(56, 103, 155, 0.15); border-radius: 12px; padding: 14px 18px; font-size: 13.5px; color: var(--blue); margin-bottom: 18px; display: flex; gap: 12px; align-items: flex-start; line-height: 1.6; }
@@ -666,7 +668,7 @@
     .logo-text h1 { font-size: 16px; }
     .logo-text p { display: none; }
     .header-right { gap: 6px; }
-    .theme-toggle-btn, .nexus-link { padding: 5px 10px; font-size: 11px; }
+    .nexus-link { padding: 5px 10px; font-size: 11px; }
     .today-badge { display: none; }
     .study-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; padding: 0 var(--ui-s2, 8px); }
     .study-tabs button { min-height: var(--ui-control, 44px); padding: var(--ui-s2, 8px) var(--ui-s1, 4px); font-size: var(--ui-caption, 12px); white-space: normal; word-break: keep-all; }
@@ -895,7 +897,7 @@
         <div class="flashcard-front">
           <div class="es-word">
             <span id="fc-es"></span>
-            <button onclick="event.stopPropagation(); speakSpanish(document.getElementById('fc-es').textContent)" class="speak-btn" aria-label="발음 듣기" title="발음 듣기" style="--speak-bg: rgba(255,255,255,0.15);"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+            <button onclick="event.stopPropagation(); speakSpanish(document.getElementById('fc-es').textContent)" class="speak-btn" aria-label="발음 듣기" title="발음 듣기"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
           </div>
           <div class="es-pron" id="fc-pron"></div>
           <div style="margin-top:14px;font-size:11px;opacity:.5;">클릭하여 뒤집기</div>

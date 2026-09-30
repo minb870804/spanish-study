@@ -33,7 +33,8 @@ const test = (name, page, width, run) => cases.push({ name, page, width, run });
 // study.html 은 로드 때 "오늘의 표현"을 Math.random 으로 고른다(initUI). 문구마다 글자 폭이 달라 span 의 width 가
 // 실행마다 흔들리므로, 열자마자 0번 문구로 고정한다. 그 외에는 아무것도 건드리지 않는다.
 const pinRandom = p => p.evaluate(() => {
-  if (typeof PHRASES === 'undefined' || !document.getElementById('pod-es')) return;
+  if (typeof PHRASES === 'undefined') throw new Error('pinRandom: PHRASES 가 없다 — study.html 의 이름이 바뀌었나?');
+  for (const id of ['pod-es', 'pod-ko', 'pod-pron']) if (!document.getElementById(id)) throw new Error('pinRandom: #' + id + ' 가 없다');
   phraseIdx = 0;
   document.getElementById('pod-es').textContent = PHRASES[0].es;
   document.getElementById('pod-ko').textContent = PHRASES[0].ko;
@@ -41,7 +42,7 @@ const pinRandom = p => p.evaluate(() => {
 });
 const open = async (browser, page, width) => {
   const f = await fixture(browser, width, 'x', { page, now: FIXED_NOW });
-  await pinRandom(f.page);
+  if (page === 'study.html') await pinRandom(f.page); // 다른 페이지에는 오늘의 표현이 없다
   return f;
 };
 const readBaseline = () => JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
@@ -402,6 +403,60 @@ test('study.html 문법 화살표 ➔ 는 그대로다', 'study.html', 375, asyn
   assert.equal(n, 14, `➔ 가 ${n}개다 — 학습 내용이 바뀌었다`);
 });
 
+// ── 발음 버튼 대비 ── 아이콘은 currentColor 로 그려지므로 버튼 색이 바탕과 3:1 이상 떨어져야 보인다.
+// 원은 ::before 의 --speak-bg 이고 반투명일 수 있어, 가장 가까운 불투명 조상 바탕 위에 겹쳐 계산한다.
+const SPEAK_CONTEXTS = [
+  { name: '오늘의 표현(홈)', tab: 'home', sel: '#tab-home .speak-btn' },
+  { name: '플래시카드 앞', tab: 'vocab', sel: '.flashcard-front .speak-btn' },
+  { name: '플래시카드 뒤', tab: 'vocab', sel: '.flashcard-back .speak-btn', optional: true }, // 뒷면에는 발음 버튼이 없다. 생기면 검사한다
+  { name: '단어장 표', tab: 'vocab', sel: '#vocab-body .speak-btn' },
+  { name: '발음 탭 표', tab: 'alphabet', sel: '#tab-alphabet .vocab-table .speak-btn' },
+  { name: '알파벳 상세', tab: 'alphabet', sel: 'button[onclick="speakSelectedAlpha()"]' },
+  { name: '퀴즈 문제', tab: 'quiz', sel: '#tab-quiz .speak-btn', before: 'quiz' },
+  { name: '퀴즈 오답노트', tab: 'quiz', sel: '#quiz-wrong-list .speak-btn', before: 'result' },
+];
+const measureSpeak = (p, ctx) => p.evaluate(({ ctx }) => {
+  const parse = c => { const sr = c.match(/^color\(srgb ([^)]+)\)/); if (sr) { const v = sr[1].split(/[ \/]+/).filter(Boolean).map(Number); return { r: v[0] * 255, g: v[1] * 255, b: v[2] * 255, a: v[3] === undefined ? 1 : v[3] }; } const m = c.match(/rgba?\(([^)]+)\)/); if (!m) throw new Error('색을 읽지 못했다: ' + c); const v = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r: v[0], g: v[1], b: v[2], a: v[3] === undefined ? 1 : v[3] }; };
+  const over = (top, bot) => { const a = top.a + bot.a * (1 - top.a); return { r: (top.r * top.a + bot.r * bot.a * (1 - top.a)) / a, g: (top.g * top.a + bot.g * bot.a * (1 - top.a)) / a, b: (top.b * top.a + bot.b * bot.a * (1 - top.a)) / a, a }; };
+  const lum = c => { const f = x => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); };
+  const ratio = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); };
+  showTab(ctx.tab);
+  if (ctx.before === 'quiz') { setQuizDir('es', document.getElementById('qdir-es')); startQuiz(); }
+  if (ctx.before === 'result') { setQuizDir('es', document.getElementById('qdir-es')); startQuiz(); selectQuizOption((quizQuestions[quizIdx].correctIdx + 1) % 4); showQuizResult(); }
+  const out = [];
+  for (const btn of document.querySelectorAll(ctx.sel)) {
+    const svg = btn.querySelector('svg');
+    const fg = parse(getComputedStyle(svg).stroke);
+    // 아래에서 위로 쌓을 바탕 층: 버튼 원(::before) → 버튼 자신 → 조상들, 불투명한 층을 만나면 멈춘다
+    const layers = [parse(getComputedStyle(btn, '::before').backgroundColor)];
+    for (let el = btn; el && layers.at(-1).a < 1; el = el.parentElement) {
+      layers.push(parse(getComputedStyle(el).backgroundColor));
+    }
+    if (layers.at(-1).a < 1) layers.push({ r: 255, g: 255, b: 255, a: 1 });
+    let bg = layers.at(-1);
+    for (let i = layers.length - 2; i >= 0; i--) bg = over(layers[i], bg);
+    out.push({ ratio: ratio(fg, bg), fg: `${fg.r},${fg.g},${fg.b}`, bg: `${Math.round(bg.r)},${Math.round(bg.g)},${Math.round(bg.b)}` });
+  }
+  return out;
+}, { ctx });
+for (const dark of [false, true]) {
+  test(`study.html 발음 버튼 아이콘은 바탕과 3:1 이상 (${dark ? '다크' : '라이트'}, 모든 자리)`, 'study.html', 375, async p => {
+    await renderStudyRuntime(p);
+    if (dark) await p.evaluate(() => document.body.classList.add('dark'));
+    await p.waitForTimeout(800); // 원 배경색 transition 이 끝난 뒤 잰다
+    const bad = [], lines = [];
+    for (const ctx of SPEAK_CONTEXTS) {
+      const m = await measureSpeak(p, ctx);
+      if (!m.length) { if (!ctx.optional) bad.push(`${ctx.name}: 버튼을 찾지 못했다`); continue; }
+      const low = Math.min(...m.map(x => x.ratio));
+      lines.push(`${ctx.name} ${low.toFixed(2)}`);
+      if (process.env.MINB_SPEAK_LOG) console.log(`  [${dark ? 'dark' : 'light'}] ${ctx.name} n=${m.length} min=${low.toFixed(2)} ${m[0].fg} on ${m[0].bg}`);
+      if (low < 3) bad.push(`${ctx.name}: ${low.toFixed(2)}:1 (${m.find(x => x.ratio === low).fg} on ${m.find(x => x.ratio === low).bg})`);
+    }
+    assert.deepEqual(bad, []);
+  });
+}
+
 async function writeBaseline(browser) {
   const prev = fs.existsSync(BASELINE_FILE) ? readBaseline() : {};
   const targets = WRITE_PAGES.length ? WRITE_PAGES : PAGES;
@@ -449,8 +504,6 @@ for (const page of PAGES) {
   }
 }
 
-module.exports = { test, PAGES, FIXED_NOW };
-
 if (require.main === module) (async () => {
   const browser = await chromium.launch();
   try {
@@ -460,6 +513,7 @@ if (require.main === module) (async () => {
       const { page, context, errors } = await open(browser, c.page, c.width);
       try {
         await c.run(page, errors);
+        assert.deepEqual(errors, [], '페이지 오류');
         results.push({ name: c.name, pass: true });
         console.log('PASS ' + c.name);
       } catch (e) {
