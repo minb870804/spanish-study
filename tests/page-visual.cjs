@@ -231,13 +231,14 @@ function sourceSweep(file, allow) {
 // 두 일기 페이지 공통으로 뜻이 있는 이모지
 const DIARY_ALLOW = [
   /const MOODS = \[[^\]]*\];/g,                  // 기분 이모지 목록
-  /selectedMood = '[^']*'/g,                     // 기분 기본값
-  /mood:\s*'[^']*'/g,                            // 기분 기본값 (sharedBaseline 등)
-  /\|\| '📝'/g,                                  // 기분을 고르지 않은 일기의 자리표시
-  /: '👤'/g,                                     // 사진이 없을 때의 아바타 대체
+  /selectedMood = '\p{Extended_Pictographic}\uFE0F?'/gu,   // 기분 기본값 (이모지 딱 하나)
+  /mood:\s*'\p{Extended_Pictographic}\uFE0F?'/gu,          // 기분 기본값 (sharedBaseline 등)
+  /\.mood \|\| '📝'/g,                                     // 기분을 고르지 않은 일기의 자리표시
+  /\.photo \? `[^`]*` : '👤'/g,                             // 사진이 없을 때의 아바타 대체 (photo 삼항 안에서만)
 ];
 test('shared-diary.html 소스에 장식 이모지가 없다 (정적 검사)', 'shared-diary.html', 375, async () => {
-  const hits = [...sourceSweep('shared-diary.html', DIARY_ALLOW), ...sourceSweep('js/diary-common.js', [])];
+  const hits = [...sourceSweep('shared-diary.html', DIARY_ALLOW),
+    ...['js/app-shell.js', 'js/diary-common.js', 'js/diary-months.js', 'js/diary-storage.js'].flatMap(f => sourceSweep(f, []))];
   assert.deepEqual(hits, []);
 });
 test('정적 검사기 자체 확인: 뜻 있는 이모지는 통과, 장식은 잡는다', 'shared-diary.html', 375, async () => {
@@ -248,11 +249,17 @@ test('정적 검사기 자체 확인: 뜻 있는 이모지는 통과, 장식은 
     "const img = p.photo ? `<img>` : '👤';",                   // 허용
     "box.innerHTML = '첫 일기를 남겨보세요 💌';",                  // 잡아야 함
     "<span id=\"userName\">👤 로딩중...</span>",                // 잡아야 함 (아바타 대체가 아님)
+    "x={mood:'🎉 축하 🏠'}",                                    // 잡아야 함 (이모지 둘 이상)
+    "selectedMood = '🎉 축하'",                                 // 잡아야 함
+    "t = ok ? 1 : '👤'",                                        // 잡아야 함 (photo 삼항이 아님)
+    "a={icon: '👤'}",                                           // 잡아야 함
+    "let selectedMood = '😊';",                                 // 허용
+    "const e = {mood: '❤️'};",                                  // 허용 (변형 선택자)
   ].join('\n'));
   const rel = path.relative(ROOT, tmp);
   const hits = sourceSweep(rel, DIARY_ALLOW);
   fs.unlinkSync(tmp);
-  assert.equal(hits.length, 2, hits.join('\n'));
+  assert.equal(hits.length, 6, hits.join('\n'));
 });
 
 async function writeBaseline(browser) {
