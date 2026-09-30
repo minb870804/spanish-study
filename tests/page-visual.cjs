@@ -19,7 +19,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { fixture, chromium } = require('./recurrence.cjs');
-const { snapshot, sheetInfo, diffSnapshots, MAX_REPORT } = require('./home-visual.cjs');
+const { snapshot, sheetInfo, diffSnapshots, MAX_REPORT, DECOR_TEXT } = require('./home-visual.cjs');
 
 const BASELINE_FILE = path.join(__dirname, 'fixtures', 'pages-computed-baseline.json');
 const WRITE = process.env.MINB_WRITE_BASELINE || '';
@@ -212,6 +212,48 @@ for (const dark of [false, true]) {
     for (const [page, s] of Object.entries(shapes)) assert.equal(JSON.stringify(s), ref, `${page}: ${JSON.stringify(s)} ≠ 홈 ${ref}`);
   });
 }
+
+// ── 정적 이모지 검사 ── 소스 파일의 모든 줄에서 장식 이모지를 찾는다.
+// 로그인 후에만 보이는 문구(빈 상태, 힌트)는 로그인 전 스냅샷에 나타나지 않으므로 소스 텍스트를 직접 본다.
+// allow: 뜻이 있는 이모지가 든 부분을 지우는 정규식 목록. 좁게 쓸 것.
+// 허용 패턴이 덮는 부분만 지우고 남은 글자를 다시 검사한다.
+const ROOT = process.env.MINB_ROOT || path.join(__dirname, '..');
+function sourceSweep(file, allow) {
+  const lines = fs.readFileSync(path.join(ROOT, file), 'utf8').split('\n');
+  const hits = [];
+  lines.forEach((line, i) => {
+    let rest = line;
+    for (const re of allow) rest = rest.replace(re, '');
+    if (DECOR_TEXT.test(rest)) hits.push(`${file}:${i + 1}: ${line.trim().slice(0, 100)}`);
+  });
+  return hits;
+}
+// 두 일기 페이지 공통으로 뜻이 있는 이모지
+const DIARY_ALLOW = [
+  /const MOODS = \[[^\]]*\];/g,                  // 기분 이모지 목록
+  /selectedMood = '[^']*'/g,                     // 기분 기본값
+  /mood:\s*'[^']*'/g,                            // 기분 기본값 (sharedBaseline 등)
+  /\|\| '📝'/g,                                  // 기분을 고르지 않은 일기의 자리표시
+  /: '👤'/g,                                     // 사진이 없을 때의 아바타 대체
+];
+test('shared-diary.html 소스에 장식 이모지가 없다 (정적 검사)', 'shared-diary.html', 375, async () => {
+  const hits = [...sourceSweep('shared-diary.html', DIARY_ALLOW), ...sourceSweep('js/diary-common.js', [])];
+  assert.deepEqual(hits, []);
+});
+test('정적 검사기 자체 확인: 뜻 있는 이모지는 통과, 장식은 잡는다', 'shared-diary.html', 375, async () => {
+  const tmp = path.join(require('node:os').tmpdir(), `sweep-${process.pid}.html`);
+  fs.writeFileSync(tmp, [
+    "const MOODS = ['😊','😆'];",                               // 허용
+    "const moods = uids.map(u => entries[u].mood || '📝');",   // 허용
+    "const img = p.photo ? `<img>` : '👤';",                   // 허용
+    "box.innerHTML = '첫 일기를 남겨보세요 💌';",                  // 잡아야 함
+    "<span id=\"userName\">👤 로딩중...</span>",                // 잡아야 함 (아바타 대체가 아님)
+  ].join('\n'));
+  const rel = path.relative(ROOT, tmp);
+  const hits = sourceSweep(rel, DIARY_ALLOW);
+  fs.unlinkSync(tmp);
+  assert.equal(hits.length, 2, hits.join('\n'));
+});
 
 async function writeBaseline(browser) {
   const prev = fs.existsSync(BASELINE_FILE) ? readBaseline() : {};
