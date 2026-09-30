@@ -279,18 +279,42 @@ const STUDY_ALLOW = [
   /➔/g,                          // 문법 설명 화살표 (학습 내용)
   /\$\{complete\?'✓':d\.num\}/g,  // 완료한 Día 번호 자리의 완료 표시 (유일한 신호)
 ];
-// Task 8 이 맡는 기능 버튼만 좁게 뺀다. 🔊 를 통째로 빼면 팁 박스·자료 목록의 🔊(Task 7 몫)까지 가려진다.
-const TASK8_LATER = [
-  /speak-btn[^>]*>🔊/g,                                           // 발음 듣기 버튼 (정적·템플릿 모두 이 형태)
-  />🔊 듣기</g,                                                    // 연습 답 듣기 버튼
-  />🔊 자동 발음: ON</g, /'🔊 자동 발음: ON' : '🔇 자동 발음: OFF'/g, // 자동 발음 토글
-  /feedbackIcon\.innerHTML = '[✅❌]'/g,                            // 퀴즈 채점
-  /🔀 랜덤 방향|🇪🇸 스→한|🇰🇷 한→스/g,                               // 퀴즈 방향
-  /title="삭제">🗑️<\/button>/g,                                   // 사용자 단어 삭제 버튼 (이모지만 있다) — 브리프에 없던 기능 버튼
-  /prevMonth\(\)[^>]*>◀</g, /nextMonth\(\)[^>]*>▶</g,             // 출석 달력 이전/다음 달 (기호만 있다) — 브리프에 없던 기능 버튼
-];
-test('study.html 화면 장식 이모지가 없다 (Task 7 범위)', 'study.html', 375, async () => {
-  assert.deepEqual(sourceSweep('study.html', [...STUDY_ALLOW, ...TASK8_LATER]), []);
+test('study.html 소스에 장식 이모지가 없다 (정적 검사, 전체)', 'study.html', 375, async () => {
+  assert.deepEqual(sourceSweep('study.html', STUDY_ALLOW), []);
+});
+test('study.html 발음 듣기 버튼은 스피커 아이콘과 이름을 가진다', 'study.html', 375, async p => {
+  const btns = await p.evaluate(() => [...document.querySelectorAll('.speak-btn')].map(b => ({
+    svg: b.querySelectorAll('svg').length, text: b.textContent.trim(),
+    name: b.getAttribute('aria-label') || b.getAttribute('title') || '',
+  })));
+  assert.ok(btns.length >= 1, '정적 발음 버튼이 없다');
+  for (const b of btns) {
+    assert.equal(b.svg, 1, JSON.stringify(b));
+    assert.equal(/[\u{1F300}-\u{1FAFF}]/u.test(b.text), false, JSON.stringify(b));
+    assert.match(b.name, /발음/, JSON.stringify(b));
+  }
+});
+test('study.html 발음 버튼 클릭이 여전히 speakSpanish 를 부른다', 'study.html', 375, async p => {
+  await p.evaluate(() => { window.__spoke = []; window.speakSpanish = t => window.__spoke.push(t); });
+  const n = await p.locator('.speak-btn').count();
+  for (let i = 0; i < n; i++) {
+    const b = p.locator('.speak-btn').nth(i);
+    if (await b.isVisible()) { await b.click(); break; }
+  }
+  // 보이는 버튼이 하나도 없는 탭 구성이면 첫 버튼을 직접 누른다
+  if (!(await p.evaluate(() => window.__spoke.length))) await p.locator('.speak-btn').first().dispatchEvent('click');
+  assert.ok(await p.evaluate(() => window.__spoke.length) >= 1);
+});
+test('study.html 퀴즈 채점 표시는 글자로 읽힌다', 'study.html', 375, async () => {
+  const src = fs.readFileSync(path.join(ROOT, 'study.html'), 'utf8');
+  assert.equal(/feedbackIcon\.innerHTML = '[✅❌]'/.test(src), false, '채점 표시에 이모지가 남아 있다');
+});
+test('study.html 달 이동 버튼은 ‹ › 와 이름을 가진다', 'study.html', 375, async p => {
+  const r = await p.evaluate(() => ['prevMonth', 'nextMonth'].map(f => {
+    const b = document.querySelector(`button[onclick="${f}()"]`);
+    return b && { t: b.textContent.trim(), n: b.getAttribute('aria-label') };
+  }));
+  assert.deepEqual(r, [{ t: '‹', n: '이전 달' }, { t: '›', n: '다음 달' }]);
 });
 test('study.html 문법 화살표 ➔ 는 그대로다', 'study.html', 375, async () => {
   const n = (fs.readFileSync(path.join(ROOT, 'study.html'), 'utf8').match(/➔/g) || []).length;
