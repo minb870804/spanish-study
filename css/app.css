@@ -1145,14 +1145,6 @@
     .todo-detail-row { grid-template-columns: 1fr; }
   }
 
-/* 헤더 아이콘 버튼 — 글자 없이 아이콘만, 44px 터치 타깃 */
-.icon-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: var(--ui-control); height: var(--ui-control); padding: 0;
-  border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm);
-  background: var(--ui-card); color: var(--ui-text); cursor: pointer;
-}
-.icon-btn .ui-icon { width: 20px; height: 20px; }
 
 /* 일정 범위 필터 — 알약 대신 밑줄 탭 */
 .filter-tabs { display: flex; gap: var(--ui-s5); margin: var(--ui-s4) 0 var(--ui-s3); }
@@ -1228,21 +1220,6 @@
   color: var(--ui-muted); font-size: var(--ui-caption); font-weight: 500; line-height: 1.6;
 }
 
-/* 조용한 종이 노트 — 날짜와 제목만 명조, 본문은 고딕.
-   css/app-design.css 가 :is(body,body.dark) 접두로 굵기·자간을 덮어쓰고 나중에 로드된다.
-   아래 선택자 목록에 #homeView 가 들어 있어 뒤쪽 :is() 는 id 특이도(1,1,1)를 가지고, 접두 :is(body,body.dark)(0,1,1)와
-   합쳐 이 규칙은 (1,2,2)다. app-design.css 의 로고 규칙(:is(body,body.dark) .logo-text h1)은 (0,2,2)이므로 접두만으로 이긴다. */
-:is(body, body.dark) :is(.logo-text h1,
-#homeView .hero h2,
-.today-card .ui-section-head h2,
-.calendar-heading > span,
-#dmDate) { font-family: var(--ui-serif); font-weight: 400; letter-spacing: 0; }
 /* 홈 인사 날짜의 크기·색(굵기는 위 명조 규칙이 정한다). #homeView 는 홈에만 있으므로 여기서 둔다. */
 :is(body, body.dark) #homeView .hero h2 { font-size: var(--ui-small); color: var(--ui-muted); }
 
-/* 카드 경계를 그림자에서 선으로 (.reading-card 는 독서 페이지가 쓴다) */
-:is(body, body.dark) :is(.card, .section-card, .reading-card) { box-shadow: none; border: 1px solid var(--ui-border); }
-:is(body, body.dark) :is(.card, .section-card, .reading-card):hover { box-shadow: none; }
-
-/* 섹션 제목은 낮추고 내용이 먼저 읽히게 (ui.css 가 app.css 보다 뒤에 로드되므로 접두로 이긴다) */
-:is(body, body.dark) .ui-eyebrow { font-size: var(--ui-caption); letter-spacing: .14em; color: var(--ui-muted); }

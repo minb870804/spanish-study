@@ -14,7 +14,7 @@
 <title>일기장 | Minb</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Noto+Serif+KR:wght@400&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 
 <!-- Firebase 10.8.0 Compat SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -343,6 +343,7 @@
 <script src="js/app-shell.js" defer></script>
 <link rel="stylesheet" href="css/diary-sync.css">
 <link rel="stylesheet" href="css/app-design.css">
+<link rel="stylesheet" href="css/paper.css">
 </head>
 <body>
 
@@ -370,14 +371,14 @@
       </div>
     </div>
     <div class="header-right">
-      <a href="./" class="hbtn">🏠 Minb</a>
-      <a href="shared-diary.html" class="hbtn">💌 교환일기</a>
-      <a href="study.html" class="hbtn">🇪🇸 스터디</a>
+      <a href="./" class="hbtn">Minb</a>
+      <a href="shared-diary.html" class="hbtn">교환일기</a>
+      <a href="study.html" class="hbtn">스터디</a>
       <span id="userProfile" class="profile-badge" style="display: none;">
-        <span id="userName">👤 로딩중...</span>
+        <span id="userName">로딩중...</span>
         <button onclick="logout()" class="logout-btn">로그아웃</button>
       </span>
-      <button id="themeToggle" class="hbtn" onclick="toggleTheme()">🌓 테마</button>
+      <button type="button" id="themeToggle" class="hbtn icon-btn" onclick="toggleTheme()" aria-label="테마 바꾸기" title="테마 바꾸기"></button>
     </div>
   </div>
 </header>
@@ -522,7 +523,7 @@ auth.onAuthStateChanged(async (user) => {
     currentUser = user;
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('userProfile').style.display = 'flex';
-    document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
+    document.getElementById('userName').textContent = `${user.displayName || '사용자'}`;
     loadDiary();
   } else {
     currentUser = null;
@@ -769,7 +770,7 @@ function loadEntry(key) {
     if (Array.isArray(draft.feelings)) selectedFeelings = draft.feelings.filter(id => FEELINGS.some(f => f.id === id));
     if (draft.prompt) currentPrompt = draft.prompt;
     renderPrompt();
-    hint.textContent = '📝 임시 저장본 복원됨';
+    hint.textContent = '임시 저장본 복원됨';
   } else {
     hint.textContent = '';
   }
@@ -819,7 +820,7 @@ function renderList() {
       .filter(k => (diary[k].text || '').toLowerCase().includes(diarySearchQuery))
       .sort().reverse();
     if (!keys.length) {
-      box.innerHTML = `<div class="empty-msg">"${esc(diarySearchQuery)}"가 들어간 일기가 없어요 🔍</div>`;
+      box.innerHTML = `<div class="empty-msg">"${esc(diarySearchQuery)}"가 들어간 일기가 없어요.</div>`;
       return;
     }
   } else {
@@ -828,7 +829,7 @@ function renderList() {
     const prefix = `${y}-${String(m+1).padStart(2,'0')}`;
     keys = Object.keys(diary).filter(k => k.startsWith(prefix)).sort().reverse();
     if (!keys.length) {
-      box.innerHTML = '<div class="empty-msg">이 달에는 아직 일기가 없어요.<br>첫 일기를 써보세요 🌱</div>';
+      box.innerHTML = '<div class="empty-msg">이 달에는 아직 일기가 없어요.<br>첫 일기를 써보세요.</div>';
       return;
     }
   }

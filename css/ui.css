@@ -19,7 +19,6 @@ body.dark { background:var(--ui-bg); }
 :is(.small-btn,.hbtn,.nexus-link,.add-btn,.ui-button) { min-height:var(--ui-control); border-radius:var(--ui-radius-sm); font-size:var(--ui-small); }
 :is(.small-btn,.hbtn,.nexus-link) { color:var(--ui-text); }
 :is(.card,.section-card) { border-radius:var(--ui-radius); box-shadow:var(--ui-shadow); }
-:is(.card,.section-card,.reading-card):hover { box-shadow:var(--ui-shadow); }
 .ui-button { display:inline-flex; align-items:center; justify-content:center; gap:var(--ui-s2); padding:var(--ui-s2) var(--ui-s4); background:var(--ui-card); border:1px solid var(--ui-border); color:var(--ui-text); font:700 var(--ui-small)/1.5 'Noto Sans KR',sans-serif; cursor:pointer; text-decoration:none; }
 .ui-button.primary { background:var(--ui-ink); color:var(--ui-on-ink); border-color:var(--ui-ink); }
 .ui-button:hover { box-shadow:var(--ui-shadow); }

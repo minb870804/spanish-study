@@ -14,7 +14,7 @@
 <title>교환일기 | Minb</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Noto+Serif+KR:wght@400&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 
 <!-- Firebase 10.8.0 Compat SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -235,12 +235,12 @@
 <script src="js/app-shell.js" defer></script>
 <link rel="stylesheet" href="css/diary-sync.css">
 <link rel="stylesheet" href="css/app-design.css">
+<link rel="stylesheet" href="css/paper.css">
 </head>
 <body>
 
 <div id="loginOverlay" style="display:none;">
   <div class="login-card">
-    <div style="font-size: 60px; margin-bottom: 20px;">💌</div>
     <h2 style="font-size: 22px; font-weight: 900; margin-bottom: 8px; color: var(--dark);">교환일기</h2>
     <p style="font-size: 13.5px; color: var(--muted); margin-bottom: 28px; line-height: 1.6;">
       스페이스를 함께 쓰는 사람과 날짜별로<br>일기를 주고받아요. 구글 로그인이 필요합니다.
@@ -262,13 +262,13 @@
       </div>
     </div>
     <div class="header-right">
-      <a href="./" class="hbtn">🏠 Minb</a>
-      <a href="diary.html" class="hbtn">📔 내 일기장</a>
+      <a href="./" class="hbtn">Minb</a>
+      <a href="diary.html" class="hbtn">내 일기장</a>
       <span id="userProfile" class="profile-badge" style="display: none;">
-        <span id="userName">👤 로딩중...</span>
+        <span id="userName">로딩중...</span>
         <button onclick="logout()" class="logout-btn">로그아웃</button>
       </span>
-      <button id="themeToggle" class="hbtn" onclick="toggleTheme()">🌓 테마</button>
+      <button type="button" id="themeToggle" class="hbtn icon-btn" onclick="toggleTheme()" aria-label="테마 바꾸기" title="테마 바꾸기"></button>
     </div>
   </div>
 </header>
@@ -482,7 +482,7 @@ auth.onAuthStateChanged(async user => {
   document.getElementById('loginOverlay').style.display = user ? 'none' : 'flex';
   document.getElementById('userProfile').style.display = user ? 'flex' : 'none';
   if (!user) { setDiarySync('signed-out'); return; }
-  document.getElementById('userName').textContent = `👤 ${user.displayName || '사용자'}`;
+  document.getElementById('userName').textContent = `${user.displayName || '사용자'}`;
   await connectSpace();
 });
 
@@ -725,7 +725,7 @@ function renderPartners() {
   document.getElementById('partnerLabel').textContent = label;
 
   if (!others.length) {
-    box.innerHTML = `<div class="empty-msg">${esc(label)}의 일기가 아직 없어요 🕊</div>`;
+    box.innerHTML = `<div class="empty-msg">${esc(label)}의 일기가 아직 없어요.</div>`;
     return;
   }
   box.innerHTML = others.map(uid => {
@@ -777,7 +777,7 @@ function renderList() {
     .sort().reverse();
   const box = document.getElementById('entryList');
   if (!keys.length) {
-    box.innerHTML = '<div class="empty-msg">이 달에는 아직 교환일기가 없어요.<br>첫 일기를 남겨보세요 💌</div>';
+    box.innerHTML = '<div class="empty-msg">이 달에는 아직 교환일기가 없어요.<br>첫 일기를 남겨보세요.</div>';
     return;
   }
   box.innerHTML = keys.map(k => {

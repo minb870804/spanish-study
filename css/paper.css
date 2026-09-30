@@ -1,0 +1,42 @@
+/* ══════════════════════════════════════════════════════════════
+   paper.css — 다섯 페이지 공용 마감 ("조용한 종이 노트")
+   모든 페이지에서 맨 마지막(app-design.css 뒤)에 로드한다.
+
+   명시도 원칙: 덮어쓸 app-design.css 규칙의 선택자를 그대로 복사해 쓴다.
+   선택자가 같으면 명시도가 같고, 뒤에 로드되므로 이긴다. 그보다 높이지 않는다.
+   덮어쓸 대상이 없으면 :is(body,body.dark) 접두사를 쓴다.
+   ══════════════════════════════════════════════════════════════ */
+
+/* 헤더 아이콘 버튼 — 글자 없이 아이콘만, 44px 터치 타깃 (app.css 에서 이관) */
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--ui-control); height: var(--ui-control); padding: 0;
+  border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm);
+  background: var(--ui-card); color: var(--ui-text); cursor: pointer;
+}
+.icon-btn .ui-icon { width: 20px; height: 20px; }
+
+/* 명조체 — 로고와 홈의 날짜·제목 (app.css 에서 이관).
+   목록 안의 #homeView 때문에 이 규칙은 (1,2,2)다. 홈 전용 선택자는 다른 페이지에서 매치되지 않는다.
+   .logo-text h1 이 목록에 있으므로 스터디·일기장·교환일기의 로고에도 적용된다. */
+:is(body, body.dark) :is(.logo-text h1,
+#homeView .hero h2,
+.today-card .ui-section-head h2,
+.calendar-heading > span,
+#dmDate) { font-family: var(--ui-serif); font-weight: 400; letter-spacing: 0; }
+
+/* 카드 경계를 그림자에서 선으로 — 평상시와 호버 모두 (app.css 에서 이관) */
+:is(body, body.dark) :is(.card, .section-card, .reading-card) { box-shadow: none; border: 1px solid var(--ui-border); }
+:is(body, body.dark) :is(.card, .section-card, .reading-card):hover { box-shadow: none; }
+
+/* 섹션 라벨은 낮추고 내용이 먼저 읽히게 (app.css 에서 이관) */
+:is(body, body.dark) .ui-eyebrow { font-size: var(--ui-caption); letter-spacing: .14em; color: var(--ui-muted); }
+
+/* 스터디·교환일기의 히어로 제목, 일기장의 연속 기록 제목 — 페이지 단위 제목이므로 명조.
+   app-design.css 20행 :is(body,body.dark) :is(.hero h2,.streak-banner .big) 를 그대로 복사했다.
+   :is() 는 목록 최댓값을 따라 (0,3,1) 이 되므로, 선택자를 줄이면 진다. */
+:is(body,body.dark) :is(.hero h2,.streak-banner .big) { font-family: var(--ui-serif); font-weight: 400; letter-spacing: 0; }
+
+/* 독서 페이지 — 로고 구조가 다르고(.brand > span) 페이지 제목이 h1 이다.
+   app-design.css 에 덮어쓸 대상이 없으므로 :is(body,body.dark) 접두사를 쓴다. */
+:is(body,body.dark) :is(.brand > span, .reading-hero h1) { font-family: var(--ui-serif); font-weight: 400; letter-spacing: 0; }

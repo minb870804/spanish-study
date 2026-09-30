@@ -39,6 +39,7 @@
 <script src="js/app-shell.js" defer></script>
 <link rel="stylesheet" href="css/recurrence.css">
 <link rel="stylesheet" href="css/app-design.css">
+<link rel="stylesheet" href="css/paper.css">
 </head>
 <body>
 
@@ -5387,13 +5388,8 @@ function toggleTheme() {
   updateThemeButton();
 }
 function updateThemeButton() {
-  const btn = document.getElementById('themeToggle');
-  const dark = document.body.classList.contains('dark');
-  // 달 = 지금 밝음(누르면 어두워짐), 해 = 지금 어두움(누르면 밝아짐)
-  btn.innerHTML = dark
-    ? '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>'
-    : '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6.5 6.5 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>';
-  btn.setAttribute('aria-label', '테마 바꾸기');
+  // 아이콘은 js/app-shell.js 가 그린다. 첫 로드에는 아직 없으므로 app-shell 이 초기화 때 그린다.
+  if (window.renderThemeToggle) window.renderThemeToggle();
 }
 function loadTheme() {
   // 저장된 선택이 있으면 그대로, 없으면 기기(시스템) 설정을 따른다
