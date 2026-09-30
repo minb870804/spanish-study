@@ -316,6 +316,87 @@ test('study.html 달 이동 버튼은 ‹ › 와 이름을 가진다', 'study.h
   }));
   assert.deepEqual(r, [{ t: '‹', n: '이전 달' }, { t: '›', n: '다음 달' }]);
 });
+// 실제로 눌리는 영역을 검사한다. 상자 크기만 재면 음수 마진으로 이웃 버튼 위를 덮어도 모르므로,
+// 각 컨트롤의 보이는 영역을 격자로 찍어 elementFromPoint 가 이웃 컨트롤을 가리키면 실패시킨다.
+const INTERACTIVE = 'button,a[href],input,select,textarea,summary,[role="button"]';
+// 런타임에 그려지는 화면(단어장 목록·퀴즈 문제·오답노트)을 먼저 그린 뒤 탭마다 훑는다.
+const renderStudyRuntime = p => p.evaluate(() => {
+  document.getElementById('loginOverlay').style.display = 'none';
+  showTab('vocab');
+  renderVocabList(getMergedVocab().slice(0, 6).concat([{ es: 'prueba', ko: '시험', pron: '', dia: 1, isCustom: true }]));
+  window.speakSpanish = () => {};
+});
+const hitTestTab = (p, tab) => p.evaluate(({ tab, sel }) => {
+  showTab(tab);
+  const bad = [];
+  const els = [...document.querySelectorAll(sel)].filter(e => {
+    const r = e.getBoundingClientRect(); const cs = getComputedStyle(e);
+    return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && !e.closest('[style*="display: none"], [style*="display:none"]');
+  });
+  for (const el of els) {
+    el.scrollIntoView({ block: 'center' });
+    const r = el.getBoundingClientRect();
+    const x0 = Math.max(r.left, 0) + 1, x1 = Math.min(r.right, innerWidth) - 1;
+    const y0 = Math.max(r.top, 0) + 1, y1 = Math.min(r.bottom, innerHeight) - 1;
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) {
+      const x = x0 + (x1 - x0) * i / 5, y = y0 + (y1 - y0) * j / 5;
+      const top = document.elementFromPoint(x, y);
+      const owner = top && top.closest(sel);
+      if (owner && owner !== el && (owner.contains(el) === false)) {
+        bad.push(`${(el.id || el.className || el.tagName)}[${el.getAttribute('onclick') || el.type || ''}] (${x.toFixed(0)},${y.toFixed(0)}) -> ${owner.id || owner.className || owner.tagName}[${owner.getAttribute('onclick') || owner.type || ''}]`);
+        break;
+      }
+    }
+  }
+  return { count: els.length, bad };
+}, { tab, sel: INTERACTIVE });
+for (const w of [320, 375, 1280]) {
+  test(`study.html 컨트롤을 눌러도 이웃 컨트롤이 대신 눌리지 않는다 (${w}px)`, 'study.html', w, async p => {
+    await renderStudyRuntime(p);
+    const all = [];
+    for (const tab of ['home', 'plan', 'vocab', 'grammar', 'alphabet']) all.push(...(await hitTestTab(p, tab)).bad.map(b => `${tab}: ${b}`));
+    // 퀴즈: 문제 화면(스→한, 한→스 둘 다), 채점 뒤, 결과·오답노트
+    for (const dir of ['es', 'ko']) {
+      await p.evaluate(dir => { setQuizDir(dir, document.getElementById('qdir-' + dir)); startQuiz(); }, dir);
+      const r = await hitTestTab(p, 'quiz'); assert.ok(r.count >= 4, '퀴즈 컨트롤이 그려지지 않았다');
+      all.push(...r.bad.map(b => `quiz-${dir}: ${b}`));
+    }
+    await p.evaluate(() => { selectQuizOption((quizQuestions[quizIdx].correctIdx + 1) % 4); showQuizResult(); });
+    all.push(...(await hitTestTab(p, 'quiz')).bad.map(b => `quiz-result: ${b}`));
+    all.push(...(await hitTestTab(p, 'progress')).bad.map(b => `progress: ${b}`), ...(await hitTestTab(p, 'nexus')).bad.map(b => `nexus: ${b}`));
+    assert.deepEqual(all, []);
+  });
+}
+test('study.html 기능 버튼은 누르는 영역이 44×44 이상이다', 'study.html', 375, async p => {
+  await renderStudyRuntime(p);
+  const measure = (tab, sel) => p.evaluate(({ tab, sel }) => {
+    showTab(tab);
+    return [...document.querySelectorAll(sel)].map(e => { const r = e.getBoundingClientRect(); return { sel, w: r.width, h: r.height }; }).filter(x => x.w > 0);
+  }, { tab, sel });
+  const groups = [
+    ['home', '.speak-btn'], ['home', '.practice-actions .filter-btn'],
+    ['vocab', '.speak-btn'], ['vocab', 'button[onclick^="deleteCustomWord"]'], ['vocab', '#autoSpeakBtn'],
+    ['alphabet', '.speak-btn'],
+    ['progress', 'button[onclick="prevMonth()"]'], ['progress', 'button[onclick="nextMonth()"]'],
+  ];
+  const small = [];
+  for (const [tab, sel] of groups) {
+    const m = await measure(tab, sel);
+    assert.ok(m.length >= 1, `${tab} ${sel} 를 찾지 못했다`);
+    small.push(...m.filter(x => x.w < 43.99 || x.h < 43.99).map(x => `${tab} ${x.sel} ${x.w.toFixed(1)}×${x.h.toFixed(1)}`));
+  }
+  for (const dir of ['mix', 'es', 'ko']) {
+    const m = await measure('quiz', '#qdir-' + dir); assert.equal(m.length, 1);
+    small.push(...m.filter(x => x.w < 43.99 || x.h < 43.99).map(x => `quiz ${x.sel} ${x.w.toFixed(1)}×${x.h.toFixed(1)}`));
+  }
+  await p.evaluate(() => { setQuizDir('es', document.getElementById('qdir-es')); startQuiz(); });
+  const q = await measure('quiz', '.speak-btn'); assert.ok(q.length >= 1, '퀴즈 발음 버튼이 없다');
+  small.push(...q.filter(x => x.w < 43.99 || x.h < 43.99).map(x => `quiz ${x.sel} ${x.w.toFixed(1)}×${x.h.toFixed(1)}`));
+  await p.evaluate(() => { selectQuizOption((quizQuestions[quizIdx].correctIdx + 1) % 4); showQuizResult(); });
+  const wn = await measure('quiz', '#quiz-wrong-list .speak-btn'); assert.ok(wn.length >= 1, '오답노트 발음 버튼이 없다');
+  small.push(...wn.filter(x => x.w < 43.99 || x.h < 43.99).map(x => `wrong ${x.sel} ${x.w.toFixed(1)}×${x.h.toFixed(1)}`));
+  assert.deepEqual(small, []);
+});
 test('study.html 문법 화살표 ➔ 는 그대로다', 'study.html', 375, async () => {
   const n = (fs.readFileSync(path.join(ROOT, 'study.html'), 'utf8').match(/➔/g) || []).length;
   assert.equal(n, 14, `➔ 가 ${n}개다 — 학습 내용이 바뀌었다`);

@@ -263,31 +263,30 @@
   .vocab-summary .value { font-size: 15px; color: var(--text); font-weight: 900; }
 
   /* TTS Button styling */
+  /* 발음 버튼 — 눈에 보이는 원(--speak-d)은 그대로 두고, 누르는 영역만 44px 로 잡는다.
+     원은 ::before 로 그리고, 버튼 상자는 44px 이며 음수 마진으로 배치 자리만 원 크기로 돌려준다(이웃 컨트롤이 없는 쪽으로만 겹친다). */
   .speak-btn {
-    background: rgba(255, 255, 255, 0.12);
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    color: white;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transition);
+    --speak-d: 30px; --speak-bg: rgba(255, 255, 255, 0.12);
+    position: relative; flex: none; box-sizing: border-box;
+    width: 44px; height: 44px; margin: calc((var(--speak-d) - 44px) / 2); padding: 0;
+    background: none; border: none; cursor: pointer; font-size: 16px; color: white;
+    display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
   }
+  .speak-btn::before {
+    content: ''; position: absolute; top: 50%; left: 50%; width: var(--speak-d); height: var(--speak-d);
+    margin: calc(var(--speak-d) / -2) 0 0 calc(var(--speak-d) / -2);
+    border-radius: 50%; background: var(--speak-bg); transition: var(--transition);
+  }
+  .speak-btn .ui-icon { position: relative; width: 16px; height: 16px; }
+  .speak-btn:hover::before { background: var(--red); transform: scale(1.1); }
+  .vocab-table .speak-btn { --speak-bg: var(--red-light); color: var(--red); }
+  .vocab-table .speak-btn:hover { color: white; }
+  button[onclick^="deleteCustomWord"] { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin-block: -11px; }
   button[onclick^="deleteCustomWord"] .ui-icon { width: 15px; height: 15px; }
-  .speak-btn .ui-icon { width: 16px; height: 16px; }
-  .speak-btn:hover { background: var(--red); transform: scale(1.1); }
-  .vocab-table .speak-btn {
-    color: var(--red);
-    background: var(--red-light);
-  }
-  .vocab-table .speak-btn:hover {
-    color: white;
-    background: var(--red);
-  }
+  /* 출석 달력 달 이동 */
+  button[onclick="prevMonth()"], button[onclick="nextMonth()"] { min-width: 44px; min-height: 44px; margin-block: -12px; line-height: 1; }
+  /* 글자 버튼 — 세로 44px */
+  .practice-actions .filter-btn, #autoSpeakBtn, #qdir-mix, #qdir-es, #qdir-ko { min-height: 44px; }
 
   .quick-nav { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 18px; }
   @media(max-width:550px){ .quick-nav { grid-template-columns: repeat(2,1fr); } }
@@ -896,7 +895,7 @@
         <div class="flashcard-front">
           <div class="es-word">
             <span id="fc-es"></span>
-            <button onclick="event.stopPropagation(); speakSpanish(document.getElementById('fc-es').textContent)" class="speak-btn" aria-label="발음 듣기" title="발음 듣기" style="background: rgba(255,255,255,0.15);"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+            <button onclick="event.stopPropagation(); speakSpanish(document.getElementById('fc-es').textContent)" class="speak-btn" aria-label="발음 듣기" title="발음 듣기" style="--speak-bg: rgba(255,255,255,0.15);"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
           </div>
           <div class="es-pron" id="fc-pron"></div>
           <div style="margin-top:14px;font-size:11px;opacity:.5;">클릭하여 뒤집기</div>
@@ -1111,7 +1110,7 @@
           <div><strong>기본 발음:</strong> <span id="alpha-detail-pron" style="font-weight: 700;"></span></div>
         </div>
       </div>
-      <button onclick="speakSelectedAlpha()" class="speak-btn" aria-label="발음 듣기" style="width: 44px; height: 44px; font-size: 20px; background: var(--red); color: white;" title="발음 듣기"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+      <button onclick="speakSelectedAlpha()" class="speak-btn" aria-label="발음 듣기" style="--speak-d: 40px; --speak-bg: var(--red); color: white;" title="발음 듣기"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
     </div>
   </div>
 
@@ -2185,7 +2184,7 @@ function renderVocabList(list) {
     <tr>
       <td class="es-cell">
         <span>${v.es}</span>
-        <button onclick="speakSpanish('${v.es}')" class="speak-btn" aria-label="발음 듣기" style="padding:1px 5px; font-size:12px; width:22px; height:22px;" title="발음 듣기">${SPEAK_ICON}</button>
+        <button onclick="speakSpanish('${v.es}')" class="speak-btn" aria-label="발음 듣기" style="--speak-d:24px;" title="발음 듣기">${SPEAK_ICON}</button>
       </td>
       <td class="pron-cell">${v.pron}</td>
       <td>${v.ko}</td>
@@ -2425,7 +2424,7 @@ function renderQuizQuestion() {
   const questionEl = document.getElementById('quiz-question-text');
   if (q.isEsToKo) {
     questionEl.innerHTML = `<span>${q.word.es}</span>
-      <button onclick="speakSpanish('${q.word.es}')" class="speak-btn" aria-label="발음 듣기" style="background:var(--red); color:white; width:34px; height:34px; font-size:16px;" title="발음 듣기">${SPEAK_ICON}</button>`;
+      <button onclick="speakSpanish('${q.word.es}')" class="speak-btn" aria-label="발음 듣기" style="--speak-d:34px; --speak-bg:var(--red); color:white;" title="발음 듣기">${SPEAK_ICON}</button>`;
   } else {
     questionEl.innerHTML = `<span>"${q.word.ko}"</span>`;
   }
