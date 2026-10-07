@@ -1,5 +1,7 @@
 # Minb browser regression checks
 
+Run `node tests/shared-day-marks.cjs` for spouse mark/unmark synchronization, date-level concurrent writes, rejected saves/removals, duplicate-click prevention, and switching from an old cached space. This runs the actual page functions with two isolated JavaScript contexts and an in-memory Firestore boundary; it does not write real account records.
+
 Run with Node.js, Playwright and Chrome installed:
 
 ```sh
