@@ -1070,6 +1070,13 @@ function subscribeUser() {
     if (!doc.exists || !currentUser || currentUser.uid !== uid) return;
     userData = doc.data();
     ensureDayStorage('personal', uid, userData);
+    if (userData.spaceId && userData.spaceId !== spaceId) {
+      resetDayStorage('shared');
+      spaceId = userData.spaceId;
+      spaceData = null;
+      renderAll();
+      subscribeSpace();
+    }
     syncUiPreferences();
     renderStudyStats(userData);
     if (spaceData) renderAll();
@@ -2765,23 +2772,29 @@ function isPeriodDay(key) { return !!getPeriodDays()[key]; }
 function getLoveDays() { return (spaceData && spaceData.loveDays) || {}; }
 function isLoveDay(key) { return !!getLoveDays()[key]; }
 
+const pendingSpaceDayMarks = new Set();
+
 // 공유 문서의 '날짜 → true' 맵 하나를 켜고 끈다.
 async function toggleSpaceDayMark(field, key, onMsg, offMsg) {
   if (!spaceId || !spaceData || !key) return;
-  const next = { ...(spaceData[field] || {}) };
-  const on = !next[key];
-  if (on) next[key] = true; else delete next[key];
-  spaceData[field] = next;
+  const sid = spaceId;
+  const pendingKey = `${sid}:${field}:${key}`;
+  if (pendingSpaceDayMarks.has(pendingKey)) return;
+  const on = !(spaceData[field] || {})[key];
+  pendingSpaceDayMarks.add(pendingKey);
   renderAll();
   try {
-    await db.collection('spaces').doc(spaceId).update({
-      [field]: next,
+    await db.collection('spaces').doc(sid).update({
+      [`${field}.${key}`]: on ? true : firebase.firestore.FieldValue.delete(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    toast(on ? onMsg : offMsg);
+    if (spaceId === sid) toast(on ? onMsg : offMsg);
   } catch (e) {
     console.error(field + ' 저장 실패:', e);
-    toast('저장에 실패했어요.');
+    if (spaceId === sid) toast('저장에 실패했어요. 다시 눌러 주세요.');
+  } finally {
+    pendingSpaceDayMarks.delete(pendingKey);
+    if (spaceId === sid) renderAll();
   }
 }
 
@@ -2789,13 +2802,14 @@ function togglePeriodDay(key) {
   return toggleSpaceDayMark('periodDays', key, '생리일로 표시했어요.', '생리 표시를 지웠어요.');
 }
 function toggleLoveDay(key) {
-  return toggleSpaceDayMark('loveDays', key, '기록했어요.', '기록을 지웠어요.');
+  return toggleSpaceDayMark('loveDays', key, '함께한 날을 공유 기록에 저장했어요.', '함께한 날을 공유 기록에서 지웠어요.');
 }
 
 function renderDayPeriodToggle() {
   const btn = document.getElementById('dmPeriodToggle');
   if (!btn || !modalKey) return;
   const on = isPeriodDay(modalKey);
+  btn.disabled = pendingSpaceDayMarks.has(`${spaceId}:periodDays:${modalKey}`);
   btn.classList.toggle('sel', on);
   btn.setAttribute('aria-pressed', on ? 'true' : 'false');
   btn.setAttribute('aria-label', on ? '이 날짜의 생리 표시 해제' : '이 날짜를 생리일로 표시');
@@ -2805,9 +2819,11 @@ function renderDayLoveToggle() {
   const btn = document.getElementById('dmLoveToggle');
   if (!btn || !modalKey) return;
   const on = isLoveDay(modalKey);
+  btn.disabled = pendingSpaceDayMarks.has(`${spaceId}:loveDays:${modalKey}`);
   btn.classList.toggle('sel', on);
   btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  btn.setAttribute('aria-label', on ? '이 날짜의 기록 해제' : '이 날짜에 기록');
+  btn.setAttribute('aria-label', on ? '함께한 날 공유 기록 해제' : '함께한 날로 표시하고 배우자와 공유');
+  btn.title = '같은 스페이스의 배우자와 함께 보는 기록이에요.';
 }
 
 // ── 생리 주기 예측 ──
