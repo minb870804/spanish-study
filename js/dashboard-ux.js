@@ -4,7 +4,7 @@ const HOME_CARD_DEFINITIONS = [
   {id:'upcoming', label:'앞으로의 할 일', selector:'.upcoming-card'},
   {id:'shared', label:'함께 쓰는 공간', selector:'.shared-summary'}
 ];
-const defaultCalendarView = () => window.matchMedia('(max-width: 767px)').matches ? 'week' : 'month';
+const defaultCalendarView = () => 'month';
 let calendarView = defaultCalendarView();
 let uiPreferenceState = {uid:null, preferences:null, pending:false, ready:false, saving:false, revision:0, message:''};
 function sanitizeUiPreferences(value) {
