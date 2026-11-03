@@ -16,7 +16,7 @@ function fixture() {
   function client(uid, id = 'shared') {
     const context = vm.createContext({
       console: { error() {} }, currentUser: { uid }, spaceId: id, spaceData: clone(docs[id]), userData: { spaceId: id }, unsubSpace: null, unsubUser: null,
-      renderAll() {}, syncUiPreferences() {}, renderStudyStats() {}, ensureDayStorage() {}, resetDayStorage() {}, toast() {},
+      renderAll() {}, syncEveLocalReminders() {}, syncUiPreferences() {}, renderStudyStats() {}, ensureDayStorage() {}, resetDayStorage() {}, toast() {},
       firebase: { firestore: { FieldValue: { serverTimestamp: () => 1, delete: () => '__DELETE__' } } },
       db: { collection: collection => ({ doc: id => ({
         onSnapshot(cb) { const item = { collection, id, cb, active: true }; listeners.push(item); return () => { item.active = false; }; },

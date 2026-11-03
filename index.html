@@ -243,7 +243,8 @@
               style="width:70px; background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; color:var(--text); font-family:inherit; font-size:14px; font-weight:800; outline:none; text-align:center;">
             <span style="font-size:12.5px; font-weight:800;">일에 반복</span>
             <label class="share-check" for="recurYearLunar"><input type="checkbox" id="recurYearLunar" onchange="updateRecurSummary('recur')"><span>음력</span></label>
-            <span class="scope-hint">재산세·생일처럼 1년에 한 번. 음력이면 해마다 양력 날짜로 바꿔 표시해요.</span>
+            <label class="share-check" for="recurYearRemind"><input type="checkbox" id="recurYearRemind" onchange="updateRecurSummary('recur')"><span>전날 알림</span></label>
+            <span class="scope-hint">재산세·생일처럼 1년에 한 번. 음력이면 해마다 양력 날짜로 바꿔 표시해요. 전날 알림은 하루 전 오전 9시에 와요.</span>
           </div>
 <div class="recur-dates" id="recurDates">
  <label for="recurStartDate">시작일<input type="date" id="recurStartDate" onchange="updateRecurSummary('recur')"></label>
@@ -488,7 +489,8 @@
         style="width:70px; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; color:var(--text); font-family:inherit; font-size:14px; font-weight:800; outline:none; text-align:center;">
       <span style="font-size:12.5px; font-weight:800;">일에 반복</span>
       <label class="share-check" for="rsYearLunar"><input type="checkbox" id="rsYearLunar" onchange="updateRecurSummary('rs')"><span>음력</span></label>
-            <span class="scope-hint">재산세·생일처럼 1년에 한 번. 음력이면 해마다 양력 날짜로 바꿔 표시해요.</span>
+            <label class="share-check" for="rsYearRemind"><input type="checkbox" id="rsYearRemind" onchange="updateRecurSummary('rs')"><span>전날 알림</span></label>
+            <span class="scope-hint">재산세·생일처럼 1년에 한 번. 음력이면 해마다 양력 날짜로 바꿔 표시해요. 전날 알림은 하루 전 오전 9시에 와요.</span>
     </div>
 <div class="recur-dates" id="rsDates">
  <label for="rsStartDate">시작일<input type="date" id="rsStartDate" onchange="updateRecurSummary('rs')"></label>
@@ -1063,6 +1065,7 @@ function subscribeSpace() {
     spaceData = doc.data();
     ensureDayStorage('shared', sid, spaceData);
     renderAll();
+    syncEveLocalReminders();
   }, err => console.error('스페이스 구독 에러:', err));
 }
 
@@ -1082,7 +1085,7 @@ function subscribeUser() {
     }
     syncUiPreferences();
     renderStudyStats(userData);
-    if (spaceData) renderAll();
+    if (spaceData) { renderAll(); syncEveLocalReminders(); }
   }, err => console.error('개인 데이터 구독 에러:', err));
 }
 
@@ -1265,6 +1268,44 @@ async function cancelLocalReminder(todoId) {
   const LN = capLocalNotifications();
   if (!LN) return;
   try { await LN.cancel({ notifications: [{ id: localNotifId(todoId) }] }); } catch (e) {}
+}
+
+// 반복 일정 전날 알림: 웹은 서버가 매일 오전 9시에 푸시하고, 네이티브 앱은 다음 날짜의 전날 9시를 기기에 예약한다.
+const EVE_REMINDER_HOUR = 9;
+let eveReminderSig = '';
+function nextEveReminderAt(rule, now = new Date()) {
+  for (let i = 1; i <= 400; i++) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, 12);
+    if (!recurMatches(rule, day)) continue;
+    const at = new Date(day.getFullYear(), day.getMonth(), day.getDate() - 1, EVE_REMINDER_HOUR);
+    if (at > now) return at;
+  }
+  return null;
+}
+async function syncEveLocalReminders() {
+  if (!capIsNative() || !currentUser) return;
+  const LN = capLocalNotifications();
+  if (!LN) return;
+  const plans = getAllRecurring().filter(r => r.remindDayBefore)
+    .map(rule => ({ rule, at: nextEveReminderAt(rule) })).filter(plan => plan.at);
+  const sig = JSON.stringify(plans.map(({ rule, at }) => [rule.id, rule.text, at.getTime()]));
+  if (sig === eveReminderSig) return;
+  eveReminderSig = sig;
+  try {
+    const pending = ((await LN.getPending()) || {}).notifications || [];
+    const stale = pending.filter(n => n.extra && n.extra.kind === 'eve').map(n => ({ id: n.id }));
+    if (stale.length) await LN.cancel({ notifications: stale });
+    if (!plans.length || !(await ensureLocalNotifPermission())) return;
+    await LN.schedule({
+      notifications: plans.map(({ rule, at }) => ({
+        id: localNotifId('eve-' + rule.id),
+        title: 'Minb 내일 일정',
+        body: `내일 ${rule.text || '반복 일정'}`,
+        schedule: { at },
+        extra: { kind: 'eve' }
+      }))
+    });
+  } catch (e) { eveReminderSig = ''; console.warn('전날 알림 예약 실패:', e); }
 }
 
 function updatePushStatus(text) {
@@ -1816,22 +1857,25 @@ function fillMonthSelect(id) {
 }
 
 function getRecurringFor(dateObj) {
+  return getAllRecurring().filter(r => recurMatches(r, dateObj));
+}
+
+// 반복 규칙이 그 날짜에 해당하는지 (functions/recurring-eve.js 의 ruleMatchesKey 와 같은 규칙)
+function recurMatches(r, dateObj) {
   const lastDay = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0).getDate();
   const key = dateKey(dateObj);
-  return getAllRecurring().filter(r => {
-    if (r.startDate && key < r.startDate || r.endDate && key > r.endDate) return false;
-    if (r.freq === 'yearly') {
-      if (r.calendar === 'lunar') return lunarToSolarKeys(dateObj.getFullYear(), Number(r.month) || 1, Number(r.monthDay) || 1).includes(key);
-      // 매년 특정 월·일. 해당 월이 아니면 제외, 없는 날짜(예: 2월 31일)는 말일에 표시
-      if ((dateObj.getMonth() + 1) !== (Number(r.month) || 1)) return false;
-      return dateObj.getDate() === Math.min(Number(r.monthDay) || 1, lastDay);
-    }
-    if (r.freq === 'monthly') {
-      // 매월 N일. 짧은 달(예: 31일 없는 달)은 말일에 표시
-      return dateObj.getDate() === Math.min(Number(r.monthDay) || 1, lastDay);
-    }
-    return (r.days || []).includes(dateObj.getDay());
-  });
+  if (r.startDate && key < r.startDate || r.endDate && key > r.endDate) return false;
+  if (r.freq === 'yearly') {
+    if (r.calendar === 'lunar') return lunarToSolarKeys(dateObj.getFullYear(), Number(r.month) || 1, Number(r.monthDay) || 1).includes(key);
+    // 매년 특정 월·일. 해당 월이 아니면 제외, 없는 날짜(예: 2월 31일)는 말일에 표시
+    if ((dateObj.getMonth() + 1) !== (Number(r.month) || 1)) return false;
+    return dateObj.getDate() === Math.min(Number(r.monthDay) || 1, lastDay);
+  }
+  if (r.freq === 'monthly') {
+    // 매월 N일. 짧은 달(예: 31일 없는 달)은 말일에 표시
+    return dateObj.getDate() === Math.min(Number(r.monthDay) || 1, lastDay);
+  }
+  return (r.days || []).includes(dateObj.getDay());
 }
 
 // 반복 규칙의 주기를 사람이 읽는 라벨로 (목록·표시용)
@@ -1849,7 +1893,7 @@ function lunarThisYearLabel(rule) {
 }
 
 function recurRuleSummary(rule) {
-  return [recurFreqLabel(rule), rule.calendar === 'lunar' ? lunarThisYearLabel(rule) : '', rule.startDate ? `${rule.startDate}부터` : '', rule.endDate ? `${rule.endDate}까지` : '종료 없음'].filter(Boolean).join(' · ');
+  return [recurFreqLabel(rule), rule.calendar === 'lunar' ? lunarThisYearLabel(rule) : '', rule.remindDayBefore ? '전날 알림' : '', rule.startDate ? `${rule.startDate}부터` : '', rule.endDate ? `${rule.endDate}까지` : '종료 없음'].filter(Boolean).join(' · ');
 }
 function setRecurPreset(preset) {
   recurMode = 'weekly'; recurSelDays = preset === 'weekdays' ? [1,2,3,4,5] : [6,0]; renderRecurDayBtns();
@@ -1875,7 +1919,7 @@ function updateRecurSummary(prefix) {
   document.getElementById(prefix + 'EndDate').min = document.getElementById(prefix + 'StartDate').value;
   const mode = prefix === 'recur' ? recurMode : rsMode;
   const days = prefix === 'recur' ? recurSelDays : rsDays;
-  const rule = buildRecurFields(mode, days, {monthDay:prefix+'MonthDay',yearMonth:prefix+'YearMonth',yearDay:prefix+'YearDay',yearLunar:prefix+'YearLunar'}, true);
+  const rule = buildRecurFields(mode, days, {monthDay:prefix+'MonthDay',yearMonth:prefix+'YearMonth',yearDay:prefix+'YearDay',yearLunar:prefix+'YearLunar',yearRemind:prefix+'YearRemind'}, true);
   const dates = readRecurDates(prefix, true);
   document.getElementById(prefix + 'Summary').textContent = mode === 'weekly' && !days.length ? '반복할 요일을 하나 이상 선택해 주세요.'
     : !rule ? (mode === 'yearly' && document.getElementById(prefix + 'YearLunar').checked ? '음력 날짜는 1일부터 30일 사이로 입력해 주세요.' : '반복할 날짜는 1일부터 31일 사이로 입력해 주세요.') : !dates ? '시작일과 종료일을 확인해 주세요.' : recurRuleSummary({...rule,...dates});
@@ -1897,7 +1941,8 @@ function buildRecurFields(mode, selDays, ids, quiet = false) {
     const yd = Number(document.getElementById(ids.yearDay).value);
     const lunar = !!(ids.yearLunar && document.getElementById(ids.yearLunar).checked);
     if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(yd) || yd < 1 || yd > (lunar ? 30 : 31)) { if (!quiet) toast('매년 반복할 월·일을 입력해 주세요!'); return null; }
-    return { freq: 'yearly', month, monthDay: yd, days: [], ...(lunar ? { calendar: 'lunar' } : {}) };
+    const remind = !!(ids.yearRemind && document.getElementById(ids.yearRemind).checked);
+    return { freq: 'yearly', month, monthDay: yd, days: [], ...(lunar ? { calendar: 'lunar' } : {}), ...(remind ? { remindDayBefore: true } : {}) };
   }
   return { days: [0, 1, 2, 3, 4, 5, 6] }; // daily
 }
@@ -1949,7 +1994,7 @@ async function addRecurring() {
   const input = document.getElementById('recurInput');
   const text = input.value.trim();
   if (!text || !spaceData || !userData) return;
-  const fields = buildRecurFields(recurMode, recurSelDays, { monthDay: 'recurMonthDay', yearMonth: 'recurYearMonth', yearDay: 'recurYearDay', yearLunar: 'recurYearLunar' });
+  const fields = buildRecurFields(recurMode, recurSelDays, { monthDay: 'recurMonthDay', yearMonth: 'recurYearMonth', yearDay: 'recurYearDay', yearLunar: 'recurYearLunar', yearRemind: 'recurYearRemind' });
   if (!fields) return;
   const dates = readRecurDates('recur');
   if (!dates) return;
@@ -2043,7 +2088,7 @@ async function saveRecurSetup() {
   if (!rsCtx) return;
   const todo = getDay(rsCtx.key).todos.find(t => t.id === rsCtx.id);
   if (!todo) { closeRecurSetup(); return; }
-  const fields = buildRecurFields(rsMode, rsDays, { monthDay: 'rsMonthDay', yearMonth: 'rsYearMonth', yearDay: 'rsYearDay', yearLunar: 'rsYearLunar' });
+  const fields = buildRecurFields(rsMode, rsDays, { monthDay: 'rsMonthDay', yearMonth: 'rsYearMonth', yearDay: 'rsYearDay', yearLunar: 'rsYearLunar', yearRemind: 'rsYearRemind' });
   if (!fields) return;
   const dates = readRecurDates('rs');
   if (!dates) return;

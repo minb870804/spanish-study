@@ -4,6 +4,7 @@ const { createHash } = require('node:crypto');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
 const webpush = require('web-push');
+const { ruleMatchesKey, tomorrowKey } = require('./recurring-eve');
 
 admin.initializeApp();
 
@@ -467,6 +468,58 @@ exports.notifySharedDiaryEntry = onCall({ region: 'asia-northeast3', timeoutSeco
   }
   return { sent, recipients: attempted };
 });
+
+// ── 반복 일정 전날 알림 ──
+// '전날 알림'을 켠 반복 일정(생일·기념일 등)은 매일 오전 9시에 내일 날짜를 보고 미리 알린다.
+// 공유 일정은 공간의 두 사람 모두에게, 개인 일정은 본인에게만 보낸다.
+exports.sendRecurringEveReminders = onSchedule(
+  {
+    schedule: '0 9 * * *',
+    timeZone: 'Asia/Seoul',
+    region: 'asia-northeast3',
+    timeoutSeconds: 120,
+    memory: '256MiB'
+  },
+  async () => {
+    if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+      logger.error('VAPID keys are missing. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY.');
+      return;
+    }
+    const key = tomorrowKey(Date.now());
+    const payloadOf = (rule, tag) => ({
+      title: 'Minb 내일 일정',
+      body: `내일 ${rule.text || '반복 일정'}`,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: `eve-${tag}-${key}`,
+      url: `/?date=${key}`
+    });
+    let matched = 0;
+    let sent = 0;
+
+    const spacesSnap = await db.collection('spaces').select('recurring', 'members').get();
+    for (const doc of spacesSnap.docs) {
+      for (const rule of doc.get('recurring') || []) {
+        if (!rule || !rule.remindDayBefore || !ruleMatchesKey(rule, key)) continue;
+        matched += 1;
+        for (const uid of doc.get('members') || []) {
+          sent += (await sendReminderToUser(uid, payloadOf(rule, `${doc.id}-${rule.id}`))).sent;
+        }
+      }
+    }
+
+    const usersSnap = await db.collection('users').select('personalRecurring').get();
+    for (const doc of usersSnap.docs) {
+      for (const rule of doc.get('personalRecurring') || []) {
+        if (!rule || !rule.remindDayBefore || !ruleMatchesKey(rule, key)) continue;
+        matched += 1;
+        sent += (await sendReminderToUser(doc.id, payloadOf(rule, `${doc.id}-${rule.id}`))).sent;
+      }
+    }
+
+    logger.info('Recurring eve reminder scan finished', { key, matched, sent });
+  }
+);
 
 async function sendReminderToUser(uid, payload) {
   if (!uid) return { sent: 0 };
