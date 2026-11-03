@@ -242,7 +242,8 @@
             <input type="number" id="recurYearDay" onchange="updateRecurSummary('recur')" min="1" max="31" value="1"
               style="width:70px; background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; color:var(--text); font-family:inherit; font-size:14px; font-weight:800; outline:none; text-align:center;">
             <span style="font-size:12.5px; font-weight:800;">일에 반복</span>
-            <span class="scope-hint">재산세·생일처럼 1년에 한 번.</span>
+            <label class="share-check" for="recurYearLunar"><input type="checkbox" id="recurYearLunar" onchange="updateRecurSummary('recur')"><span>음력</span></label>
+            <span class="scope-hint">재산세·생일처럼 1년에 한 번. 음력이면 해마다 양력 날짜로 바꿔 표시해요.</span>
           </div>
 <div class="recur-dates" id="recurDates">
  <label for="recurStartDate">시작일<input type="date" id="recurStartDate" onchange="updateRecurSummary('recur')"></label>
@@ -486,7 +487,8 @@
       <input type="number" id="rsYearDay" onchange="updateRecurSummary('rs')" min="1" max="31" value="1"
         style="width:70px; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; color:var(--text); font-family:inherit; font-size:14px; font-weight:800; outline:none; text-align:center;">
       <span style="font-size:12.5px; font-weight:800;">일에 반복</span>
-      <span class="scope-hint">재산세·생일처럼 1년에 한 번.</span>
+      <label class="share-check" for="rsYearLunar"><input type="checkbox" id="rsYearLunar" onchange="updateRecurSummary('rs')"><span>음력</span></label>
+            <span class="scope-hint">재산세·생일처럼 1년에 한 번. 음력이면 해마다 양력 날짜로 바꿔 표시해요.</span>
     </div>
 <div class="recur-dates" id="rsDates">
  <label for="rsStartDate">시작일<input type="date" id="rsStartDate" onchange="updateRecurSummary('rs')"></label>
@@ -553,6 +555,7 @@
 <script src="js/day-months.js"></script>
 <script src="js/day-persistence.js"></script>
 <script src="js/todo-editor.js"></script>
+<script src="js/lunar.js"></script>
 <script>
 // Firebase Auth는 127.0.0.1과 localhost를 서로 다른 도메인으로 본다.
 // 로컬 확인 때 unauthorized-domain이 나지 않도록 허용 가능성이 높은 localhost로 맞춘다.
@@ -1818,6 +1821,7 @@ function getRecurringFor(dateObj) {
   return getAllRecurring().filter(r => {
     if (r.startDate && key < r.startDate || r.endDate && key > r.endDate) return false;
     if (r.freq === 'yearly') {
+      if (r.calendar === 'lunar') return lunarToSolarKeys(dateObj.getFullYear(), Number(r.month) || 1, Number(r.monthDay) || 1).includes(key);
       // 매년 특정 월·일. 해당 월이 아니면 제외, 없는 날짜(예: 2월 31일)는 말일에 표시
       if ((dateObj.getMonth() + 1) !== (Number(r.month) || 1)) return false;
       return dateObj.getDate() === Math.min(Number(r.monthDay) || 1, lastDay);
@@ -1833,13 +1837,19 @@ function getRecurringFor(dateObj) {
 // 반복 규칙의 주기를 사람이 읽는 라벨로 (목록·표시용)
 function recurFreqLabel(r) {
   const D = ['일','월','화','수','목','금','토'];
-  if (r.freq === 'yearly') return `매년 ${Number(r.month) || 1}월 ${Number(r.monthDay) || 1}일`;
+  if (r.freq === 'yearly') return `매년 ${r.calendar === 'lunar' ? '음력 ' : ''}${Number(r.month) || 1}월 ${Number(r.monthDay) || 1}일`;
   if (r.freq === 'monthly') return `매월 ${Number(r.monthDay) || 1}일`;
   return (r.days || []).length === 7 ? '매일' : '매주 ' + [1,2,3,4,5,6,0].filter(d => (r.days || []).includes(d)).map(d => D[d]).join('·');
 }
 
+// 음력 규칙이 올해 양력 며칠인지 ('M월 D일')
+function lunarThisYearLabel(rule) {
+  const key = lunarToSolarKeys(new Date().getFullYear(), Number(rule.month) || 1, Number(rule.monthDay) || 1)[0];
+  return key ? `올해 양력 ${Number(key.slice(5, 7))}월 ${Number(key.slice(8))}일` : '';
+}
+
 function recurRuleSummary(rule) {
-  return [recurFreqLabel(rule), rule.startDate ? `${rule.startDate}부터` : '', rule.endDate ? `${rule.endDate}까지` : '종료 없음'].filter(Boolean).join(' · ');
+  return [recurFreqLabel(rule), rule.calendar === 'lunar' ? lunarThisYearLabel(rule) : '', rule.startDate ? `${rule.startDate}부터` : '', rule.endDate ? `${rule.endDate}까지` : '종료 없음'].filter(Boolean).join(' · ');
 }
 function setRecurPreset(preset) {
   recurMode = 'weekly'; recurSelDays = preset === 'weekdays' ? [1,2,3,4,5] : [6,0]; renderRecurDayBtns();
@@ -1865,10 +1875,10 @@ function updateRecurSummary(prefix) {
   document.getElementById(prefix + 'EndDate').min = document.getElementById(prefix + 'StartDate').value;
   const mode = prefix === 'recur' ? recurMode : rsMode;
   const days = prefix === 'recur' ? recurSelDays : rsDays;
-  const rule = buildRecurFields(mode, days, {monthDay:prefix+'MonthDay',yearMonth:prefix+'YearMonth',yearDay:prefix+'YearDay'}, true);
+  const rule = buildRecurFields(mode, days, {monthDay:prefix+'MonthDay',yearMonth:prefix+'YearMonth',yearDay:prefix+'YearDay',yearLunar:prefix+'YearLunar'}, true);
   const dates = readRecurDates(prefix, true);
   document.getElementById(prefix + 'Summary').textContent = mode === 'weekly' && !days.length ? '반복할 요일을 하나 이상 선택해 주세요.'
-    : !rule ? '반복할 날짜는 1일부터 31일 사이로 입력해 주세요.' : !dates ? '시작일과 종료일을 확인해 주세요.' : recurRuleSummary({...rule,...dates});
+    : !rule ? (mode === 'yearly' && document.getElementById(prefix + 'YearLunar').checked ? '음력 날짜는 1일부터 30일 사이로 입력해 주세요.' : '반복할 날짜는 1일부터 31일 사이로 입력해 주세요.') : !dates ? '시작일과 종료일을 확인해 주세요.' : recurRuleSummary({...rule,...dates});
 }
 
 // 모드 + 입력값 → 반복 규칙의 주기 필드. 유효하지 않으면 toast 후 null 반환.
@@ -1885,8 +1895,9 @@ function buildRecurFields(mode, selDays, ids, quiet = false) {
   if (mode === 'yearly') {
     const month = Number(document.getElementById(ids.yearMonth).value);
     const yd = Number(document.getElementById(ids.yearDay).value);
-    if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(yd) || yd < 1 || yd > 31) { if (!quiet) toast('매년 반복할 월·일을 입력해 주세요!'); return null; }
-    return { freq: 'yearly', month, monthDay: yd, days: [] };
+    const lunar = !!(ids.yearLunar && document.getElementById(ids.yearLunar).checked);
+    if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(yd) || yd < 1 || yd > (lunar ? 30 : 31)) { if (!quiet) toast('매년 반복할 월·일을 입력해 주세요!'); return null; }
+    return { freq: 'yearly', month, monthDay: yd, days: [], ...(lunar ? { calendar: 'lunar' } : {}) };
   }
   return { days: [0, 1, 2, 3, 4, 5, 6] }; // daily
 }
@@ -1938,7 +1949,7 @@ async function addRecurring() {
   const input = document.getElementById('recurInput');
   const text = input.value.trim();
   if (!text || !spaceData || !userData) return;
-  const fields = buildRecurFields(recurMode, recurSelDays, { monthDay: 'recurMonthDay', yearMonth: 'recurYearMonth', yearDay: 'recurYearDay' });
+  const fields = buildRecurFields(recurMode, recurSelDays, { monthDay: 'recurMonthDay', yearMonth: 'recurYearMonth', yearDay: 'recurYearDay', yearLunar: 'recurYearLunar' });
   if (!fields) return;
   const dates = readRecurDates('recur');
   if (!dates) return;
@@ -2032,7 +2043,7 @@ async function saveRecurSetup() {
   if (!rsCtx) return;
   const todo = getDay(rsCtx.key).todos.find(t => t.id === rsCtx.id);
   if (!todo) { closeRecurSetup(); return; }
-  const fields = buildRecurFields(rsMode, rsDays, { monthDay: 'rsMonthDay', yearMonth: 'rsYearMonth', yearDay: 'rsYearDay' });
+  const fields = buildRecurFields(rsMode, rsDays, { monthDay: 'rsMonthDay', yearMonth: 'rsYearMonth', yearDay: 'rsYearDay', yearLunar: 'rsYearLunar' });
   if (!fields) return;
   const dates = readRecurDates('rs');
   if (!dates) return;
