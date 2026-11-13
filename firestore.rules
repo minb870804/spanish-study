@@ -56,9 +56,8 @@ service cloud.firestore {
       match /lectureState/{lectureId} {
         allow read, write: if signedIn() && request.auth.uid == userId;
       }
-      match /lectureAttempts/{attemptId} {
-        allow read, create, delete: if signedIn() && request.auth.uid == userId;
-        allow update: if false;
+      match /lectureAttempts/{attemptId} {     // 시험지 id 가 문서 id — 재시도해도 같은 기록을 덮어쓴다
+        allow read, write: if signedIn() && request.auth.uid == userId;
       }
 
       // 개인 일정(달마다 문서 하나): 본인만
