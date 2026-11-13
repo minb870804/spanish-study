@@ -192,7 +192,7 @@ const safe = html => X.sanitize(html);
 let me = null;               // 로그인한 사용자
 let account = 0;             // 계정이 바뀌면 늘어난다 — 늦게 도착한 응답이 다른 계정 화면을 덮지 않게
 let courses = [], lectures = [], states = {}, attempts = [];
-const contentCache = {};     // lectureId → {studyHtml, bank}
+const contentCache = {};     // lectureId → 불러오는 중이거나 불러온 {studyHtml, bank} (Promise)
 let saveTimer = null, toastTimer = null;
 
 function toast(message) {
@@ -215,6 +215,9 @@ function writeLocal(lid, sheet) {
 async function loadAll() {
   const acc = account;
   showGate('불러오는 중…');
+  // 주소에 강의가 있으면 목록을 받는 동안 그 강의 내용도 미리 받기 시작한다.
+  const first = parseHash().lid;
+  if (first) loadContent(first).catch(() => { /* 화면을 그릴 때 다시 시도한다 */ });
   try {
     const [cs, ls, ss, as] = await Promise.all([
       userDoc().collection('lectureCourses').get(),
@@ -233,14 +236,18 @@ async function loadAll() {
     if (acc === account) showGate('강의를 불러오지 못했어요. 연결을 확인해 주세요.', true);
   }
 }
-async function loadContent(lid) {
-  if (contentCache[lid]) return contentCache[lid];
-  const snap = await userDoc().collection('lectureContent').doc(lid).get();
-  if (!snap.exists) throw new Error('강의 내용이 없어요');
-  const data = snap.data();
-  data.bankIndex = Object.fromEntries([...data.bank.mcq, ...data.bank.subj].map(q => [q.id, q]));
-  contentCache[lid] = data;
-  return data;
+// 같은 강의를 두 번 요청해도 한 번만 받는다. 실패하면 다음에 다시 받도록 비운다.
+function loadContent(lid) {
+  if (!contentCache[lid]) {
+    contentCache[lid] = userDoc().collection('lectureContent').doc(lid).get().then(snap => {
+      if (!snap.exists) throw new Error('강의 내용이 없어요');
+      const data = snap.data();
+      data.bankIndex = Object.fromEntries([...data.bank.mcq, ...data.bank.subj].map(q => [q.id, q]));
+      return data;
+    });
+    contentCache[lid].catch(() => { delete contentCache[lid]; });
+  }
+  return contentCache[lid];
 }
 
 function showGate(message, retry = false) {
@@ -323,6 +330,8 @@ const FRAME_CSS = `
   body { margin:0 auto; padding:28px 32px 48px; max-width:860px; }
   @media (max-width:640px) { body { padding:18px 16px 32px; } }
   .chap-head { scroll-margin-top:16px; }
+  /* 표지는 인쇄용으로 한 쪽 높이(255mm) 가운데 정렬이라, 화면에서는 위가 텅 비어 보인다. */
+  @media screen { .cover { min-height:0; padding:8px 0 32px; } }
   .selfcheck-box { width:20px; height:20px; cursor:pointer; accent-color:#1b1d1f; }
   @media print { body { padding:0; max-width:none; } }
 `;
@@ -334,11 +343,16 @@ async function renderStudy(lecture, ch) {
   $('toc').querySelectorAll('button').forEach(b => b.addEventListener('click', () => scrollToChapter(b.dataset.ch)));
   $('tocSelect').onchange = e => { if (e.target.value) scrollToChapter(e.target.value); e.target.value = ''; };
   if (shownStudy === lecture.id) { if (ch) scrollToChapter(ch); return; }
+  shownStudy = null;
+  frame.onload = null;
+  frame.style.height = '';
+  frame.srcdoc = '<p style="font-family:sans-serif;color:#6b6b6b;padding:24px">교육자료를 불러오는 중…</p>';
   try {
     const content = await loadContent(lecture.id);
     const css = courseById(lecture.courseId).css || '';
     shownStudy = lecture.id;
-    frame.onload = () => { fitFrame(); wireSelfCheck(lecture); if (ch) scrollToChapter(ch); };
+    if (parseHash().lid !== lecture.id) return;   // 기다리는 사이 다른 강의로 옮겼다
+    frame.onload = () => { fitFrame(); wireSelfCheck(lecture); if (ch) scrollToChapter(ch); performance.mark('study-shown'); };
     frame.srcdoc = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><base target="_blank"><style>${css}</style><style>${FRAME_CSS}</style></head><body>${content.studyHtml}</body></html>`;
   } catch (error) {
     console.error('교육자료 불러오기 실패:', error);
