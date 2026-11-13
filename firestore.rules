@@ -38,6 +38,29 @@ service cloud.firestore {
         allow write: if signedIn() && request.auth.uid == userId && isMonthKey(month);
       }
 
+      // 강의 학습: 강좌·강의 내용은 업로드 도구(관리자 권한)만 쓰고, 화면에서는 본인만 읽는다.
+      // 저장소가 공개라 강의 내용·정답은 여기에만 둔다.
+      match /lectureCourses/{courseId} {
+        allow get, list: if signedIn() && request.auth.uid == userId;
+        allow write: if false;
+      }
+      match /lectures/{lectureId} {            // 목록용 정보(제목·장·문항 수)
+        allow get, list: if signedIn() && request.auth.uid == userId;
+        allow write: if false;
+      }
+      match /lectureContent/{lectureId} {      // 교육자료 본문·문제은행(무거워서 열 때만 읽음)
+        allow get: if signedIn() && request.auth.uid == userId;
+        allow write: if false;
+      }
+      // 시험 진행 상태·셀프 체크·응시 기록: 본인만 읽고 쓴다.
+      match /lectureState/{lectureId} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
+      }
+      match /lectureAttempts/{attemptId} {
+        allow read, create, delete: if signedIn() && request.auth.uid == userId;
+        allow update: if false;
+      }
+
       // 개인 일정(달마다 문서 하나): 본인만
       match /dayMonths/{month} {
         allow get, list: if signedIn() && request.auth.uid == userId;

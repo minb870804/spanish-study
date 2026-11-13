@@ -1,5 +1,5 @@
 (() => {
-  // 테마 버튼 아이콘 — 다섯 페이지가 이 함수 하나로 그린다.
+  // 테마 버튼 아이콘 — 모든 페이지가 이 함수 하나로 그린다.
   // 페이지 끝의 인라인 loadTheme() 은 이 파일(defer)보다 먼저 실행되므로, 여기서 초기화 때 한 번 더 그려 덮는다.
   // 달 = 지금 밝음(누르면 어두워짐), 해 = 지금 어두움(누르면 밝아짐)
   const THEME_SUN = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
@@ -14,6 +14,7 @@
   const icons = {
     home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>',
     study:'<path d="M12 5v16M3 3c4 0 7 1 9 3 2-2 5-3 9-3v15c-4 0-7 1-9 3-2-2-5-3-9-3Z"/>',
+    lectures:'<path d="m2 9 10-5 10 5-10 5Z"/><path d="M6 11v5c3 2.7 9 2.7 12 0v-5M22 9v6"/>',
     reading:'<path d="M5 4.5h10.5A3.5 3.5 0 0 1 19 8v12H8.5A3.5 3.5 0 0 0 5 23.5Z"/><path d="M5 4.5v19M8.5 20A3.5 3.5 0 0 0 5 23.5"/><path d="M9 9h6M9 13h6"/>',
     diary:'<rect x="5" y="3" width="15" height="18" rx="2"/><path d="M9 3v18M3 7h4M3 12h4M3 17h4M12 8h5M12 12h5"/>',
     shared:'<path d="M21 11c0 5-9 10-9 10S3 16 3 11a5 5 0 0 1 9-3 5 5 0 0 1 9 3Z"/>',
@@ -21,13 +22,13 @@
   };
   function init() {
     const nav=document.createElement('nav'); nav.className='app-nav'; nav.setAttribute('aria-label','주요 메뉴');
-    const links=[['home','홈','./'],['study','스터디','study.html'],['reading','독서','reading.html'],['diary','일기','diary.html'],['shared','교환일기','shared-diary.html'],['settings','설정','./#settings']];
+    const links=[['home','홈','./'],['study','스터디','study.html'],['lectures','강의','lectures.html'],['reading','독서','reading.html'],['diary','일기','diary.html'],['shared','교환일기','shared-diary.html'],['settings','설정','./#settings']];
     nav.innerHTML=links.map(([id,label,href])=>`<a href="${href}" data-page="${id}"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true">${icons[id]}</svg><span>${label}</span></a>`).join('');
     const header=document.querySelector('body > header');
     if(header)header.after(nav); else document.body.prepend(nav);
     const update=()=>{
       const path=location.pathname.replace(/\.html$/,'');
-      const current=path.endsWith('/shared-diary')?'shared':path.endsWith('/reading')?'reading':path.endsWith('/diary')?'diary':path.endsWith('/study')?'study':location.hash==='#settings'?'settings':'home';
+      const current=path.endsWith('/shared-diary')?'shared':path.endsWith('/reading')?'reading':path.endsWith('/diary')?'diary':path.endsWith('/study')?'study':path.endsWith('/lectures')?'lectures':location.hash==='#settings'?'settings':'home';
       nav.querySelectorAll('a').forEach(a=>{ if(a.dataset.page===current)a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
     };
     update(); window.addEventListener('hashchange',update);

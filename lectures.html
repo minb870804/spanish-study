@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F5F3EE">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<title>강의 | Minb</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=Noto+Serif+KR:wght@400&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="css/ui.css">
+<script src="js/app-shell.js" defer></script>
+<script src="js/lecture-exam.js"></script>
+<style>
+  /* ── 페이지 뼈대: 독서 페이지와 같은 헤더·여백 ── */
+  body { margin:0; min-height:100vh; font-family:'Outfit','Noto Sans KR',sans-serif; background:var(--ui-bg); color:var(--ui-text); }
+  header { background:var(--ui-card); border-bottom:1px solid var(--ui-border); }
+  .header-inner { max-width:var(--ui-content); margin:auto; min-height:72px; padding:0 var(--ui-s5); display:flex; justify-content:space-between; align-items:center; gap:var(--ui-s3); }
+  .brand { display:flex; align-items:center; gap:var(--ui-s3); font-weight:800; text-decoration:none; color:var(--ui-text); flex-shrink:0; }
+  .brand-mark { width:36px; height:36px; border-radius:12px; }
+  .profile { min-width:0; word-break:keep-all; overflow-wrap:anywhere; font-size:var(--ui-small); color:var(--ui-muted); }
+  #loginButton { flex-shrink:0; white-space:nowrap; }
+  main { max-width:var(--ui-content); padding:var(--ui-s6) var(--ui-s5) var(--ui-s8); margin:auto; }
+  h1 { margin:0; font-size:var(--ui-display); letter-spacing:-.03em; word-break:keep-all; }
+  .lead { margin:var(--ui-s2) 0 0; color:var(--ui-muted); line-height:1.7; word-break:keep-all; }
+  .panel { background:var(--ui-card); border:1px solid var(--ui-border); border-radius:var(--ui-radius); padding:var(--ui-s5); }
+  .empty { padding:var(--ui-s6) 0; color:var(--ui-muted); line-height:1.7; word-break:keep-all; }
+  [hidden] { display:none !important; }
+  main *, main *::before, main *::after { box-sizing:border-box; }
+
+  /* ── 강의 목록 ── */
+  .course { margin-top:var(--ui-s6); }
+  .course-head { display:flex; justify-content:space-between; align-items:baseline; gap:var(--ui-s3); flex-wrap:wrap; margin-bottom:var(--ui-s3); }
+  .course-head h2 { margin:0; font-size:var(--ui-title); }
+  .lecture-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:var(--ui-s3); }
+  .lecture-item { display:grid; gap:var(--ui-s2); padding:var(--ui-s4) var(--ui-s5); background:var(--ui-card); border:1px solid var(--ui-border); border-radius:var(--ui-radius); }
+  .lecture-no { font-size:var(--ui-caption); font-weight:700; color:var(--ui-accent); letter-spacing:.06em; }
+  .lecture-title { margin:0; font-size:var(--ui-body); font-weight:800; line-height:1.4; word-break:keep-all; }
+  .lecture-sub { margin:0; color:var(--ui-muted); font-size:var(--ui-small); line-height:1.5; word-break:keep-all; }
+  .lecture-stats { display:flex; flex-wrap:wrap; gap:var(--ui-s1) var(--ui-s4); color:var(--ui-muted); font-size:var(--ui-caption); }
+  .lecture-stats b { color:var(--ui-text); }
+  .lecture-actions { display:flex; gap:var(--ui-s2); margin-top:var(--ui-s1); }
+  .lecture-actions .ui-button { flex:1; text-decoration:none; }
+
+  /* ── 강의 화면 공통: 경로·탭 ── */
+  .crumb { display:flex; flex-wrap:wrap; gap:var(--ui-s2); align-items:center; font-size:var(--ui-small); color:var(--ui-muted); }
+  .crumb a { color:var(--ui-muted); }
+  .lecture-head { display:flex; justify-content:space-between; align-items:flex-end; gap:var(--ui-s4); flex-wrap:wrap; margin:var(--ui-s2) 0 var(--ui-s5); }
+  .lecture-head h1 { font-size:var(--ui-title); }
+  .tabs { display:flex; gap:var(--ui-s2); flex-wrap:wrap; }
+  .tabs a { text-decoration:none; }
+  .tabs a[aria-current] { background:var(--ui-soft); color:var(--ui-accent); border-color:var(--ui-accent); }
+
+  /* ── 교육자료: 넓은 화면은 왼쪽 목차 고정 ── */
+  .study-layout { display:grid; grid-template-columns:220px minmax(0,1fr); gap:var(--ui-s5); align-items:start; }
+  .toc { position:sticky; top:var(--ui-s4); max-height:calc(100vh - 2*var(--ui-s4)); overflow:auto; display:grid; gap:2px; font-size:var(--ui-small); }
+  .toc button { text-align:left; border:0; background:none; color:var(--ui-text); padding:var(--ui-s2) var(--ui-s3); border-radius:var(--ui-radius-sm); cursor:pointer; font:inherit; line-height:1.4; min-height:36px; word-break:keep-all; }
+  .toc button:hover { background:var(--ui-soft); }
+  .toc .no { display:inline-block; min-width:1.8em; color:var(--ui-muted); font-weight:700; }
+  .toc-select { display:none; width:100%; min-height:var(--ui-control); font:inherit; font-size:16px; padding:0 var(--ui-s3); border:1px solid var(--ui-border); border-radius:var(--ui-radius-sm); background:var(--ui-card); color:var(--ui-text); margin-bottom:var(--ui-s3); }
+  .study-frame { width:100%; border:1px solid var(--ui-border); border-radius:var(--ui-radius); background:#fff; display:block; min-height:60vh; }
+
+  /* ── 시험 ── */
+  .exam-intro { display:flex; justify-content:space-between; gap:var(--ui-s4); flex-wrap:wrap; align-items:center; }
+  .exam-intro p { margin:0; color:var(--ui-muted); line-height:1.7; word-break:keep-all; }
+  .exam-bar { position:sticky; top:0; z-index:15; display:flex; justify-content:space-between; align-items:center; gap:var(--ui-s3); flex-wrap:wrap; padding:var(--ui-s3) 0; background:var(--ui-bg); border-bottom:1px solid var(--ui-border); margin-bottom:var(--ui-s4); }
+  .exam-bar .progress { font-size:var(--ui-small); color:var(--ui-muted); }
+  .exam-bar .score { font-weight:800; font-size:var(--ui-body); }
+  .part-title { margin:var(--ui-s6) 0 var(--ui-s3); font-size:var(--ui-title); }
+  .part-title small { font-size:var(--ui-small); color:var(--ui-muted); font-weight:500; margin-left:var(--ui-s2); }
+  .question { background:var(--ui-card); border:1px solid var(--ui-border); border-radius:var(--ui-radius); padding:var(--ui-s4) var(--ui-s5); margin-bottom:var(--ui-s3); }
+  .question.right { border-color:#7fae8c; }
+  .question.wrong { border-color:#d08a80; }
+  .stem { margin:0 0 var(--ui-s3); font-weight:700; line-height:1.6; word-break:keep-all; }
+  .stem .qno { color:var(--ui-accent); margin-right:var(--ui-s2); }
+  .stem .pts { color:var(--ui-muted); font-weight:500; font-size:var(--ui-small); margin-left:var(--ui-s1); }
+  .options { display:grid; gap:var(--ui-s2); }
+  .option { display:flex; gap:var(--ui-s3); align-items:flex-start; padding:var(--ui-s2) var(--ui-s3); min-height:var(--ui-control); border:1px solid var(--ui-border); border-radius:var(--ui-radius-sm); cursor:pointer; line-height:1.55; word-break:keep-all; }
+  .option { align-items:center; }
+  .option input, .rubric input { min-height:0; min-width:0; margin:0; padding:0; }
+  .option input { width:18px; height:18px; flex-shrink:0; accent-color:var(--ui-ink); }
+  .option:has(input:checked) { background:var(--ui-soft); border-color:var(--ui-accent); }
+  .option.is-answer { background:#e3f1e6; border-color:#5f9b70; }
+  .option.is-picked-wrong { background:#f8e4e1; border-color:#c4766b; }
+  body.dark .option.is-answer { background:#1f3526; border-color:#5f9b70; }
+  body.dark .option.is-picked-wrong { background:#3d2523; border-color:#c4766b; }
+  .verdict { font-weight:800; margin-right:var(--ui-s2); }
+  .right .verdict { color:#3f7a50; } .wrong .verdict { color:#b2483c; }
+  .explain { margin-top:var(--ui-s3); padding:var(--ui-s3); background:var(--ui-surface,var(--ui-soft)); border-radius:var(--ui-radius-sm); font-size:var(--ui-small); line-height:1.7; word-break:keep-all; }
+  .review-link { display:inline-block; margin-left:var(--ui-s2); font-weight:700; color:var(--ui-accent); }
+  .question textarea { width:100%; box-sizing:border-box; min-height:150px; border:1px solid var(--ui-border); border-radius:var(--ui-radius-sm); padding:var(--ui-s3); font:inherit; font-size:16px; line-height:1.7; color:var(--ui-text); background:var(--ui-card); resize:vertical; word-break:keep-all; }
+  .question textarea[readonly] { background:var(--ui-bg); }
+  .model { margin-top:var(--ui-s3); padding:var(--ui-s3) var(--ui-s4); border-left:3px solid var(--ui-accent); background:var(--ui-soft); border-radius:0 var(--ui-radius-sm) var(--ui-radius-sm) 0; line-height:1.75; font-size:var(--ui-small); word-break:keep-all; }
+  .model h4, .rubric h4 { margin:0 0 var(--ui-s2); font-size:var(--ui-small); }
+  .rubric { margin-top:var(--ui-s3); display:grid; gap:var(--ui-s1); }
+  .rubric label { display:flex; gap:var(--ui-s3); align-items:flex-start; padding:var(--ui-s2) var(--ui-s3); min-height:var(--ui-control); border:1px solid var(--ui-border); border-radius:var(--ui-radius-sm); cursor:pointer; line-height:1.5; font-size:var(--ui-small); word-break:keep-all; }
+  .rubric label:has(input:checked) { background:var(--ui-soft); border-color:var(--ui-accent); }
+  .rubric input { margin-top:2px; width:18px; height:18px; flex-shrink:0; accent-color:var(--ui-ink); }
+  .rubric .pt { margin-left:auto; font-weight:700; white-space:nowrap; }
+  .rubric-sum { text-align:right; font-weight:800; font-size:var(--ui-small); }
+  .exam-actions { display:flex; justify-content:flex-end; gap:var(--ui-s2); flex-wrap:wrap; margin-top:var(--ui-s5); }
+  .result-card { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--ui-s3); text-align:center; }
+  .result-card div { padding:var(--ui-s3); border-radius:var(--ui-radius-sm); background:var(--ui-bg); }
+  .result-card b { display:block; font-size:var(--ui-display); font-family:'Outfit',sans-serif; }
+  .history { width:100%; border-collapse:collapse; font-size:var(--ui-small); }
+  .history th, .history td { padding:var(--ui-s2) var(--ui-s3); border-bottom:1px solid var(--ui-border); text-align:left; vertical-align:top; word-break:keep-all; }
+  .history th { color:var(--ui-muted); font-weight:700; }
+  .history .num { text-align:right; white-space:nowrap; }
+  .table-wrap { overflow-x:auto; }
+
+  #toast { position:fixed; left:50%; bottom:calc(var(--ui-nav-height) + var(--ui-s5)); transform:translate(-50%,20px); opacity:0; pointer-events:none; padding:var(--ui-s3) var(--ui-s4); border-radius:999px; background:var(--ui-ink); color:var(--ui-on-ink); font-size:var(--ui-small); transition:opacity var(--ui-motion),transform var(--ui-motion); z-index:40; max-width:90vw; }
+  #toast.show { opacity:1; transform:translate(-50%,0); }
+  body.dark { color-scheme:dark; }
+
+  @media (max-width:1023px) {
+    .study-layout { grid-template-columns:1fr; }
+    .toc { display:none; }
+    .toc-select { display:block; }
+  }
+  @media (max-width:767px) {
+    .header-inner { min-height:60px; padding:var(--ui-s3) var(--ui-s4); flex-wrap:wrap; gap:var(--ui-s2); }
+    .profile { order:3; flex-basis:100%; }
+    main { padding:var(--ui-s5) var(--ui-s4) var(--ui-s8); }
+    .lecture-list { grid-template-columns:1fr; }
+    .question { padding:var(--ui-s4); }
+    .result-card b { font-size:var(--ui-title); }
+  }
+</style>
+<link rel="stylesheet" href="css/app-design.css">
+<link rel="stylesheet" href="css/paper.css">
+</head>
+<body>
+<header><div class="header-inner"><a class="brand" href="./"><img class="brand-mark" src="favicon.svg" alt="" width="36" height="36"><span>Minb</span></a><span class="profile" id="userName">강의</span><button class="ui-button" id="loginButton" type="button" onclick="login()">Google 로그인</button></div></header>
+<main>
+  <!-- 로그인 전 / 불러오는 중 / 오류 안내 -->
+  <section id="gate" class="empty" aria-live="polite">불러오는 중…</section>
+
+  <!-- 1) 강의 목록 -->
+  <section id="listView" hidden>
+    <p class="ui-eyebrow">나의 강의실</p>
+    <h1>강의</h1>
+    <p class="lead">교육자료를 읽고, 문제은행에서 새 시험지를 뽑아 풀어 보세요.</p>
+    <div id="courseList"></div>
+  </section>
+
+  <!-- 2) 강의 하나: 교육자료 / 시험 -->
+  <section id="lectureView" hidden>
+    <nav class="crumb" aria-label="현재 위치"><a href="#/">강의</a><span aria-hidden="true">›</span><span id="crumbCourse"></span></nav>
+    <div class="lecture-head">
+      <h1 id="lectureTitle"></h1>
+      <div class="tabs" role="navigation" aria-label="강의 메뉴">
+        <a class="ui-button" id="tabStudy" href="#">교육자료</a>
+        <a class="ui-button" id="tabExam" href="#">시험</a>
+        <button class="ui-button" id="printButton" type="button" onclick="printStudy()">인쇄 / PDF로 저장</button>
+      </div>
+    </div>
+
+    <div id="studyView" class="study-layout" hidden>
+      <nav class="toc" id="toc" aria-label="장 목차"></nav>
+      <div>
+        <label class="ui-meta" for="tocSelect" hidden>장으로 이동</label>
+        <select class="toc-select" id="tocSelect" aria-label="장으로 이동"></select>
+        <iframe class="study-frame" id="studyFrame" title="교육자료"></iframe>
+      </div>
+    </div>
+
+    <div id="examView" hidden></div>
+  </section>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+// ════════════════════════════════════════════════════════════════
+// 강의 페이지
+//  - 강의 내용(교육자료·문제은행)은 공부 폴더의 web/publish.mjs 가 Firestore 에 올린다.
+//    이 페이지는 읽기만 한다. (users/{uid}/lectureCourses, lectures, lectureContent)
+//  - 시험 진행·셀프 체크(lectureState)와 응시 기록(lectureAttempts)만 여기서 쓴다.
+//  - 풀던 시험지는 기기(localStorage)에도 바로 저장해 새로고침·연결 끊김에도 남게 한다.
+// ════════════════════════════════════════════════════════════════
+const firebaseConfig={apiKey:'AIzaSyDP1btfiPrymhvrYepVc8u8PatdiZq01D0',authDomain:'minb-spanish-study.firebaseapp.com',projectId:'minb-spanish-study',storageBucket:'minb-spanish-study.firebasestorage.app',messagingSenderId:'130349023752',appId:'1:130349023752:web:5c6c3985091f58959587bd'};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth(), db = firebase.firestore();
+const X = window.LectureExam;
+const $ = id => document.getElementById(id);
+const esc = v => { const el = document.createElement('div'); el.textContent = v ?? ''; return el.innerHTML; };
+const safe = html => X.sanitize(html);
+
+let me = null;               // 로그인한 사용자
+let account = 0;             // 계정이 바뀌면 늘어난다 — 늦게 도착한 응답이 다른 계정 화면을 덮지 않게
+let courses = [], lectures = [], states = {}, attempts = [];
+const contentCache = {};     // lectureId → {studyHtml, bank}
+let saveTimer = null, toastTimer = null;
+
+function toast(message) {
+  const el = $('toast'); el.textContent = message; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+const userDoc = () => db.collection('users').doc(me.uid);
+const lectureById = id => lectures.find(l => l.id === id);
+const courseById = id => courses.find(c => c.id === id) || { title: '강좌', css: '' };
+
+// ── 기기 임시 저장: 계정·강의별로 풀던 시험지를 보관 ──
+const localKey = lid => `minb-lecture:${me?.uid || 'guest'}:${lid}`;
+function readLocal(lid) { try { return JSON.parse(localStorage.getItem(localKey(lid))); } catch { return null; } }
+function writeLocal(lid, sheet) {
+  try { sheet ? localStorage.setItem(localKey(lid), JSON.stringify({ sheet, savedAt: Date.now() })) : localStorage.removeItem(localKey(lid)); }
+  catch { /* 기기 저장 실패는 Firestore 저장으로 대신한다 */ }
+}
+
+// ════════ 불러오기 ════════
+async function loadAll() {
+  const acc = account;
+  showGate('불러오는 중…');
+  try {
+    const [cs, ls, ss, as] = await Promise.all([
+      userDoc().collection('lectureCourses').get(),
+      userDoc().collection('lectures').get(),
+      userDoc().collection('lectureState').get(),
+      userDoc().collection('lectureAttempts').get()
+    ]);
+    if (acc !== account) return;
+    courses = cs.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
+    lectures = ls.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.no || 0) - (b.no || 0));
+    states = Object.fromEntries(ss.docs.map(d => [d.id, d.data()]));
+    attempts = as.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.at || 0) - (a.at || 0));
+    route();
+  } catch (error) {
+    console.error('강의 불러오기 실패:', error);
+    if (acc === account) showGate('강의를 불러오지 못했어요. 연결을 확인해 주세요.', true);
+  }
+}
+async function loadContent(lid) {
+  if (contentCache[lid]) return contentCache[lid];
+  const snap = await userDoc().collection('lectureContent').doc(lid).get();
+  if (!snap.exists) throw new Error('강의 내용이 없어요');
+  const data = snap.data();
+  data.bankIndex = Object.fromEntries([...data.bank.mcq, ...data.bank.subj].map(q => [q.id, q]));
+  contentCache[lid] = data;
+  return data;
+}
+
+function showGate(message, retry = false) {
+  $('gate').hidden = false; $('listView').hidden = true; $('lectureView').hidden = true;
+  $('gate').innerHTML = esc(message) + (retry ? ' <button class="ui-button" type="button" onclick="loadAll()">다시 시도</button>' : '');
+}
+
+// ════════ 주소(#) 로 화면 고르기 ════════
+//  #/                       강의 목록
+//  #/{강의id}/study?ch=3      교육자료(3장으로 이동)
+//  #/{강의id}/exam           시험
+function parseHash() {
+  const [path, query] = location.hash.replace(/^#/, '').split('?');
+  const [, lid, tab] = path.split('/');
+  return { lid, tab: tab || 'study', ch: new URLSearchParams(query || '').get('ch') };
+}
+function route() {
+  if (!me) return;
+  const { lid, tab, ch } = parseHash();
+  const lecture = lid && lectureById(lid);
+  if (!lecture) return renderList();
+  $('gate').hidden = true; $('listView').hidden = true; $('lectureView').hidden = false;
+  const course = courseById(lecture.courseId);
+  $('crumbCourse').textContent = course.title;
+  $('lectureTitle').textContent = `${lecture.no}강 ${lecture.title}`;
+  document.title = `${lecture.no}강 ${lecture.title} | Minb`;
+  $('tabStudy').href = `#/${lid}/study`; $('tabExam').href = `#/${lid}/exam`;
+  $('tabStudy').toggleAttribute('aria-current', tab !== 'exam');
+  $('tabExam').toggleAttribute('aria-current', tab === 'exam');
+  $('printButton').hidden = tab === 'exam';
+  $('studyView').hidden = tab === 'exam'; $('examView').hidden = tab !== 'exam';
+  if (tab === 'exam') renderExam(lecture); else renderStudy(lecture, ch);
+}
+window.addEventListener('hashchange', route);
+
+// ════════ 1) 강의 목록 ════════
+function lectureStats(l) {
+  const mine = attempts.filter(a => a.lectureId === l.id);
+  const st = states[l.id] || {};
+  const checked = Object.values(st.selfCheck || {}).filter(Boolean).length;
+  return { count: mine.length, last: mine[0], checked, inProgress: !!st.current };
+}
+function renderList() {
+  document.title = '강의 | Minb';
+  $('gate').hidden = true; $('lectureView').hidden = true; $('listView').hidden = false;
+  if (!lectures.length) {
+    $('courseList').innerHTML = '<p class="empty">아직 올린 강의가 없어요. 공부 폴더에서 Claude에게 "웹에 올려줘"라고 하면 여기에 나타나요.</p>';
+    return;
+  }
+  const groups = courses.length ? courses : [{ id: undefined, title: '강의' }];
+  $('courseList').innerHTML = groups.map(c => {
+    const items = lectures.filter(l => l.courseId === c.id || (!c.id && !courseById(l.courseId).id));
+    if (!items.length) return '';
+    return `<section class="course" aria-labelledby="course-${esc(c.id)}">
+      <div class="course-head"><h2 id="course-${esc(c.id)}">${esc(c.title)}</h2><span class="ui-meta">${esc(c.sub || '')} · ${items.length}강</span></div>
+      <div class="lecture-list">${items.map(l => {
+        const s = lectureStats(l);
+        return `<article class="lecture-item">
+          <span class="lecture-no">${l.no}강 · ${esc(l.topic || '')}</span>
+          <h3 class="lecture-title">${esc(l.title)}</h3>
+          <p class="lecture-sub">${esc(l.sub || '')}</p>
+          <div class="lecture-stats">
+            <span>최근 점수 <b>${s.last ? s.last.total + '점' : '—'}</b></span>
+            <span>응시 <b>${s.count}회</b></span>
+            <span>셀프 체크 <b>${s.checked}/${l.selfCheckTotal || 0}</b></span>
+            ${s.inProgress ? '<span><b>풀던 시험지 있음</b></span>' : ''}
+          </div>
+          <div class="lecture-actions"><a class="ui-button" href="#/${esc(l.id)}/study">교육자료</a><a class="ui-button primary" href="#/${esc(l.id)}/exam">시험</a></div>
+        </article>`;
+      }).join('')}</div></section>`;
+  }).join('');
+}
+
+// ════════ 2) 교육자료 ════════
+// 교육자료는 PDF와 같은 HTML·CSS 를 iframe 안에 그대로 띄운다(앱 디자인과 섞이지 않게).
+// 인쇄하면 PDF 와 같은 모양으로 저장된다.
+let shownStudy = null;
+const FRAME_CSS = `
+  html { background:#fff; }
+  body { margin:0 auto; padding:28px 32px 48px; max-width:860px; }
+  @media (max-width:640px) { body { padding:18px 16px 32px; } }
+  .chap-head { scroll-margin-top:16px; }
+  .selfcheck-box { width:20px; height:20px; cursor:pointer; accent-color:#1b1d1f; }
+  @media print { body { padding:0; max-width:none; } }
+`;
+async function renderStudy(lecture, ch) {
+  const frame = $('studyFrame');
+  const toc = lecture.chapters || [];
+  $('toc').innerHTML = toc.map(c => `<button type="button" data-ch="${esc(c.no)}"><span class="no">${esc(c.no)}</span>${esc(c.title)}</button>`).join('');
+  $('tocSelect').innerHTML = '<option value="">장으로 이동…</option>' + toc.map(c => `<option value="${esc(c.no)}">${esc(c.no)}. ${esc(c.title)}</option>`).join('');
+  $('toc').querySelectorAll('button').forEach(b => b.addEventListener('click', () => scrollToChapter(b.dataset.ch)));
+  $('tocSelect').onchange = e => { if (e.target.value) scrollToChapter(e.target.value); e.target.value = ''; };
+  if (shownStudy === lecture.id) { if (ch) scrollToChapter(ch); return; }
+  try {
+    const content = await loadContent(lecture.id);
+    const css = courseById(lecture.courseId).css || '';
+    shownStudy = lecture.id;
+    frame.onload = () => { fitFrame(); wireSelfCheck(lecture); if (ch) scrollToChapter(ch); };
+    frame.srcdoc = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><base target="_blank"><style>${css}</style><style>${FRAME_CSS}</style></head><body>${content.studyHtml}</body></html>`;
+  } catch (error) {
+    console.error('교육자료 불러오기 실패:', error);
+    frame.srcdoc = '<p style="font-family:sans-serif;padding:24px">교육자료를 불러오지 못했어요. 새로고침해 주세요.</p>';
+  }
+}
+// iframe 높이를 내용에 맞춰 페이지 전체가 한 번에 스크롤되게 한다.
+function fitFrame() {
+  const frame = $('studyFrame'), doc = frame.contentDocument;
+  if (!doc?.body) return;
+  const fit = () => { frame.style.height = doc.documentElement.scrollHeight + 'px'; };
+  fit();
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(doc.body);
+  doc.fonts?.ready.then(fit);
+}
+function scrollToChapter(no) {
+  const frame = $('studyFrame'), target = frame.contentDocument?.getElementById(`ch-${no}`);
+  if (!target) return;
+  const top = frame.getBoundingClientRect().top + window.scrollY + target.getBoundingClientRect().top - 12;
+  window.scrollTo({ top, behavior: 'smooth' });
+}
+// 셀프 체크 표의 ☐ 칸을 진짜 체크박스로 바꾸고, 체크 상태를 내 계정에 저장한다.
+function wireSelfCheck(lecture) {
+  const doc = $('studyFrame').contentDocument;
+  const cells = [...doc.querySelectorAll('td')].filter(td => td.textContent.trim() === '☐');
+  const saved = (states[lecture.id] || {}).selfCheck || {};
+  cells.forEach((td, i) => {
+    const box = doc.createElement('input');
+    box.type = 'checkbox'; box.className = 'selfcheck-box'; box.checked = !!saved[i];
+    box.setAttribute('aria-label', `셀프 체크 ${i + 1}: ${td.nextElementSibling?.textContent || ''}`);
+    td.textContent = ''; td.appendChild(box);
+    box.addEventListener('change', () => saveSelfCheck(lecture.id, i, box.checked));
+  });
+}
+async function saveSelfCheck(lid, i, value) {
+  const acc = account;
+  states[lid] = states[lid] || {};
+  states[lid].selfCheck = { ...(states[lid].selfCheck || {}), [i]: value };
+  try { await userDoc().collection('lectureState').doc(lid).set({ selfCheck: { [i]: value } }, { merge: true }); }
+  catch (error) { console.error('셀프 체크 저장 실패:', error); if (acc === account) toast('셀프 체크를 저장하지 못했어요.'); }
+}
+function printStudy() {
+  const w = $('studyFrame').contentWindow;
+  if (w) { w.focus(); w.print(); }
+}
+
+// ════════ 3) 시험 ════════
+// 상태: 시험지 없음 → 푸는 중 → (정답 보기) 채점 중 → (채점 완료) 기록 저장, 시험지 비움
+let exam = null;   // { lecture, content, sheet }
+
+async function renderExam(lecture) {
+  const view = $('examView');
+  view.innerHTML = '<p class="empty">시험지를 준비하는 중…</p>';
+  let content;
+  try { content = await loadContent(lecture.id); }
+  catch (error) { console.error(error); view.innerHTML = '<p class="empty">문제은행을 불러오지 못했어요. 새로고침해 주세요.</p>'; return; }
+  if (parseHash().lid !== lecture.id || parseHash().tab !== 'exam') return;
+  // 풀던 시험지: Firestore 와 기기 중 더 최근 것을 쓴다.
+  const remote = (states[lecture.id] || {}).current || null;
+  const local = readLocal(lecture.id);
+  let sheet = remote;
+  if (local?.sheet && (!remote || (local.savedAt || 0) > (remote.savedAt || 0))) sheet = local.sheet;
+  // 문제은행이 바뀌어 없는 문항이 생긴 시험지는 버린다.
+  if (sheet && ![...sheet.mcq.map(m => m.id), ...sheet.subj].every(id => content.bankIndex[id])) sheet = null;
+  exam = { lecture, content, sheet };
+  if (sheet) drawSheet(); else drawIntro();
+}
+
+function drawIntro() {
+  const { lecture, content } = exam;
+  const seen = (states[lecture.id] || {}).seen || {};
+  const unseen = q => !seen[q.id];
+  const mine = attempts.filter(a => a.lectureId === lecture.id);
+  $('examView').innerHTML = `
+    <div class="panel exam-intro">
+      <div>
+        <h2 style="margin:0 0 6px;font-size:var(--ui-title)">새 시험지 뽑기</h2>
+        <p>문제은행 객관식 ${content.bank.mcq.length}개 · 주관식 ${content.bank.subj.length}개 중에서 객관식 20개(40점)와 주관식 8개(60점)를 장별로 고르게 뽑아요.<br>
+        아직 안 본 문제: 객관식 ${content.bank.mcq.filter(unseen).length}개 · 주관식 ${content.bank.subj.filter(unseen).length}개 — 안 본 문제부터 나와요.</p>
+      </div>
+      <button class="ui-button primary" type="button" onclick="startNewSheet()">새 시험지 뽑기</button>
+    </div>
+    ${historyHtml(mine)}`;
+}
+
+function historyHtml(list) {
+  if (!list.length) return '<p class="empty">아직 응시 기록이 없어요.</p>';
+  const chapterTitle = no => (exam.lecture.chapters || []).find(c => String(c.no) === String(no))?.title || '';
+  return `<h2 class="part-title">응시 기록 <small>${list.length}회</small></h2>
+  <div class="panel table-wrap"><table class="history">
+    <thead><tr><th>날짜</th><th class="num">객관식</th><th class="num">주관식</th><th class="num">총점</th><th>복습할 장</th></tr></thead>
+    <tbody>${list.map(a => {
+      const chs = [...new Set((a.wrong || []).map(w => w.ch))].sort((x, y) => x - y);
+      return `<tr><td>${esc(new Date(a.at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }))}</td>
+        <td class="num">${a.mcqScore}/40</td><td class="num">${a.subjScore}/60</td><td class="num"><b>${a.total}</b></td>
+        <td>${chs.length ? chs.map(c => `<a href="#/${esc(a.lectureId)}/study?ch=${c}" title="${esc(chapterTitle(c))}">${c}장</a>`).join(', ') : '틀린 객관식 없음'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function startNewSheet() {
+  const { lecture, content, sheet } = exam;
+  const touched = sheet && (Object.keys(sheet.answers).length || Object.values(sheet.texts).some(t => t.trim()));
+  if (touched && !sheet.revealed && !confirm('풀던 시험지가 있어요. 버리고 새로 뽑을까요?')) return;
+  exam.sheet = X.newSheet(content.bank, (states[lecture.id] || {}).seen || {});
+  persistSheet(true);
+  drawSheet();
+  window.scrollTo({ top: 0 });
+}
+
+// 시험지 저장: 기기에는 바로, Firestore 에는 잠깐 모았다가(입력 중 과한 쓰기 방지).
+function persistSheet(now = false) {
+  const { lecture } = exam, sheet = exam.sheet;
+  if (sheet) sheet.savedAt = Date.now();
+  writeLocal(lecture.id, sheet);
+  states[lecture.id] = { ...(states[lecture.id] || {}), current: sheet };
+  clearTimeout(saveTimer);
+  const acc = account, lid = lecture.id;
+  const push = () => userDoc().collection('lectureState').doc(lid)
+    .set({ current: sheet ? JSON.parse(JSON.stringify(sheet)) : firebase.firestore.FieldValue.delete() }, { merge: true })
+    .catch(error => { console.error('시험지 저장 실패:', error); if (acc === account) toast('기기에만 저장했어요. 연결되면 다시 저장돼요.'); });
+  if (now) return push();
+  saveTimer = setTimeout(push, 800);
+}
+// 페이지를 떠날 때 모아 둔 저장을 바로 보낸다.
+window.addEventListener('pagehide', () => { if (saveTimer && exam?.sheet) { clearTimeout(saveTimer); persistSheet(true); } });
+
+function drawSheet() {
+  const { lecture, content, sheet } = exam;
+  const idx = content.bankIndex, revealed = sheet.revealed;
+  const mcqHtml = sheet.mcq.map((m, n) => {
+    const q = idx[m.id], picked = sheet.answers[m.id];
+    const state = revealed ? (picked === q.answer ? 'right' : 'wrong') : '';
+    const opts = m.order.map((orig, shown) => {
+      const cls = revealed ? (orig === q.answer ? 'is-answer' : (orig === picked ? 'is-picked-wrong' : '')) : '';
+      return `<label class="option ${cls}"><input type="radio" name="${esc(m.id)}" value="${orig}" ${picked === orig ? 'checked' : ''} ${revealed ? 'disabled' : ''}><span>${X.CIRCLE[shown]} ${safe(q.options[orig])}</span></label>`;
+    }).join('');
+    const verdict = revealed ? `<span class="verdict">${state === 'right' ? '정답' : (picked === undefined ? '안 풂' : '오답')}</span>` : '';
+    const explain = revealed ? `<div class="explain"><b>정답 ${X.CIRCLE[m.order.indexOf(q.answer)]}</b> · ${safe(X.remapCircles(q.explain, m.order))}<a class="review-link" href="#/${esc(lecture.id)}/study?ch=${q.ch}">복습: ${q.ch}장</a></div>` : '';
+    return `<div class="question ${state}" id="q-${esc(m.id)}"><p class="stem">${verdict}<span class="qno">${n + 1}.</span>${safe(q.stem)}</p><div class="options" role="radiogroup">${opts}</div>${explain}</div>`;
+  }).join('');
+  const subjHtml = sheet.subj.map((id, n) => {
+    const q = idx[id], max = X.rubricMax(q), checks = sheet.checks[id] || [];
+    const got = checks.reduce((s, i) => s + Number(q.rubric[i]?.pts || 0), 0);
+    const grading = revealed ? `
+      <div class="model"><h4>모범답안</h4>${safe(q.model)}<a class="review-link" href="#/${esc(lecture.id)}/study?ch=${q.ch}">복습: ${q.ch}장</a></div>
+      <div class="rubric" data-id="${esc(id)}"><h4>채점표 — 내 답에 들어 있는 항목을 체크하세요</h4>
+        ${q.rubric.map((r, i) => `<label><input type="checkbox" value="${i}" ${checks.includes(i) ? 'checked' : ''}><span>${safe(r.text)}</span><span class="pt">${r.pts}점</span></label>`).join('')}
+        <div class="rubric-sum">${got} / ${max}점</div></div>` : '';
+    return `<div class="question" id="q-${esc(id)}"><p class="stem"><span class="qno">B${n + 1}.</span>${safe(q.stem)}<span class="pts">[${max}점]</span></p>
+      <textarea data-id="${esc(id)}" aria-label="B${n + 1} 답안" placeholder="답을 써 보세요." ${revealed ? 'readonly' : ''}>${esc(sheet.texts[id] || '')}</textarea>${grading}</div>`;
+  }).join('');
+  const s = X.score(sheet, idx);
+  const answered = Object.keys(sheet.answers).length;
+  $('examView').innerHTML = `
+    <div class="exam-bar">
+      <span class="progress" id="examProgress">${revealed ? `채점 중 · 객관식 ${s.correct}/${s.mcqCount} 정답` : `객관식 ${answered}/${sheet.mcq.length} 답함`}</span>
+      ${revealed ? `<span class="score" id="examScore">객관식 ${s.mcqScore} + 주관식 ${s.subjScore} = ${s.total}점</span>` : ''}
+      <button class="ui-button" type="button" onclick="startNewSheet()">새 시험지 뽑기</button>
+    </div>
+    <h2 class="part-title">Part A. 객관식<small>20문항 × 2점 = 40점</small></h2>${mcqHtml}
+    <h2 class="part-title">Part B. 주관식 · 실무형<small>8문항 · 60점(채점표 점수를 60점으로 환산)</small></h2>${subjHtml}
+    <div class="exam-actions">${revealed
+      ? `<button class="ui-button primary" type="button" onclick="finishGrading()">채점 완료 · 기록 저장</button>`
+      : `<button class="ui-button primary" type="button" onclick="reveal()">정답 보기</button>`}</div>`;
+  wireSheet();
+}
+
+function wireSheet() {
+  const sheet = exam.sheet, view = $('examView');
+  view.querySelectorAll('input[type=radio]').forEach(r => r.addEventListener('change', () => {
+    sheet.answers[r.name] = Number(r.value);
+    $('examProgress').textContent = `객관식 ${Object.keys(sheet.answers).length}/${sheet.mcq.length} 답함`;
+    persistSheet();
+  }));
+  view.querySelectorAll('textarea[data-id]').forEach(t => t.addEventListener('input', () => { sheet.texts[t.dataset.id] = t.value; persistSheet(); }));
+  view.querySelectorAll('.rubric').forEach(box => box.querySelectorAll('input').forEach(c => c.addEventListener('change', () => {
+    sheet.checks[box.dataset.id] = [...box.querySelectorAll('input:checked')].map(i => Number(i.value));
+    const q = exam.content.bankIndex[box.dataset.id];
+    const got = sheet.checks[box.dataset.id].reduce((s, i) => s + Number(q.rubric[i].pts), 0);
+    box.querySelector('.rubric-sum').textContent = `${got} / ${X.rubricMax(q)}점`;
+    const s = X.score(sheet, exam.content.bankIndex);
+    $('examScore').textContent = `객관식 ${s.mcqScore} + 주관식 ${s.subjScore} = ${s.total}점`;
+    persistSheet();
+  })));
+}
+
+// 정답 보기: 객관식 자동 채점, 주관식 채점표 열기. 이번에 나온 문항은 "본 문제"로 센다.
+async function reveal() {
+  const sheet = exam.sheet, lid = exam.lecture.id;
+  const left = sheet.mcq.length - Object.keys(sheet.answers).length;
+  const empty = sheet.subj.filter(id => !(sheet.texts[id] || '').trim()).length;
+  if ((left || empty) && !confirm(`아직 객관식 ${left}개, 주관식 ${empty}개를 안 풀었어요. 그래도 정답을 볼까요?`)) return;
+  sheet.revealed = true;
+  const ids = [...sheet.mcq.map(m => m.id), ...sheet.subj];
+  const seen = { ...((states[lid] || {}).seen || {}) };
+  ids.forEach(id => { seen[id] = (seen[id] || 0) + 1; });
+  states[lid] = { ...(states[lid] || {}), seen };
+  persistSheet(true);
+  const inc = firebase.firestore.FieldValue.increment(1);
+  userDoc().collection('lectureState').doc(lid).set({ seen: Object.fromEntries(ids.map(id => [id, inc])) }, { merge: true })
+    .catch(error => console.error('출제 횟수 저장 실패:', error));
+  drawSheet();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function finishGrading() {
+  const { lecture, content, sheet } = exam;
+  const s = X.score(sheet, content.bankIndex);
+  const unchecked = sheet.subj.filter(id => !(sheet.checks[id] || []).length).length;
+  if (unchecked && !confirm(`주관식 ${unchecked}문항에 체크한 채점 항목이 없어요(0점 처리). 이대로 저장할까요?`)) return;
+  const record = { lectureId: lecture.id, at: Date.now(), sheetId: sheet.id, mcqScore: s.mcqScore, subjScore: s.subjScore, subjGot: s.subjGot, subjMax: s.subjMax, total: s.total, correct: s.correct, wrong: s.wrong };
+  const acc = account, button = document.querySelector('.exam-actions button');
+  button.disabled = true; button.textContent = '저장 중…';
+  try {
+    // 같은 시험지를 두 번 저장해도 기록이 하나만 남도록 시험지 id 를 문서 id 로 쓴다.
+    await userDoc().collection('lectureAttempts').doc(sheet.id).set(record);
+    if (acc !== account) return;
+    attempts = [{ id: sheet.id, ...record }, ...attempts.filter(a => a.id !== sheet.id)];
+    exam.sheet = null; persistSheet(true);
+    toast(`${s.total}점으로 기록했어요.`);
+    drawResult(s);
+  } catch (error) {
+    console.error('응시 기록 저장 실패:', error);
+    if (acc === account) { toast('기록을 저장하지 못했어요. 다시 눌러 주세요.'); button.disabled = false; button.textContent = '채점 완료 · 기록 저장'; }
+  }
+}
+
+function drawResult(s) {
+  const mine = attempts.filter(a => a.lectureId === exam.lecture.id);
+  $('examView').innerHTML = `
+    <div class="panel"><div class="result-card">
+      <div>객관식<b>${s.mcqScore}</b>/40</div><div>주관식<b>${s.subjScore}</b>/60</div><div>총점<b>${s.total}</b>/100</div>
+    </div>
+    <div class="exam-actions"><a class="ui-button" href="#/">강의 목록</a><button class="ui-button primary" type="button" onclick="startNewSheet()">새 시험지 뽑기</button></div></div>
+    ${historyHtml(mine)}`;
+}
+
+// ════════ 로그인 ════════
+let loginPending = false;
+async function login() {
+  if (loginPending) return;
+  loginPending = true; $('loginButton').disabled = true;
+  try {
+    const cap = window.Capacitor;
+    if (cap?.isNativePlatform?.()) {
+      const result = await cap.Plugins.FirebaseAuthentication.signInWithGoogle();
+      const { idToken, accessToken } = result.credential || {};
+      if (!idToken) throw new Error('네이티브 로그인 토큰이 없습니다.');
+      await auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(idToken, accessToken || null));
+    } else {
+      try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+      catch (error) {
+        if (!['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment'].includes(error.code)) throw error;
+        await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+      }
+    }
+  } catch (error) { console.error('로그인 실패:', error); toast('로그인에 실패했어요. 다시 시도해 주세요.'); }
+  finally { loginPending = false; $('loginButton').disabled = false; }
+}
+auth.getRedirectResult().catch(error => { console.error('리다이렉트 로그인 실패:', error); });
+auth.onAuthStateChanged(user => {
+  if (me && user && me.uid === user.uid) return;
+  account++; me = user; courses = []; lectures = []; states = {}; attempts = []; exam = null; shownStudy = null;
+  Object.keys(contentCache).forEach(k => delete contentCache[k]);
+  $('loginButton').hidden = !!user;
+  $('userName').textContent = user ? (user.displayName || '나의 강의실') : '로그인하면 내 강의가 보여요.';
+  if (user) loadAll(); else showGate('로그인하면 내 강의가 보여요.');
+});
+
+function applyTheme() {
+  try { document.body.classList.toggle('dark', localStorage.getItem('theme') === 'dark'); } catch { /* 기본 밝은 테마 */ }
+}
+window.addEventListener('storage', e => { if (e.key === 'theme') applyTheme(); });
+applyTheme();
+</script>
+</body>
+</html>
