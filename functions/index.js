@@ -553,3 +553,6 @@ async function sendReminderToUser(uid, payload) {
 
   return { sent };
 }
+
+// 구글 캘린더 자동 연동 (functions/gcal.js)
+Object.assign(exports, require('./gcal'));

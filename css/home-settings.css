@@ -20,3 +20,11 @@
 #homeView > .dashboard-grid { display:none; }
 .home-preferences .ui-meta { word-break:keep-all; overflow-wrap:break-word; }
 #settingsView .share-desc { word-break:keep-all; overflow-wrap:break-word; }
+
+/* 구글 캘린더 연동 카드 */
+.gcal-card { margin-bottom:var(--ui-s6); padding:var(--ui-s5); }
+.gcal-card .ui-section-head { margin-bottom:var(--ui-s2); }
+.gcal-actions { display:flex; flex-wrap:wrap; gap:var(--ui-s2); margin:var(--ui-s3) 0; }
+.gcal-note { margin:0; }
+.gcal-card .ui-meta { word-break:keep-all; overflow-wrap:break-word; }
+@media (max-width:767px) { .gcal-card { padding:var(--ui-s4); } }
