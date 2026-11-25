@@ -2,14 +2,15 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { createHash } = require('node:crypto');
 const { logger } = require('firebase-functions');
-const admin = require('firebase-admin');
+// firebase-admin v14에서 네임스페이스 API가 제거되어 모듈러 API를 사용
+const { initializeApp } = require('firebase-admin/app');
+const { getFirestore, FieldValue, FieldPath } = require('firebase-admin/firestore');
 const webpush = require('web-push');
 const { ruleMatchesKey, tomorrowKey } = require('./recurring-eve');
 
-admin.initializeApp();
+initializeApp();
 
-const db = admin.firestore();
-const FieldValue = admin.firestore.FieldValue;
+const db = getFirestore();
 const MAX_OVERDUE_MS = 24 * 60 * 60 * 1000;
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
@@ -24,7 +25,6 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 // 일정은 월별 문서(spaces/{id}/dayMonths, users/{uid}/dayMonths)로 옮겨진다(dayStorage >= 2).
 // 알림은 그날 일정에 붙고 늦어도 24시간까지만 보내므로, 한국 시간 기준 앞뒤 한 달이면 충분하다.
 const DAY_STORAGE_VERSION = 2;
-const FieldPath = admin.firestore.FieldPath;
 
 function reminderAction(todo, now) {
   const remindAtMs = Number((todo && todo.remindAtMs) || 0);

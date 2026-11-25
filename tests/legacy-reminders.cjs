@@ -16,7 +16,8 @@ function load(fs, onSend) {
     'firebase-functions/v2/scheduler': { onSchedule: (opts, fn) => fn },
     'firebase-functions/v2/https': { onCall: (opts, fn) => fn, HttpsError: class extends Error {} },
     'firebase-functions': { logger: { info() {}, warn() {}, error() {} } },
-    'firebase-admin': { initializeApp() {}, firestore: Object.assign(() => fs.db, { FieldValue, FieldPath }) },
+    'firebase-admin/app': { initializeApp() {} },
+    'firebase-admin/firestore': { getFirestore: () => fs.db, FieldValue, FieldPath },
     'web-push': { setVapidDetails() {}, sendNotification: async (sub, payload) => { sends.push(JSON.parse(payload)); if (onSend) onSend(JSON.parse(payload)); } },
     // Google Calendar 함수 모듈은 본 테스트(할 일 알림) 범위 밖이므로 빈 대역으로 치환
     './gcal': {}

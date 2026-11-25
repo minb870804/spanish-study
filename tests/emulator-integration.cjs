@@ -259,8 +259,10 @@ function loadFunctions(onSend) {
     'firebase-functions/v2/scheduler': { onSchedule: (opts, fn) => fn },
     'firebase-functions/v2/https': { onCall: (opts, fn) => fn, HttpsError: class extends Error {} },
     'firebase-functions': { logger: { info() {}, warn() {}, error() {} } },
-    'firebase-admin': { initializeApp() {}, firestore: Object.assign(() => db, { FieldValue: ServerFieldValue, FieldPath: ServerFieldPath }) },
-    'web-push': { setVapidDetails() {}, sendNotification: async (sub, payload) => { sends.push(JSON.parse(payload)); if (onSend) await onSend(); } }
+    'firebase-admin/app': { initializeApp() {} },
+    'firebase-admin/firestore': { getFirestore: () => db, FieldValue: ServerFieldValue, FieldPath: ServerFieldPath },
+    'web-push': { setVapidDetails() {}, sendNotification: async (sub, payload) => { sends.push(JSON.parse(payload)); if (onSend) await onSend(); } },
+    './gcal': {}
   };
   const file = require.resolve(path.join(root, 'functions', 'index.js'));
   const original = Module._load;

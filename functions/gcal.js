@@ -14,12 +14,12 @@
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { logger } = require('firebase-functions');
-const admin = require('firebase-admin');
+// firebase-admin v14 모듈러 API 사용
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { randomBytes } = require('node:crypto');
 const { monthEvents, recurringEvents, hashOf, kstTodayKey } = require('./gcal-events');
 
-const db = admin.firestore();
-const FieldValue = admin.firestore.FieldValue;
+const db = getFirestore();
 const REGION = 'asia-northeast3';
 const PROJECT = process.env.GCLOUD_PROJECT || 'minb-spanish-study';
 const CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID;
