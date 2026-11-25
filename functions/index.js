@@ -79,6 +79,60 @@ async function remindFromDayMonths(col, now, recipientOf, payloadOf, stats) {
   }
 }
 
+// 아직 옮기지 않은 곳(본문서 field 아래 하루마다 todos 배열). 푸시는 transaction 밖에서 한 번만 보내고,
+// 보냄·건너뜀 표시는 transaction 안에서 최신 문서를 다시 읽어 '같은 할 일, 같은 알림 상태'일 때만 붙인다.
+// 그사이 추가·수정·삭제된 할 일이나 알림 시간을 바꾼 할 일은 그대로 두고, 월별로 옮겨졌으면 잠긴 예전 위치는 고치지 않는다.
+async function remindFromLegacyDays(ref, field, updatedField, now, recipientOf, payloadOf, stats) {
+  const snap = await ref.get();
+  if (!snap.exists) return;
+  const doc = snap.data() || {};
+  if ((doc.dayStorage || 0) >= DAY_STORAGE_VERSION) return;
+  const marks = [];
+  for (const [dayKey, day] of Object.entries(doc[field] || {})) {
+    const todos = day && Array.isArray(day.todos) ? day.todos : [];
+    for (let index = 0; index < todos.length; index++) {
+      const todo = todos[index];
+      stats.scanned += 1;
+      const action = reminderAction(todo, now);
+      if (!action) continue;
+      stats.due += 1;
+      if (action === 'skip') {
+        marks.push({ dayKey, index, todo, fields: { reminderSkippedAt: now } });
+        stats.skipped += 1;
+        continue;
+      }
+      const result = await sendReminderToUser(recipientOf(todo), payloadOf(dayKey, `legacy_${index}`, todo));
+      if (result.sent > 0) {
+        marks.push({ dayKey, index, todo, fields: { reminderSentAt: now, reminderSentCount: result.sent } });
+        stats.sent += result.sent;
+      }
+    }
+  }
+  if (!marks.length) return;
+  await db.runTransaction(async tx => {
+    const cur = (await tx.get(ref)).data() || {};
+    if ((cur.dayStorage || 0) >= DAY_STORAGE_VERSION) return;
+    const updates = {};
+    for (const { dayKey, index, todo, fields } of marks) {
+      const day = (cur[field] || {})[dayKey];
+      const list = day && Array.isArray(day.todos) ? day.todos : null;
+      if (!list) continue;
+      // id로 찾는다. id가 없던 할 일은 같은 자리에 내용까지 똑같을 때만 같은 할 일로 본다.
+      const i = todo.id ? list.findIndex(t => t && t.id === todo.id)
+        : (JSON.stringify(list[index]) === JSON.stringify(todo) ? index : -1);
+      const target = list[i];
+      // 알림 시간이나 받는 사람이 바뀌었으면 방금 보낸 알림은 그 할 일의 알림이 아니다.
+      if (!target || !reminderAction(target, now) || Number(target.remindAtMs) !== Number(todo.remindAtMs)
+        || recipientOf(target) !== recipientOf(todo)) continue;
+      Object.assign(target, fields);
+      updates[`${field}.${dayKey}.todos`] = list;
+    }
+    if (!Object.keys(updates).length) return;
+    updates[updatedField] = FieldValue.serverTimestamp();
+    tx.update(ref, updates);
+  });
+}
+
 exports.sendTodoReminders = onSchedule(
   {
     schedule: 'every 1 minutes',
@@ -94,149 +148,46 @@ exports.sendTodoReminders = onSchedule(
     }
 
     const now = Date.now();
-    let scanned = 0;
-    let due = 0;
-    let sent = 0;
-    let skipped = 0;
-    const monthStats = { scanned: 0, due: 0, sent: 0, skipped: 0 };
+    const stats = { scanned: 0, due: 0, sent: 0, skipped: 0 };
 
     // 저장 방식 표시만 먼저 가볍게 읽는다. 월별 문서로 옮긴 곳은 큰 본문서를 매분 받을 필요가 없다.
     const spacesSnap = await db.collection('spaces').select('dayStorage').get();
     for (const spaceFlag of spacesSnap.docs) {
+      const spacePayload = (dayKey, todoId, todo) => ({
+        title: 'Minb 할 일 알림',
+        body: todo.text || '확인할 할 일이 있어요.',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: `todo-${spaceFlag.id}-${dayKey}-${todo.id || todoId}`,
+        url: `/?date=${dayKey}`
+      });
       if ((spaceFlag.get('dayStorage') || 0) >= DAY_STORAGE_VERSION) {
-        await remindFromDayMonths(spaceFlag.ref.collection('dayMonths'), now, todo => todo.by, (dayKey, todoId, todo) => ({
-          title: 'Minb 할 일 알림',
-          body: todo.text || '확인할 할 일이 있어요.',
-          icon: '/icons/icon-192.png',
-          badge: '/icons/icon-192.png',
-          tag: `todo-${spaceFlag.id}-${dayKey}-${todo.id || todoId}`,
-          url: `/?date=${dayKey}`
-        }), monthStats);
+        await remindFromDayMonths(spaceFlag.ref.collection('dayMonths'), now, todo => todo.by, spacePayload, stats);
         continue;
       }
       // 아직 옮기지 않은 곳은 예전처럼 본문서 전체를 본다.
-      const spaceDoc = await spaceFlag.ref.get();
-      if (!spaceDoc.exists) continue;
-      const space = spaceDoc.data() || {};
-      const days = space.days || {};
-      const updates = {};
-
-      for (const [dayKey, day] of Object.entries(days)) {
-        const todos = Array.isArray(day.todos) ? day.todos : [];
-        let changed = false;
-
-        for (const todo of todos) {
-          scanned += 1;
-          const remindAtMs = Number(todo.remindAtMs || 0);
-          if (!remindAtMs || todo.done || todo.reminderSentAt || todo.reminderSkippedAt) continue;
-          if (remindAtMs > now) continue;
-
-          due += 1;
-          if (remindAtMs < now - MAX_OVERDUE_MS) {
-            todo.reminderSkippedAt = now;
-            changed = true;
-            skipped += 1;
-            continue;
-          }
-
-          const result = await sendReminderToUser(todo.by, {
-            title: 'Minb 할 일 알림',
-            body: todo.text || '확인할 할 일이 있어요.',
-            icon: '/icons/icon-192.png',
-            badge: '/icons/icon-192.png',
-            tag: `todo-${spaceDoc.id}-${dayKey}-${todo.id}`,
-            url: `/?date=${dayKey}`
-          });
-
-          if (result.sent > 0) {
-            todo.reminderSentAt = now;
-            todo.reminderSentCount = result.sent;
-            changed = true;
-            sent += result.sent;
-          }
-        }
-
-        if (changed) {
-          updates[`days.${dayKey}.todos`] = todos;
-        }
-      }
-
-      if (Object.keys(updates).length) {
-        updates.updatedAt = FieldValue.serverTimestamp();
-        await spaceDoc.ref.update(updates);
-      }
+      await remindFromLegacyDays(spaceFlag.ref, 'days', 'updatedAt', now, todo => todo.by, spacePayload, stats);
     }
 
     // 개인 일정은 각 사용자 문서에서 별도로 스캔한다.
     const usersSnap = await db.collection('users').select('dayStorage').get();
     for (const userFlag of usersSnap.docs) {
+      const userPayload = (dayKey, todoId, todo) => ({
+        title: 'Minb 개인 일정 알림',
+        body: todo.text || '확인할 일정이 있어요.',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: `personal-todo-${userFlag.id}-${dayKey}-${todo.id || todoId}`,
+        url: `/?date=${dayKey}`
+      });
       if ((userFlag.get('dayStorage') || 0) >= DAY_STORAGE_VERSION) {
-        await remindFromDayMonths(userFlag.ref.collection('dayMonths'), now, () => userFlag.id, (dayKey, todoId, todo) => ({
-          title: 'Minb 개인 일정 알림',
-          body: todo.text || '확인할 일정이 있어요.',
-          icon: '/icons/icon-192.png',
-          badge: '/icons/icon-192.png',
-          tag: `personal-todo-${userFlag.id}-${dayKey}-${todo.id || todoId}`,
-          url: `/?date=${dayKey}`
-        }), monthStats);
+        await remindFromDayMonths(userFlag.ref.collection('dayMonths'), now, () => userFlag.id, userPayload, stats);
         continue;
       }
-      const userDoc = await userFlag.ref.get();
-      if (!userDoc.exists) continue;
-      const user = userDoc.data() || {};
-      const days = user.personalDays || {};
-      const updates = {};
-
-      for (const [dayKey, day] of Object.entries(days)) {
-        const todos = Array.isArray(day.todos) ? day.todos : [];
-        let changed = false;
-
-        for (const todo of todos) {
-          scanned += 1;
-          const remindAtMs = Number(todo.remindAtMs || 0);
-          if (!remindAtMs || todo.done || todo.reminderSentAt || todo.reminderSkippedAt) continue;
-          if (remindAtMs > now) continue;
-
-          due += 1;
-          if (remindAtMs < now - MAX_OVERDUE_MS) {
-            todo.reminderSkippedAt = now;
-            changed = true;
-            skipped += 1;
-            continue;
-          }
-
-          const result = await sendReminderToUser(userDoc.id, {
-            title: 'Minb 개인 일정 알림',
-            body: todo.text || '확인할 일정이 있어요.',
-            icon: '/icons/icon-192.png',
-            badge: '/icons/icon-192.png',
-            tag: `personal-todo-${userDoc.id}-${dayKey}-${todo.id}`,
-            url: `/?date=${dayKey}`
-          });
-
-          if (result.sent > 0) {
-            todo.reminderSentAt = now;
-            todo.reminderSentCount = result.sent;
-            changed = true;
-            sent += result.sent;
-          }
-        }
-
-        if (changed) updates[`personalDays.${dayKey}.todos`] = todos;
-      }
-
-      if (Object.keys(updates).length) {
-        updates.personalUpdatedAt = FieldValue.serverTimestamp();
-        await userDoc.ref.update(updates);
-      }
+      await remindFromLegacyDays(userFlag.ref, 'personalDays', 'personalUpdatedAt', now, () => userFlag.id, userPayload, stats);
     }
 
-    logger.info('Todo reminder scan finished', {
-      scanned: scanned + monthStats.scanned,
-      due: due + monthStats.due,
-      sent: sent + monthStats.sent,
-      skipped: skipped + monthStats.skipped
-    });
+    logger.info('Todo reminder scan finished', stats);
   }
 );
 
