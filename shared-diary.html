@@ -808,7 +808,7 @@ function renderList() {
     const moods = uids.map(u => esc(entries[u].mood || '📝')).join(' ');
     const names = uids.map(u => esc((entries[u].name || '멤버').split(' ')[0])).join(', ');
     const firstText = entries[uids[0]].text || '';
-    return `<button type="button" class="entry-item ${k === editingKey ? 'selected' : ''}" onclick="selectSharedEntry('${k}')">
+    return `<button type="button" class="entry-item ${k === editingKey ? 'selected' : ''}" onclick="goDate('${k}')">
       <div class="entry-head">
         <span>${moods}</span>
         <span class="entry-date">${mm}월 ${dd}일 (${day})</span>
@@ -819,12 +819,11 @@ function renderList() {
   }).join('');
 }
 
-function selectSharedEntry(k) {
-  goDate(k);
-  if (window.innerWidth <= 800) {
+document.getElementById('entryList')?.addEventListener('click', event => {
+  if (event.target.closest('.entry-item') && window.innerWidth <= 800) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-}
+});
 
 function goDate(k) {
   if (!guardDirty()) return;

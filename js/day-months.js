@@ -103,25 +103,42 @@ const DayMonths = (() => {
     return { ref: col.doc(M.monthOf(key)), data: { entries: { [key]: day } }, options: { mergeFields: fields }, ops };
   }
 
-  // 예전 위치 → 월별 문서. 저장용으로 바꾼 뒤 DiaryMonths의 복사·검증을 그대로 쓴다.
-  // 하루에는 작성 시각이 없으므로 '이미 있는 날은 덮지 않고, 있으면 똑같아야 통과'가 된다.
-  function migrate({ db, col, FieldPath, legacyDays, timeoutMs }) {
-    return M.migrate({ db, col, FieldPath, legacy: toStoredDays(legacyDays), depth: 1, timeoutMs });
-  }
-
-  // 전환 표시 직후 한 번: 옮기는 사이 옛 화면이 예전 위치에서 바꾼 날만 골라 마저 옮긴다.
-  // (하루에는 작성 시각이 없어서, 옮길 때 읽은 원본과 지금 원본을 비교해 달라진 날을 찾는다)
-  async function catchUp({ db, col, FieldPath, before, after }) {
-    const changed = {};
-    Object.keys(after || {}).forEach(k => {
-      if (!M.DAY_KEY.test(k)) return;
-      if (!M.same(toStored((before || {})[k]), toStored(after[k]))) changed[k] = toStored(after[k]);
+  // 예전 위치 → 월별 문서 옮기기의 한 단계. transaction 하나 안에서 한다(tx = 그 transaction).
+  // 전환 표시 전에는 월별 문서를 옮기는 기기만 쓰므로 예전 위치(원본)가 기준이다. 원본과 months 달의 월별 문서를
+  // 읽어 다른 날(옮기는 사이 바뀐 날·지운 날, 예전 시도가 남긴 오래된 복사본)만 원본대로 맞춘다.
+  // 원본 문서도 읽으므로 그사이 다른 기기가 전환 표시를 달면 transaction이 다시 돌면서 아무것도 쓰지 않고 멈춘다
+  // — 표시 뒤 다른 기기의 월별 편집·삭제는 덮지 않는다.
+  // mark=true면 원본에 있는 모든 달까지 맞추고 같은 커밋에서 전환 표시를 단다(표시가 남았는데 바뀐 날이 빠지는 일이 없게).
+  // 한 번에 maxWrites보다 많이 맞춰야 하면 아무것도 쓰지 않고 실패한다(표시도 남지 않아 다음에 다시 시도).
+  // 예비 단계에서 월 문서를 쓰면 그 달을 같은 커밋에서 원본 문서의 dayMonthsCopied 에 적어 둔다. 마지막 단계는 이 목록도
+  // 읽으므로, 처음 목록에 없던 달을 다른 기기가 복사한 뒤 원본에서 지운 경우에도 그 달을 찾아 지운다.
+  async function syncMonths({ tx, ref, col, FieldPath, deleteValue, arrayUnion, field, version, months = [], mark = false, maxWrites = 450 }) {
+    const owner = (await tx.get(ref)).data() || {};
+    if ((owner.dayStorage || 0) >= version) return { already: true, written: 0 };
+    const legacy = M.groupByMonth(toStoredDays(owner[field] || {}));
+    const docs = {};
+    const targets = mark ? [...months, ...Object.keys(legacy), ...(Array.isArray(owner.dayMonthsCopied) ? owner.dayMonthsCopied : [])] : months;
+    for (const month of new Set(targets)) {
+      const snap = await tx.get(col.doc(month));
+      docs[month] = ((snap.exists && snap.data()) || {}).entries || {};
+    }
+    const writes = [];
+    Object.entries(docs).forEach(([month, entries]) => {
+      const want = legacy[month] || {};
+      new Set([...Object.keys(entries), ...Object.keys(want)]).forEach(key => {
+        if (!M.DAY_KEY.test(key) || M.same(entries[key], want[key])) return;
+        writes.push([month, key, want[key] === undefined ? deleteValue : want[key]]);
+      });
     });
-    if (!Object.keys(changed).length) return 0;
-    return M.writeExact({ db, col, FieldPath, dayMap: changed, depth: 1 });
+    if (writes.length > maxWrites) throw new Error(`옮기기에서 한 번에 맞출 날이 너무 많아요(${writes.length})`);
+    writes.forEach(([month, key, value]) => tx.set(col.doc(month), { entries: { [key]: value } }, { mergeFields: [new FieldPath('entries', key)] }));
+    const copied = [...new Set(writes.map(([month]) => month))];
+    if (!mark && copied.length) tx.update(ref, { dayMonthsCopied: arrayUnion(...copied) });
+    if (mark) tx.update(ref, { dayStorage: version, dayMovedAt: Date.now() });
+    return { already: false, written: writes.length };
   }
 
-  return { DELETE, toStored, fromStored, toStoredDays, fromStoredDays, diffDay, monthWrite, migrate, catchUp,
+  return { DELETE, toStored, fromStored, toStoredDays, fromStoredDays, diffDay, monthWrite, syncMonths,
     mergeMonths: M.mergeMonths, monthOf: M.monthOf };
 })();
 
