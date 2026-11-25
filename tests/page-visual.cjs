@@ -165,7 +165,7 @@ const themeState = p => p.evaluate(() => {
     bg: s.backgroundColor, border: s.borderTopColor, radius: s.borderTopLeftRadius,
   };
 });
-for (const page of ['study.html', 'diary.html', 'shared-diary.html']) {
+for (const page of ['study.html', 'diary.html', 'shared-diary.html', 'reading.html']) {
   test(`${page} 테마 버튼은 글자 없는 44px 아이콘 버튼`, page, 375, async p => {
     const t = await themeState(p);
     assert.ok(t, '#themeToggle 없음');
@@ -186,20 +186,15 @@ for (const page of ['study.html', 'diary.html', 'shared-diary.html']) {
   test(`${page} 실행 순서와 무관하게 아이콘 — 페이지 코드가 먼저 이모지를 써도 공용 함수가 덮는다`, page, 375, async p => {
     await p.evaluate(() => { document.getElementById('themeToggle').innerHTML = '🌙 다크'; window.renderThemeToggle(); });
     assert.equal((await themeState(p)).text, '');
-    await p.evaluate(() => updateThemeButton()); // 공용 함수가 로드된 뒤의 페이지 코드
+    if (page !== 'reading.html') await p.evaluate(() => updateThemeButton()); // 공용 함수가 로드된 뒤의 페이지 코드
     assert.equal((await themeState(p)).svgs, 1);
   });
 }
-test('reading.html 에는 테마 버튼이 없고 공용 함수도 오류 없이 넘어간다', 'reading.html', 375, async (p, errors) => {
-  assert.equal(await themeState(p), null);
-  await p.evaluate(() => window.renderThemeToggle());
-  assert.deepEqual(errors, []);
-});
 for (const dark of [false, true]) {
-  test(`테마 버튼 모양이 네 페이지와 홈에서 같다 (${dark ? '다크' : '라이트'})`, 'study.html', 375, async (p, _e) => {
+  test(`테마 버튼 모양이 다섯 페이지에서 모두 같다 (${dark ? '다크' : '라이트'})`, 'study.html', 375, async (p, _e) => {
     // 이 테스트는 study.html 에서 시작해 나머지 페이지를 같은 컨텍스트에서 차례로 연다
     const shapes = {};
-    for (const page of ['index.html', 'study.html', 'diary.html', 'shared-diary.html']) {
+    for (const page of ['index.html', 'study.html', 'diary.html', 'shared-diary.html', 'reading.html']) {
       await p.goto('https://minb.test/' + page);
       await p.waitForTimeout(400);
       if (dark) {
@@ -236,6 +231,7 @@ const DIARY_ALLOW = [
   /mood:\s*'\p{Extended_Pictographic}\uFE0F?'/gu,          // 기분 기본값 (sharedBaseline 등)
   /\.mood \|\| '📝'/g,                                     // 기분을 고르지 않은 일기의 자리표시
   /\.photo \? `[^`]*` : '👤'/g,                             // 사진이 없을 때의 아바타 대체 (photo 삼항 안에서만)
+  /\/\^https:\\\/\\\/\/i\.test\(String\(url \|\| ''\)\) \? `[^`]*` : '👤'/g, // photoImg() 아바타 대체
 ];
 test('shared-diary.html 소스에 장식 이모지가 없다 (정적 검사)', 'shared-diary.html', 375, async () => {
   const hits = [...sourceSweep('shared-diary.html', DIARY_ALLOW),

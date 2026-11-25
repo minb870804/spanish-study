@@ -2,13 +2,13 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <!-- PWA: 홈 화면에 추가하면 전체화면 앱으로 실행 -->
 <link rel="manifest" href="/manifest.json?v=20260806">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#f4f7ef">
+<meta name="theme-color" content="#F5F3EE">
 <link rel="icon" href="/favicon.svg?v=20260806" type="image/svg+xml">
 <link rel="icon" href="/icons/favicon-32.png?v=20260806" type="image/png" sizes="32x32">
 <link rel="icon" href="/icons/favicon-16.png?v=20260806" type="image/png" sizes="16x16">
@@ -157,7 +157,7 @@
           </span>
         </div>
         <div class="todo-input-row">
-          <textarea id="todoInput" rows="1" placeholder="할 일을 입력하세요."
+          <textarea id="todoInput" rows="1" placeholder="할 일을 입력하세요." aria-label="새 할 일 입력"
             oninput="autoSizeTodoInput(this)"
             onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();addTodo();}"></textarea>
           <button class="add-btn" onclick="addTodo()">추가</button>
@@ -208,7 +208,7 @@
         <div id="recurPanel" style="display:none; background:var(--bg); border:1.5px dashed var(--border); border-radius:12px; padding:14px 16px; margin-bottom:14px;">
           <div style="font-size:13px; font-weight:800; margin-bottom:10px;">반복 할 일 관리</div>
           <div class="todo-input-row" style="margin-bottom:10px;">
-            <input id="recurInput" placeholder="예: 스페인어 단어 10개 외우기" onkeydown="if(event.key==='Enter') addRecurring()">
+            <input id="recurInput" placeholder="예: 스페인어 단어 10개 외우기" aria-label="새 반복 할 일 입력" onkeydown="if(event.key==='Enter') addRecurring()">
             <button class="add-btn" onclick="addRecurring()">추가</button>
           </div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; align-items:center;">
@@ -271,7 +271,7 @@
           <button class="small-btn" onclick="openCatEditor()" title="카테고리 색·이름 편집" aria-label="카테고리 색·이름 편집">편집</button>
         </div>
         <div class="memo-entry-row">
-          <textarea id="memoEntryInput" class="note-area" rows="1" placeholder="오늘 한 일이나 메모를 입력하세요."
+          <textarea id="memoEntryInput" class="note-area" rows="1" placeholder="오늘 한 일이나 메모를 입력하세요." aria-label="오늘 한 일 또는 메모 입력"
             oninput="autoSizeTodoInput(this)"
             onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();addMemoEntry();}"></textarea>
           <button class="add-btn" onclick="addMemoEntry()">추가</button>
@@ -313,7 +313,7 @@
           <button class="small-btn" onclick="copyCode()" title="초대 코드 복사">복사</button>
         </div>
         <div class="join-row">
-          <input id="joinInput" placeholder="받은 코드 입력" maxlength="8">
+          <input id="joinInput" placeholder="받은 코드 입력" aria-label="초대 코드 입력" maxlength="8">
           <button class="small-btn" onclick="joinSpace()">참여하기</button>
         </div>
         <div style="margin-top: 14px; display: flex; justify-content: space-between; gap: 8px; align-items: center;">
@@ -335,7 +335,7 @@
 <div id="catPicker"></div>
 
 <!-- 날짜 상세보기 모달 -->
-<div id="dayModal" onclick="if(event.target===this) closeDayModal()">
+<div id="dayModal" role="dialog" aria-modal="true" aria-labelledby="dmDate" onclick="if(event.target===this) closeDayModal()">
   <div class="day-modal-card">
     <div class="card-title" style="margin-bottom:4px;">
       <span id="dmDate">날짜</span>
@@ -344,7 +344,7 @@
         <button type="button" class="dm-drink-toggle" id="dmDrinkToggle" onclick="toggleDrinkDay(modalKey)" aria-pressed="false"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10l-1 6a4 4 0 0 1-8 0zM12 13v7M8 21h8"/></svg><span class="dm-rec-label">음주</span></button>
         <button type="button" class="dm-drink-toggle dm-period-toggle" id="dmPeriodToggle" onclick="togglePeriodDay(modalKey)" aria-pressed="false"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 10a6 6 0 0 1-12 0c0-3.5 6-10 6-10z"/></svg><span class="dm-rec-label">생리</span></button>
         <button type="button" class="dm-drink-toggle dm-love-toggle" id="dmLoveToggle" onclick="toggleLoveDay(modalKey)" aria-pressed="false"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8.5c0 4.5-8 11-8 11s-8-6.5-8-11a4.5 4.5 0 0 1 8-2.8 4.5 4.5 0 0 1 8 2.8z"/></svg><span class="dm-rec-label">기록</span></button>
-        <button class="small-btn" onclick="closeDayModal()">닫기</button>
+        <button type="button" class="small-btn" onclick="closeDayModal()">닫기</button>
       </span>
     </div>
     <div id="dmBody"></div>
@@ -352,81 +352,87 @@
 </div>
 
 <!-- 달력 아래 홈 바로가기 카테고리 편집 모달 -->
-<div id="dashCatEditModal" onclick="if(event.target===this) closeDashboardCategoryEditor()">
+<div id="dashCatEditModal" role="dialog" aria-modal="true" aria-labelledby="dashCatEditTitle" onclick="if(event.target===this) closeDashboardCategoryEditor()">
   <div class="move-date-card" style="max-width:440px;">
     <div class="card-title">
-      <span>홈 카테고리 편집</span>
-      <button class="small-btn" onclick="closeDashboardCategoryEditor()">닫기</button>
+      <span id="dashCatEditTitle">홈 카테고리 편집</span>
+      <button type="button" class="small-btn" onclick="closeDashboardCategoryEditor()">닫기</button>
     </div>
     <div class="scope-hint" style="margin-bottom:10px;">색상·아이콘·이름을 바꿀 수 있어요. 이 설정은 내 홈에만 적용되고 기존 기록은 지워지지 않습니다.</div>
     <div id="dashCatEditBody"></div>
     <div style="display:flex; justify-content:space-between; gap:8px; margin-top:14px;">
-      <button class="small-btn" onclick="resetDashboardCategoryEditor()">기본값 복원</button>
+      <button type="button" class="small-btn" onclick="resetDashboardCategoryEditor()">기본값 복원</button>
       <span style="display:flex; gap:8px;">
-        <button class="small-btn" onclick="closeDashboardCategoryEditor()">취소</button>
-        <button class="add-btn" onclick="saveDashboardCategoryEditor()">저장</button>
+        <button type="button" class="small-btn" onclick="closeDashboardCategoryEditor()">취소</button>
+        <button type="button" class="add-btn" onclick="saveDashboardCategoryEditor()">저장</button>
       </span>
     </div>
   </div>
 </div>
 
 <!-- 할 일 날짜 이동 모달 -->
-<div id="moveDateModal" onclick="if(event.target===this) closeMoveDateModal()">
+<div id="moveDateModal" role="dialog" aria-modal="true" aria-labelledby="moveDateTitle" onclick="if(event.target===this) closeMoveDateModal()">
   <div class="move-date-card">
     <div class="card-title">
       <span id="moveDateTitle">일정 변경</span>
-      <button class="small-btn" onclick="closeMoveDateModal()">닫기</button>
+      <button type="button" class="small-btn" onclick="closeMoveDateModal()">닫기</button>
     </div>
     <input id="moveDateInput" class="move-date-input" type="date" aria-label="적용할 날짜">
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
-      <button class="small-btn" onclick="closeMoveDateModal()">취소</button>
-      <button class="add-btn" id="moveDateConfirmBtn" onclick="confirmMoveDate()">이동</button>
+      <button type="button" class="small-btn" onclick="closeMoveDateModal()">취소</button>
+      <button type="button" class="add-btn" id="moveDateConfirmBtn" onclick="confirmMoveDate()">이동</button>
     </div>
   </div>
 </div>
 
 <!-- 카테고리 편집 모달 -->
-<div id="catEditModal" onclick="if(event.target===this) closeCatEditor()">
+<div id="catEditModal" role="dialog" aria-modal="true" aria-labelledby="catEditTitle" onclick="if(event.target===this) closeCatEditor()">
   <div class="move-date-card" style="max-width:420px;">
     <div class="card-title">
-      <span>카테고리 편집</span>
-      <button class="small-btn" onclick="closeCatEditor()">닫기</button>
+      <span id="catEditTitle">카테고리 편집</span>
+      <button type="button" class="small-btn" onclick="closeCatEditor()">닫기</button>
     </div>
     <div class="scope-hint" style="margin-bottom:10px;">왼쪽 색상칸을 누르면 오늘의 할 일·한 일 카테고리 컬러를 직접 바꿀 수 있어요.</div>
     <div id="catEditBody"></div>
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
-      <button class="small-btn" onclick="closeCatEditor()">취소</button>
-      <button class="add-btn" onclick="saveCatEditor()">저장</button>
+      <button type="button" class="small-btn" onclick="closeCatEditor()">취소</button>
+      <button type="button" class="add-btn" onclick="saveCatEditor()">저장</button>
     </div>
   </div>
 </div>
 
 <!-- 금주 현황 모달 -->
 <!-- 공유 계정 금고 모달 -->
-<div id="vaultModal" onclick="if(event.target===this) closeVaultModal()">
+<div id="vaultModal" role="dialog" aria-modal="true" aria-labelledby="vaultTitle" onclick="if(event.target===this) closeVaultModal()">
   <div class="move-date-card" style="max-width:460px;">
     <div class="card-title">
-      <span>공유 계정</span>
-      <button class="small-btn" onclick="closeVaultModal()">닫기</button>
+      <span id="vaultTitle">공유 계정</span>
+      <button type="button" class="small-btn" onclick="closeVaultModal()">닫기</button>
     </div>
     <div class="scope-hint">부부가 함께 쓰는 서비스의 아이디·비밀번호를 기록해요. 두 사람 모두 보고 수정할 수 있어요.</div>
     <div id="vaultList" class="vault-list"></div>
     <div class="vault-add">
-      <input id="vaultService" placeholder="서비스명 (예: 넷플릭스)" maxlength="30">
-      <input id="vaultId" placeholder="아이디 / 이메일" maxlength="60" autocomplete="off">
-      <input id="vaultPw" placeholder="비밀번호" maxlength="60" autocomplete="off">
-      <button class="add-btn" onclick="addVaultEntry()">＋ 추가</button>
+      <input id="vaultService" placeholder="서비스명 (예: 넷플릭스)" aria-label="서비스명" maxlength="30">
+      <input id="vaultId" placeholder="아이디 / 이메일" aria-label="아이디 또는 이메일" maxlength="60" autocomplete="off">
+      <div class="vault-pw-row">
+        <input id="vaultPw" type="password" placeholder="비밀번호" aria-label="비밀번호" maxlength="60" autocomplete="new-password">
+        <button type="button" class="small-btn" id="vaultPwToggle" onclick="toggleVaultPwInput()" aria-pressed="false">보기</button>
+      </div>
+      <div class="vault-add-actions">
+        <button type="button" class="small-btn" id="vaultCancelEditBtn" hidden onclick="cancelVaultEdit()">수정 취소</button>
+        <button type="button" class="add-btn" id="vaultSubmitBtn" onclick="addVaultEntry()">＋ 추가</button>
+      </div>
     </div>
     <div class="vault-warn">주의: 은행·증권 등 금융 비밀번호는 저장하지 마세요. 구독 서비스용으로만 사용하는 걸 권장해요.</div>
   </div>
 </div>
 
 <!-- 운동 기록 모달 -->
-<div id="exerciseModal" onclick="if(event.target===this) closeExerciseModal()">
+<div id="exerciseModal" role="dialog" aria-modal="true" aria-labelledby="exerciseTitle" onclick="if(event.target===this) closeExerciseModal()">
   <div class="move-date-card" style="max-width:420px;">
     <div class="card-title">
-      <span>운동 기록</span>
-      <button class="small-btn" onclick="closeExerciseModal()">닫기</button>
+      <span id="exerciseTitle">운동 기록</span>
+      <button type="button" class="small-btn" onclick="closeExerciseModal()">닫기</button>
     </div>
     <div id="exerciseDateLabel" class="scope-hint" style="margin-bottom:8px;"></div>
     <label class="ex-field">
@@ -443,8 +449,8 @@
       <span class="scope-hint">종류를 적기 전에 남긴 기록이에요. 위 칸으로 옮겨 정리할 수 있어요.</span>
     </label>
     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
-      <button class="small-btn" onclick="closeExerciseModal()">취소</button>
-      <button class="add-btn" onclick="saveExerciseEntry()">저장</button>
+      <button type="button" class="small-btn" onclick="closeExerciseModal()">취소</button>
+      <button type="button" class="add-btn" onclick="saveExerciseEntry()">저장</button>
     </div>
   </div>
 </div>
@@ -505,37 +511,37 @@
 </div>
 
 <!-- 검색 모달 -->
-<div id="searchModal" onclick="if(event.target===this) closeSearchModal()">
+<div id="searchModal" role="dialog" aria-modal="true" aria-labelledby="searchTitle" onclick="if(event.target===this) closeSearchModal()">
   <div class="move-date-card" style="max-width:460px;">
     <div class="card-title">
-      <span>검색</span>
-      <button class="small-btn" onclick="closeSearchModal()">닫기</button>
+      <span id="searchTitle">검색</span>
+      <button type="button" class="small-btn" onclick="closeSearchModal()">닫기</button>
     </div>
-    <input id="searchInput" class="search-input" placeholder="할 일·메모 검색 (예: 병원)" oninput="runSearch()">
+    <input id="searchInput" class="search-input" placeholder="할 일·메모 검색 (예: 병원)" aria-label="할 일 및 메모 검색" oninput="runSearch()">
     <div id="searchResults" class="search-results"></div>
   </div>
 </div>
 
-<div id="sobrietyModal" onclick="if(event.target===this) closeSobrietyModal()">
+<div id="sobrietyModal" role="dialog" aria-modal="true" aria-labelledby="sobrietyTitle" onclick="if(event.target===this) closeSobrietyModal()">
   <div class="move-date-card" style="max-width:360px;">
     <div class="card-title">
-      <span>금주 현황</span>
-      <button class="small-btn" onclick="closeSobrietyModal()">닫기</button>
+      <span id="sobrietyTitle">금주 현황</span>
+      <button type="button" class="small-btn" onclick="closeSobrietyModal()">닫기</button>
     </div>
     <div class="sobriety-streak" id="sobrietyStreak">—</div>
     <div class="sobriety-stats" id="sobrietyStats"></div>
-    <button class="small-btn sobriety-toggle" id="sobrietyToggleBtn" onclick="toggleDrinkDay(dateKey(selectedDate))"></button>
+    <button type="button" class="small-btn sobriety-toggle" id="sobrietyToggleBtn" onclick="toggleDrinkDay(dateKey(selectedDate))"></button>
   </div>
 </div>
 
 <!-- 월 리포트 모달 -->
-<div id="reportModal" onclick="if(event.target===this) closeMonthReport()">
+<div id="reportModal" role="dialog" aria-modal="true" aria-labelledby="reportTitle" onclick="if(event.target===this) closeMonthReport()">
   <div class="report-modal-card">
     <div class="card-title" style="margin-bottom:4px;">
       <span id="reportTitle">월 리포트</span>
       <span style="display:flex; gap:8px; align-items:center;">
-        <button class="small-btn" onclick="copyMonthReport()">복사</button>
-        <button class="small-btn" onclick="closeMonthReport()">닫기</button>
+        <button type="button" class="small-btn" onclick="copyMonthReport()">복사</button>
+        <button type="button" class="small-btn" onclick="closeMonthReport()">닫기</button>
       </span>
     </div>
     <div id="monthReportBody"></div>
@@ -544,7 +550,7 @@
 
 <button id="fab" class="fab" onclick="openSelectedDayQuickAdd()" title="선택한 날 할 일 빠른 추가" aria-label="선택한 날 할 일 빠른 추가">＋</button>
 
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <!-- Firebase 10.8.0 Compat SDK — head가 아닌 여기서 로드해 첫 화면 렌더를 막지 않는다 -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -3017,6 +3023,33 @@ function closeExerciseModal() {
 }
 // ── 공유 계정 금고 (부부 공용 아이디·비밀번호) ──
 let vaultShown = new Set(); // 비밀번호 보기 상태 (모달 닫으면 초기화)
+let editingVaultId = null;  // 인라인 수정 중인 항목 id
+
+function resetVaultForm() {
+  editingVaultId = null;
+  const service = document.getElementById('vaultService');
+  const idInput = document.getElementById('vaultId');
+  const pwInput = document.getElementById('vaultPw');
+  const pwToggle = document.getElementById('vaultPwToggle');
+  const submitBtn = document.getElementById('vaultSubmitBtn');
+  const cancelBtn = document.getElementById('vaultCancelEditBtn');
+  if (service) service.value = '';
+  if (idInput) idInput.value = '';
+  if (pwInput) { pwInput.value = ''; pwInput.type = 'password'; }
+  if (pwToggle) { pwToggle.textContent = '보기'; pwToggle.setAttribute('aria-pressed', 'false'); }
+  if (submitBtn) submitBtn.textContent = '＋ 추가';
+  if (cancelBtn) cancelBtn.hidden = true;
+}
+function toggleVaultPwInput() {
+  const pwInput = document.getElementById('vaultPw');
+  const pwToggle = document.getElementById('vaultPwToggle');
+  if (!pwInput || !pwToggle) return;
+  const show = pwInput.type === 'password';
+  pwInput.type = show ? 'text' : 'password';
+  pwToggle.textContent = show ? '숨김' : '보기';
+  pwToggle.setAttribute('aria-pressed', String(show));
+}
+function cancelVaultEdit() { resetVaultForm(); }
 
 function getVaultEntries() { return (spaceData && spaceData.sharedLogins) || []; }
 
@@ -3085,11 +3118,13 @@ function renderVaultList() {
 function openVaultModal() {
   if (!spaceData) { toast('데이터를 불러오는 중이에요.'); return; }
   vaultShown = new Set();
+  resetVaultForm();
   renderVaultList();
   document.getElementById('vaultModal').classList.add('open');
 }
 function closeVaultModal() {
   vaultShown = new Set();
+  resetVaultForm();
   document.getElementById('vaultModal').classList.remove('open');
 }
 
@@ -3097,37 +3132,44 @@ async function addVaultEntry() {
   const service = document.getElementById('vaultService').value.trim();
   const username = document.getElementById('vaultId').value.trim();
   const password = document.getElementById('vaultPw').value;
-  if (!service) { toast('서비스명을 입력해 주세요.'); return; }
-  if (!username && !password) { toast('아이디 또는 비밀번호를 입력해 주세요.'); return; }
+  if (!service) { toast('서비스명을 입력해 주세요.'); document.getElementById('vaultService').focus(); return; }
+  if (!username && !password) { toast('아이디 또는 비밀번호를 입력해 주세요.'); document.getElementById('vaultId').focus(); return; }
+  if (editingVaultId) {
+    const arr = getVaultEntries().map(e => e.id === editingVaultId
+      ? { ...e, service, username, password, updatedAt: Date.now() }
+      : e);
+    resetVaultForm();
+    await saveVaultEntries(arr);
+    toast(`'${service}' 계정을 수정했어요.`);
+    return;
+  }
   const arr = [...getVaultEntries(), {
     id: 'v' + Date.now().toString(36),
     service, username, password,
     by: currentUser ? currentUser.uid : '',
     updatedAt: Date.now()
   }];
-  document.getElementById('vaultService').value = '';
-  document.getElementById('vaultId').value = '';
-  document.getElementById('vaultPw').value = '';
+  resetVaultForm();
   await saveVaultEntries(arr);
   toast(`'${service}' 계정을 저장했어요!`);
 }
 
-async function editVaultEntry(id) {
-  const arr = getVaultEntries().map(e => ({ ...e }));
-  const entry = arr.find(e => e.id === id);
+function editVaultEntry(id) {
+  const entry = getVaultEntries().find(e => e.id === id);
   if (!entry) return;
-  const service = prompt('서비스명', entry.service);
-  if (service === null) return;
-  const username = prompt('아이디 / 이메일', entry.username || '');
-  if (username === null) return;
-  const password = prompt('비밀번호', entry.password || '');
-  if (password === null) return;
-  entry.service = service.trim() || entry.service;
-  entry.username = username.trim();
-  entry.password = password;
-  entry.updatedAt = Date.now();
-  await saveVaultEntries(arr);
-  toast('수정했어요!');
+  editingVaultId = id;
+  document.getElementById('vaultService').value = entry.service || '';
+  document.getElementById('vaultId').value = entry.username || '';
+  const pwInput = document.getElementById('vaultPw');
+  pwInput.value = entry.password || '';
+  pwInput.type = 'password';
+  const pwToggle = document.getElementById('vaultPwToggle');
+  if (pwToggle) { pwToggle.textContent = '보기'; pwToggle.setAttribute('aria-pressed', 'false'); }
+  const submitBtn = document.getElementById('vaultSubmitBtn');
+  if (submitBtn) submitBtn.textContent = '수정 저장';
+  const cancelBtn = document.getElementById('vaultCancelEditBtn');
+  if (cancelBtn) cancelBtn.hidden = false;
+  document.getElementById('vaultService').focus();
 }
 
 async function deleteVaultEntry(id) {
@@ -3598,7 +3640,7 @@ function renderTodos(day) {
     const mine = canEditTodo(t);
     const author = isTodoAuthor(t);
     const handle = mine
-      ? `<button class="del move-handle" onpointerdown="startTodoItemDrag(event, ${jsArg(currentKey)}, ${jsArg(t.id)})" title="드래그해서 날짜 이동">↕</button>`
+      ? `<button type="button" class="del move-handle" onpointerdown="startTodoItemDrag(event, ${jsArg(currentKey)}, ${jsArg(t.id)})" title="드래그해서 날짜 이동" aria-label="드래그해서 날짜 이동">↕</button>`
       : `<span class="move-handle" style="visibility:hidden;">↕</span>`;
     const badge = mine
       ? `<button class="tcat-badge" style="--cat-color:${cat.color};" onclick="openCatPicker(event, ${jsArg(dateKey(selectedDate))}, 'todo', ${jsArg(t.id)})" title="카테고리 변경">${esc(cat.name)}</button>`
@@ -3610,7 +3652,7 @@ function renderTodos(day) {
           <button type="button" class="quick-move-btn" onclick="event.stopPropagation(); quickMoveTodo(${jsArg(currentKey)}, ${jsArg(t.id)}, 7)" title="다음 주로 이동">+7</button>
           <button type="button" class="del" onclick="event.stopPropagation(); moveTodoToDateFromKey(${jsArg(currentKey)}, ${jsArg(t.id)})" title="날짜 변경">날짜</button>
           <button type="button" class="del" onclick="event.stopPropagation(); copyTodoToDateFromKey(${jsArg(currentKey)}, ${jsArg(t.id)})" title="다른 날짜에 한 번 복사">복사</button>
-          ${author ? `<button type="button" class="del" onclick="event.stopPropagation(); deleteTodo(${jsArg(t.id)})" title="삭제">✕</button>` : ''}
+          ${author ? `<button type="button" class="del" onclick="event.stopPropagation(); deleteTodo(${jsArg(t.id)})" title="삭제" aria-label="삭제">✕</button>` : ''}
         </span>` : '';
     return `<div class="todo-item ${mine ? 'swipeable' : ''} ${t.done ? 'done' : ''} ${t.id === justCompletedId ? 'just-done' : ''}" data-key="${currentKey}" data-id="${escAttr(t.id)}" style="${borderStyle}">
       ${handle}
@@ -5455,21 +5497,82 @@ function copyMonthReport() {
 // THEME / TOAST / INIT
 // ══════════════════════════════════════
 function toggleTheme() {
+  if (window.toggleAppTheme) { window.toggleAppTheme(); return; }
   const isDark = document.body.classList.toggle('dark');
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
   updateThemeButton();
 }
 function updateThemeButton() {
-  // 아이콘은 js/app-shell.js 가 그린다. 첫 로드에는 아직 없으므로 app-shell 이 초기화 때 그린다.
+  // 아이콘과 theme-color 는 js/app-shell.js 가 그린다. 첫 로드에는 아직 없으므로 app-shell 이 초기화 때 그린다.
   if (window.renderThemeToggle) window.renderThemeToggle();
+  else {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', document.body.classList.contains('dark') ? '#101112' : '#F5F3EE');
+  }
 }
 function loadTheme() {
+  if (window.applyAppTheme) { window.applyAppTheme(); return; }
   // 저장된 선택이 있으면 그대로, 없으면 기기(시스템) 설정을 따른다
   const saved = localStorage.getItem('theme');
   const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   document.body.classList.toggle('dark', saved ? saved === 'dark' : systemDark);
   updateThemeButton();
 }
+
+// ── 모달 공통 접근성 관리: Escape 닫기, 배경 스크롤 잠금, 닫힘 시 포커스 복귀 ──
+const MANAGED_MODAL_CLOSERS = {
+  dayModal: () => closeDayModal(),
+  dashCatEditModal: () => closeDashboardCategoryEditor(),
+  moveDateModal: () => closeMoveDateModal(),
+  catEditModal: () => closeCatEditor(),
+  vaultModal: () => closeVaultModal(),
+  exerciseModal: () => closeExerciseModal(),
+  searchModal: () => closeSearchModal(),
+  sobrietyModal: () => closeSobrietyModal(),
+  reportModal: () => closeMonthReport()
+};
+const openModalStack = [];
+const modalReturnFocus = new Map();
+function syncModalBodyLock() {
+  const hasOverlay = openModalStack.length > 0
+    || !!document.querySelector('#recurSetupModal.open, .todo-editor-modal.open, .schedule-confirm-modal');
+  document.body.style.overflow = hasOverlay ? 'hidden' : '';
+}
+(function bindManagedModals() {
+  const observer = new MutationObserver(mutations => {
+    for (const m of mutations) {
+      const el = m.target;
+      const id = el.id;
+      const isOpen = el.classList.contains('open');
+      const idx = openModalStack.indexOf(id);
+      if (isOpen && idx === -1) {
+        modalReturnFocus.set(id, document.activeElement);
+        openModalStack.push(id);
+        syncModalBodyLock();
+      } else if (!isOpen && idx !== -1) {
+        openModalStack.splice(idx, 1);
+        syncModalBodyLock();
+        const prev = modalReturnFocus.get(id);
+        modalReturnFocus.delete(id);
+        if (prev && prev.isConnected && !document.querySelector('.todo-editor-modal.open, .schedule-confirm-modal')) {
+          try { prev.focus({ preventScroll: true }); } catch { prev.focus(); }
+        }
+      }
+    }
+  });
+  Object.keys(MANAGED_MODAL_CLOSERS).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el, { attributes: true, attributeFilter: ['class'] });
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    if (document.querySelector('.schedule-confirm-modal, .todo-editor-modal.open, #recurSetupModal.open')) return;
+    const topId = openModalStack[openModalStack.length - 1];
+    if (!topId) return;
+    event.preventDefault();
+    MANAGED_MODAL_CLOSERS[topId]?.();
+  });
+})();
 // 수동 선택을 안 했다면 시스템 다크모드 변경을 실시간 반영
 if (window.matchMedia) {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {

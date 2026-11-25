@@ -2,13 +2,14 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <!-- PWA: 홈 화면에 추가하면 전체화면 앱으로 실행 -->
 <link rel="manifest" href="/manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#f4f7ef">
+<meta name="theme-color" content="#F5F3EE">
+<link rel="icon" href="/favicon.svg?v=20260806" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=20260806">
 <meta name="apple-mobile-web-app-title" content="스페인어">
 <title>스페인어 스터디 | Minb</title>
@@ -51,7 +52,7 @@
     --radius-sm: 8px;
     --shadow: 0 10px 28px rgba(37, 56, 72, 0.07);
     --shadow-hover: 0 14px 36px rgba(37, 56, 72, 0.12);
-    --transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition: background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), color 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   body.dark {
@@ -338,7 +339,7 @@
   }
   body.dark .dia-card { border-color: rgba(255,255,255,0.08); }
   .dia-card.completed { border-color: var(--green); background: var(--green-light); }
-  .dia-card-header { display: flex; align-items: center; gap: 14px; padding: 16px 20px; cursor: pointer; }
+  .dia-card-header { display: flex; align-items: center; gap: 14px; padding: 16px 20px; cursor: pointer; width: 100%; background: none; border: 0; text-align: left; font: inherit; color: inherit; }
   .dia-num {
     width: 46px;
     height: 46px;
@@ -352,12 +353,12 @@
     flex-shrink: 0;
     box-shadow: 0 6px 14px rgba(199,83,72,0.25), inset 0 0 0 1px rgba(255,255,255,0.16);
   }
-  .dia-num .d-label { font-size: 8px; opacity: .8; font-weight: 700; text-transform: uppercase; }
-  .dia-num .d-num { font-size: 18px; font-weight: 800; line-height: 1; }
+  .dia-num .d-label { display: block; font-size: 8px; opacity: .8; font-weight: 700; text-transform: uppercase; }
+  .dia-num .d-num { display: block; font-size: 18px; font-weight: 800; line-height: 1; }
   .dia-card.completed .dia-num { background: linear-gradient(135deg,var(--green),#2ecc71); box-shadow: 0 6px 14px rgba(59,134,105,0.25), inset 0 0 0 1px rgba(255,255,255,0.16); }
-  .dia-info { flex: 1; }
-  .dia-info h3 { font-size: 15px; font-weight: 800; margin-bottom: 4px; color: var(--text); }
-  .dia-info .sub { font-size: 12px; color: var(--muted); }
+  .dia-info { flex: 1; display: block; }
+  .dia-info h3, .dia-info .dia-title { display: block; font-size: 15px; font-weight: 800; margin-bottom: 4px; color: var(--text); }
+  .dia-info .sub { display: block; font-size: 12px; color: var(--muted); }
   .dia-status { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
   .dia-status.done { background: var(--green-light); color: var(--green); }
   .dia-status.todo { background: var(--red-light); color: var(--red); }
@@ -541,6 +542,7 @@
      ══════════════════════════════════════ */
   .alpha-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(84px,1fr)); gap: 8px; }
   .alpha-card {
+    width: 100%; font: inherit; color: inherit;
     background: var(--red-light);
     border: 1px solid rgba(199, 83, 72, 0.15);
     border-radius: 10px;
@@ -551,10 +553,10 @@
   }
   .alpha-card:hover, .alpha-card.active { background: var(--red); color: white; border-color: var(--red); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(199,83,72,0.2); }
   .alpha-card:hover .alpha-pron, .alpha-card.active .alpha-pron { color: rgba(255,255,255,0.75); }
-  .alpha-letter { font-size: 20px; font-weight: 800; color: var(--red); transition: var(--transition); }
+  .alpha-letter { display: block; font-size: 20px; font-weight: 800; color: var(--red); transition: var(--transition); }
   .alpha-card:hover .alpha-letter, .alpha-card.active .alpha-letter { color: white; }
-  .alpha-name { font-size: 12px; font-weight: 700; margin-top: 2px; }
-  .alpha-pron { font-size: 11px; color: var(--muted); margin-top: 1px; transition: var(--transition); }
+  .alpha-name { display: block; font-size: 12px; font-weight: 700; margin-top: 2px; }
+  .alpha-pron { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; transition: var(--transition); }
 
   /* ══════════════════════════════════════
      PROGRESS TAB
@@ -654,6 +656,14 @@
   }
   .google-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
 
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--ui-ink, var(--dark)); color: var(--ui-on-ink, var(--card)); padding: 12px 24px; border-radius: 24px;
+    font-size: 13px; font-weight: 700; z-index: 2000; opacity: 0; transition: opacity 0.22s ease, transform 0.22s ease;
+    pointer-events: none; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
   /* ══════════════════════════════════════
      MOBILE (메인과 동일한 축소 규칙)
      ══════════════════════════════════════ */
@@ -735,15 +745,15 @@
       <span class="today-badge" id="todayBadge"></span>
     </div>
   </div>
-  <nav class="study-tabs" aria-label="스페인어 학습 메뉴">
-    <button class="active" onclick="showTab('home')">홈</button>
-    <button onclick="showTab('plan')">학습 계획</button>
-    <button onclick="showTab('vocab')">단어장</button>
-    <button onclick="showTab('grammar')">문법</button>
-    <button onclick="showTab('alphabet')">발음</button>
-    <button onclick="showTab('quiz')">퀴즈</button>
-    <button onclick="showTab('progress')">진도 체크</button>
-    <button onclick="showTab('nexus')">넥서스 연동</button>
+  <nav class="study-tabs" role="tablist" aria-label="스페인어 학습 메뉴">
+    <button type="button" role="tab" aria-selected="true" aria-controls="tab-home" class="active" onclick="showTab('home')">홈</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="tab-plan" onclick="showTab('plan')">학습 계획</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="tab-vocab" onclick="showTab('vocab')">단어장</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="tab-grammar" onclick="showTab('grammar')">문법</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="tab-alphabet" onclick="showTab('alphabet')">발음</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="tab-quiz" onclick="showTab('quiz')">퀴즈</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="tab-progress" onclick="showTab('progress')">진도 체크</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="tab-nexus" onclick="showTab('nexus')">넥서스 연동</button>
   </nav>
 </header>
 
@@ -800,7 +810,7 @@
       </div>
       <div class="practice-date" id="practiceDateChip"></div>
     </div>
-    <textarea id="practiceAnswer" class="practice-answer" placeholder="스페인어로 직접 써보세요." oninput="savePracticeDraft()"></textarea>
+    <textarea id="practiceAnswer" class="practice-answer" aria-label="오늘의 스페인어 문장 연습 입력" placeholder="스페인어로 직접 써보세요." oninput="savePracticeDraft()"></textarea>
     <div class="practice-actions">
       <div class="left">
         <button class="filter-btn" onclick="revealPracticeAnswer()">정답 보기</button>
@@ -856,21 +866,21 @@
     <div class="card-title" style="border-bottom:none; margin-bottom:12px; padding-bottom:0;">나만의 단어 추가</div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
       <div>
-        <label style="font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px;">스페인어 단어 *</label>
+        <label for="add-es" style="font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px;">스페인어 단어 *</label>
         <input type="text" id="add-es" class="search-input" style="width: 100%; border-radius: 8px;" placeholder="예: aprender">
       </div>
       <div>
-        <label style="font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px;">발음 *</label>
+        <label for="add-pron" style="font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px;">발음 *</label>
         <input type="text" id="add-pron" class="search-input" style="width: 100%; border-radius: 8px;" placeholder="예: 아프렌데르">
       </div>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
       <div>
-        <label style="font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px;">뜻 *</label>
+        <label for="add-ko" style="font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px;">뜻 *</label>
         <input type="text" id="add-ko" class="search-input" style="width: 100%; border-radius: 8px;" placeholder="예: 배우다">
       </div>
       <div>
-        <label style="font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px;">관련 Día (선택)</label>
+        <label for="add-dia" style="font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px;">관련 Día (선택)</label>
         <select id="add-dia" class="search-input" style="width: 100%; border-radius: 8px; height: 37px; padding: 0 10px;">
           <option value="1">Día 01~05</option>
           <option value="2">Día 06~10</option>
@@ -879,7 +889,7 @@
       </div>
     </div>
     <div style="margin-bottom: 16px;">
-      <label style="font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px;">예문 (선택)</label>
+      <label for="add-ex" style="font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px;">예문 (선택)</label>
       <input type="text" id="add-ex" class="search-input" style="width: 100%; border-radius: 8px;" placeholder="예: Aprendo español. (나는 스페인어를 배운다.)">
     </div>
     <div style="display: flex; gap: 10px; justify-content: flex-end;">
@@ -893,7 +903,7 @@
       <div class="card-title-left">플래시카드 모드</div>
     </div>
     <div class="flashcard-area">
-      <div class="flashcard" id="flashcard" onclick="flipCard()">
+      <div class="flashcard" id="flashcard" tabindex="0" aria-label="플래시카드 뒤집기" onclick="flipCard()" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();flipCard();}">
         <div class="flashcard-front">
           <div class="es-word">
             <span id="fc-es"></span>
@@ -931,7 +941,7 @@
     </div>
     <div class="vocab-summary" id="vocabSummary"></div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-      <input type="text" class="search-input" placeholder="단어 검색" oninput="filterVocab(this.value)">
+      <input type="text" class="search-input" placeholder="단어 검색" aria-label="단어 검색" oninput="filterVocab(this.value)">
       <button class="filter-btn active" onclick="filterByDia('all',this)">전체</button>
       <button class="filter-btn" onclick="filterByDia('1',this)">Día 01~05</button>
       <button class="filter-btn" onclick="filterByDia('2',this)">Día 06~10</button>
@@ -1343,6 +1353,8 @@
 </div>
 
 </main>
+
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script>
 // ══════════════════════════════════════
@@ -1960,17 +1972,17 @@ function renderPlan() {
     const pct = prog.total ? Math.round(prog.done/prog.total*100) : 0;
 
     html += `<div class="dia-card ${complete?'completed':''}" id="dia-card-${dia.num}">
-      <div class="dia-card-header" onclick="toggleDia(${dia.num})">
-        <div class="dia-num"><div class="d-label">Día</div><div class="d-num">${String(dia.num).padStart(2,'0')}</div></div>
-        <div class="dia-info">
-          <h3>${dia.title}</h3>
-          <div class="sub">${dia.sub}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
+      <button type="button" class="dia-card-header" id="dia-header-${dia.num}" aria-expanded="false" aria-controls="dia-body-${dia.num}" onclick="toggleDia(${dia.num})">
+        <span class="dia-num"><span class="d-label">Día</span><span class="d-num">${String(dia.num).padStart(2,'0')}</span></span>
+        <span class="dia-info">
+          <span class="dia-title">${dia.title}</span>
+          <span class="sub">${dia.sub}</span>
+        </span>
+        <span style="display:flex;align-items:center;gap:8px;">
           <span class="dia-status ${complete?'done':'todo'}">${complete?'완료':'학습중'}</span>
-          <span class="dia-toggle" id="dia-toggle-${dia.num}">▼</span>
-        </div>
-      </div>
+          <span class="dia-toggle" id="dia-toggle-${dia.num}" aria-hidden="true">▼</span>
+        </span>
+      </button>
       <div class="dia-body" id="dia-body-${dia.num}">
         <div class="progress-mini">
           <div class="label"><span>학습 진행률</span><span>${prog.done}/${prog.total} 완료</span></div>
@@ -2000,8 +2012,10 @@ function renderPlan() {
 function toggleDia(num) {
   const body = document.getElementById(`dia-body-${num}`);
   const toggle = document.getElementById(`dia-toggle-${num}`);
+  const header = document.getElementById(`dia-header-${num}`);
   const open = body.classList.toggle('open');
   toggle.textContent = open ? '▲' : '▼';
+  if (header) header.setAttribute('aria-expanded', String(open));
 }
 
 async function checkTask(taskId, diaNum, checked) {
@@ -2255,7 +2269,7 @@ async function addCustomWord() {
   const diaVal = document.getElementById('add-dia').value;
   
   if (!esVal || !pronVal || !koVal) {
-    alert('필수 입력값(* 표시)을 정확히 기입해 주세요.');
+    toast('필수 입력값(* 표시)을 모두 입력해 주세요.');
     return;
   }
   
@@ -2265,7 +2279,7 @@ async function addCustomWord() {
   const exists = VOCAB.some(v => v.es.toLowerCase() === esVal.toLowerCase()) || 
                  s.customVocab.some(v => v.es.toLowerCase() === esVal.toLowerCase());
   if (exists) {
-    alert('이미 등록되어 있는 단어입니다.');
+    toast('이미 등록되어 있는 단어예요.');
     return;
   }
   
@@ -2283,7 +2297,7 @@ async function addCustomWord() {
   saveState(s);
   await syncToFirestore({ type: 'addWord', word: newWord });
   
-  alert('나만의 단어가 추가되었습니다.');
+  toast('나만의 단어를 추가했어요.');
   toggleCustomForm();
   
   refreshVocabData();
@@ -2319,17 +2333,17 @@ let selectedAlpha = null;
 
 function renderAlphabet() {
   document.getElementById('alpha-grid').innerHTML = ALPHABET.map((a, idx)=>`
-    <div class="alpha-card" id="alpha-card-${idx}" onclick="selectAlphabet('${a.l}', '${a.n}', '${a.p}', ${idx})">
-      <div class="alpha-letter">${a.l.split(' ')[0]}</div>
-      <div class="alpha-name">${a.n}</div>
-      <div class="alpha-pron">${a.p}</div>
-    </div>`).join('');
+    <button type="button" class="alpha-card" id="alpha-card-${idx}" aria-pressed="false" onclick="selectAlphabet('${a.l}', '${a.n}', '${a.p}', ${idx})">
+      <span class="alpha-letter">${a.l.split(' ')[0]}</span>
+      <span class="alpha-name">${a.n}</span>
+      <span class="alpha-pron">${a.p}</span>
+    </button>`).join('');
 }
 
 function selectAlphabet(letter, name, pron, idx) {
-  document.querySelectorAll('.alpha-card').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.alpha-card').forEach(c => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
   const activeCard = document.getElementById(`alpha-card-${idx}`);
-  if (activeCard) activeCard.classList.add('active');
+  if (activeCard) { activeCard.classList.add('active'); activeCard.setAttribute('aria-pressed', 'true'); }
   
   selectedAlpha = letter.split(' ')[0];
   const detailCard = document.getElementById('alpha-detail-card');
@@ -2366,7 +2380,7 @@ function startQuiz(customPool) {
   const allVocab = getMergedVocab();
   const pool = (customPool && customPool.length) ? customPool : allVocab;
   if (allVocab.length < 4) {
-    alert('퀴즈를 진행하려면 최소 4개 이상의 단어가 단어장에 있어야 합니다. 단어를 직접 등록해 보세요!');
+    toast('퀴즈를 진행하려면 단어장에 최소 4개 이상의 단어가 필요해요.');
     return;
   }
 
@@ -2671,24 +2685,38 @@ async function resetAllData() {
 // ══════════════════════════════════════
 // DARK / LIGHT THEME TOGGLE
 // ══════════════════════════════════════
+let studyToastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(studyToastTimer);
+  studyToastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
 function toggleTheme() {
+  if (window.toggleAppTheme) { window.toggleAppTheme(); return; }
   const isDark = document.body.classList.toggle('dark');
-  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch {}
   updateThemeButton();
 }
 
 function updateThemeButton() {
-  // 아이콘은 js/app-shell.js 가 그린다. 첫 로드에는 아직 없으므로 app-shell 이 초기화 때 그린다.
+  // 아이콘과 theme-color 는 js/app-shell.js 가 그린다. 첫 로드에는 아직 없으므로 app-shell 이 초기화 때 그린다.
   if (window.renderThemeToggle) window.renderThemeToggle();
+  else {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', document.body.classList.contains('dark') ? '#101112' : '#F5F3EE');
+  }
 }
 
 function loadTheme() {
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark');
-  } else {
-    document.body.classList.remove('dark');
-  }
+  if (window.applyAppTheme) { window.applyAppTheme(); return; }
+  let savedTheme = null;
+  try { savedTheme = localStorage.getItem('theme'); } catch {}
+  const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.body.classList.toggle('dark', savedTheme ? savedTheme === 'dark' : !!systemDark);
   updateThemeButton();
 }
 
@@ -2723,7 +2751,7 @@ function speakSpanish(text) {
     }
     window.speechSynthesis.speak(utterance);
   } else {
-    alert('이 브라우저는 음성 재생(TTS)을 지원하지 않습니다.');
+    toast('이 브라우저는 음성 재생(TTS)을 지원하지 않아요.');
   }
 }
 
@@ -2737,13 +2765,26 @@ function toggleNexus() {
 // ══════════════════════════════════════
 // TABS
 // ══════════════════════════════════════
-function showTab(id) {
+const STUDY_TABS = ['home','plan','vocab','grammar','alphabet','quiz','progress','nexus'];
+function showTab(id, opts = {}) {
+  if (!STUDY_TABS.includes(id)) id = 'home';
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.study-tabs button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.study-tabs button').forEach(b=>{
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
   document.getElementById('tab-'+id).classList.add('active');
-  const idx=['home','plan','vocab','grammar','alphabet','quiz','progress','nexus'].indexOf(id);
-  document.querySelectorAll('.study-tabs button')[idx].classList.add('active');
-  window.scrollTo({ top: 0 });
+  const idx = STUDY_TABS.indexOf(id);
+  const tabBtn = document.querySelectorAll('.study-tabs button')[idx];
+  if (tabBtn) {
+    tabBtn.classList.add('active');
+    tabBtn.setAttribute('aria-selected', 'true');
+  }
+  if (!opts.skipHash && history.replaceState) {
+    const nextHash = id === 'home' ? '' : '#' + id;
+    if (location.hash !== nextHash) history.replaceState(null, '', nextHash || (location.pathname + location.search));
+  }
+  if (!opts.skipScroll) window.scrollTo({ top: 0 });
   if (id==='progress') {
     renderCal(getState().studiedDates);
     renderDiaProgressList();
@@ -2751,6 +2792,10 @@ function showTab(id) {
     renderChart();
   }
 }
+window.addEventListener('hashchange', () => {
+  const hashTab = location.hash.replace(/^#/, '');
+  if (STUDY_TABS.includes(hashTab)) showTab(hashTab, { skipHash: true });
+});
 
 // ══════════════════════════════════════
 // 키보드 단축키 — 플래시카드(←/→/스페이스) · 퀴즈(1~4)
@@ -2764,8 +2809,8 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight') { e.preventDefault(); nextCard(); return; }
     if (e.key === ' ') { e.preventDefault(); flipCard(); return; }
   }
-  // 퀴즈: 숫자키 1~4로 보기 선택
-  if (document.getElementById('quiz-play').style.display !== 'none' && /^[1-4]$/.test(e.key)) {
+  // 퀴즈: 퀴즈 탭이 활성화된 상태에서만 숫자키 1~4로 보기 선택
+  if (document.getElementById('tab-quiz').classList.contains('active') && document.getElementById('quiz-play').style.display !== 'none' && /^[1-4]$/.test(e.key)) {
     const idx = Number(e.key) - 1;
     const btn = document.getElementById('quiz-opt-' + idx);
     if (btn && !btn.disabled) selectQuizOption(idx);
@@ -2886,6 +2931,10 @@ function init() {
   
   // 기존 로컬스토리지 기반 1차 렌더링 (로그인 오버레이 덮기 전 기본 뼈대 준비)
   initUI();
+  const initialTab = location.hash.replace(/^#/, '');
+  if (STUDY_TABS.includes(initialTab) && initialTab !== 'home') {
+    showTab(initialTab, { skipHash: true, skipScroll: true });
+  }
 }
 
 function studyStorageKey(suffix = '', uid = currentUser ? currentUser.uid : 'guest') {

@@ -4,12 +4,33 @@
   // 달 = 지금 밝음(누르면 어두워짐), 해 = 지금 어두움(누르면 밝아짐)
   const THEME_SUN = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
   const THEME_MOON = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6.5 6.5 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>';
+  // 현재 테마에 맞춰 모바일 브라우저 상단바 색(theme-color)을 동기화한다.
+  window.syncThemeColor = function syncThemeColor() {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', document.body.classList.contains('dark') ? '#101112' : '#F5F3EE');
+  };
   window.renderThemeToggle = function renderThemeToggle() {
     const btn = document.getElementById('themeToggle');
+    const isDark = document.body.classList.contains('dark');
+    window.syncThemeColor();
     if (!btn) return;
-    btn.innerHTML = document.body.classList.contains('dark') ? THEME_SUN : THEME_MOON;
+    btn.innerHTML = isDark ? THEME_SUN : THEME_MOON;
     btn.setAttribute('aria-label', '테마 바꾸기');
     btn.setAttribute('title', '테마 바꾸기');
+    btn.setAttribute('aria-pressed', String(isDark));
+  };
+  // 저장된 수동 선택이 없으면 기기 다크모드(prefers-color-scheme)를 따른다.
+  window.applyAppTheme = function applyAppTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem('theme'); } catch { /* 저장소 접근 불가 시 시스템 설정 사용 */ }
+    const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.body.classList.toggle('dark', saved ? saved === 'dark' : !!systemDark);
+    window.renderThemeToggle();
+  };
+  window.toggleAppTheme = function toggleAppTheme() {
+    const isDark = document.body.classList.toggle('dark');
+    try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch { /* 저장 실패해도 화면 전환 유지 */ }
+    window.renderThemeToggle();
   };
   const icons = {
     home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>',
@@ -31,7 +52,16 @@
       nav.querySelectorAll('a').forEach(a=>{ if(a.dataset.page===current)a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
     };
     update(); window.addEventListener('hashchange',update);
-    window.renderThemeToggle();
+    window.applyAppTheme();
+    if(window.matchMedia){
+      const mq=window.matchMedia('(prefers-color-scheme: dark)');
+      mq.addEventListener?.('change',()=>{
+        let saved=null;
+        try { saved=localStorage.getItem('theme'); } catch {}
+        if(!saved) window.applyAppTheme();
+      });
+    }
+    window.addEventListener('storage',e=>{ if(e.key==='theme') window.applyAppTheme(); });
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init); else init();
 })();

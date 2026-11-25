@@ -34,16 +34,25 @@ async function logout() {
 }
 
 function toggleTheme() {
+  if (window.toggleAppTheme) { window.toggleAppTheme(); return; }
   const isDark = document.body.classList.toggle('dark');
-  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch {}
   updateThemeButton();
 }
 function updateThemeButton() {
-  // 아이콘은 js/app-shell.js 가 그린다. 첫 로드에는 아직 없으므로 app-shell 이 초기화 때 그린다.
+  // 아이콘과 theme-color 는 js/app-shell.js 가 그린다. 첫 로드에는 아직 없으므로 app-shell 이 초기화 때 그린다.
   if (window.renderThemeToggle) window.renderThemeToggle();
+  else {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', document.body.classList.contains('dark') ? '#101112' : '#F5F3EE');
+  }
 }
 function loadTheme() {
-  if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+  if (window.applyAppTheme) { window.applyAppTheme(); return; }
+  let saved = null;
+  try { saved = localStorage.getItem('theme'); } catch {}
+  const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.body.classList.toggle('dark', saved ? saved === 'dark' : !!systemDark);
   updateThemeButton();
 }
 
@@ -56,7 +65,10 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+// 글자와 속성 값 어디에 넣어도 HTML로 해석되지 않게 따옴표까지 바꾼다.
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
 
 let diarySyncPhase = 'signed-out';
 function setDiarySync(phase) {
